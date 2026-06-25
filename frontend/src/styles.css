@@ -179,6 +179,22 @@ button {
   color: white;
 }
 
+.interaction-guide {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.interaction-guide span {
+  border: 1px solid #e0d1c1;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #fff8ef;
+  color: #7a4e23;
+  font-size: 14px;
+}
+
 .book-page {
   margin-top: 24px;
   border-radius: 20px;
@@ -192,6 +208,67 @@ button {
 
 .book-page p {
   margin: 0 0 18px;
+}
+
+.dialogue-segment,
+.clue-segment {
+  display: inline;
+  margin: 0 4px;
+  border: 0;
+  border-radius: 10px;
+  padding: 2px 7px;
+  line-height: inherit;
+  text-align: left;
+}
+
+.dialogue-segment {
+  background: rgba(37, 48, 68, 0.08);
+  color: #1d2530;
+  border-bottom: 2px solid rgba(37, 48, 68, 0.28);
+}
+
+.dialogue-segment:hover {
+  background: rgba(37, 48, 68, 0.14);
+}
+
+.speaker {
+  margin-right: 6px;
+  color: #6f4420;
+  font-weight: 700;
+}
+
+.voice-hint,
+.clue-hint {
+  margin-left: 8px;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.voice-hint {
+  background: #253044;
+  color: white;
+}
+
+.clue-segment {
+  background: #fff1b8;
+  color: #4f3514;
+  border-bottom: 2px solid #d4a72c;
+}
+
+.clue-segment:hover {
+  background: #ffe58a;
+}
+
+.clue-segment.collected {
+  background: #e6f4d7;
+  border-bottom-color: #74a84a;
+}
+
+.clue-hint {
+  background: #8b5e34;
+  color: white;
 }
 
 .scene-visual {
@@ -295,6 +372,19 @@ button {
   font-size: 12px;
 }
 
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  z-index: 10;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  padding: 12px 18px;
+  background: #1f2937;
+  color: white;
+  box-shadow: 0 16px 34px rgba(31, 41, 55, 0.24);
+}
+
 .bag-panel {
   position: fixed;
   right: 28px;
@@ -311,6 +401,15 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.empty-bag {
+  margin: 0;
+  border: 1px dashed #d7c4ad;
+  border-radius: 16px;
+  padding: 14px;
+  color: #7a6c5d;
+  line-height: 1.7;
 }
 
 .clue-card {
@@ -362,4 +461,3 @@ button {
     display: grid;
   }
 }
-

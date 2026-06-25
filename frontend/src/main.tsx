@@ -2,12 +2,34 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
+type VoiceConfig = {
+  pitch: number;
+  rate: number;
+};
+
+type TextSegment =
+  | {
+      type: 'narration';
+      text: string;
+    }
+  | {
+      type: 'dialogue';
+      speaker: string;
+      text: string;
+      voice: VoiceConfig;
+    }
+  | {
+      type: 'clue';
+      clueId: string;
+      text: string;
+    };
+
 type Chapter = {
   id: string;
   title: string;
   subtitle: string;
   progress: number;
-  paragraphs: string[];
+  paragraphs: TextSegment[][];
   scene: {
     title: string;
     imagePrompt: string;
@@ -27,6 +49,8 @@ type ChatMessage = {
   role: 'reader' | 'assistant';
   content: string;
 };
+
+const COLLECTED_CLUES_KEY = 'immersive-reader-collected-clues';
 
 const api = {
   async chapters(): Promise<Chapter[]> {
@@ -51,8 +75,13 @@ const api = {
 function App() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [clues, setClues] = useState<Clue[]>([]);
+  const [collectedClueIds, setCollectedClueIds] = useState<string[]>(() => {
+    const saved = window.localStorage.getItem(COLLECTED_CLUES_KEY);
+    return saved ? JSON.parse(saved) : [];
+  });
   const [chapterId, setChapterId] = useState('speckled-band-1');
   const [bagOpen, setBagOpen] = useState(false);
+  const [notice, setNotice] = useState('');
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -66,9 +95,18 @@ function App() {
     api.clues().then(setClues);
   }, []);
 
+  useEffect(() => {
+    window.localStorage.setItem(COLLECTED_CLUES_KEY, JSON.stringify(collectedClueIds));
+  }, [collectedClueIds]);
+
   const chapter = useMemo(
     () => chapters.find((item) => item.id === chapterId) ?? chapters[0],
     [chapters, chapterId]
+  );
+
+  const collectedClues = useMemo(
+    () => clues.filter((clue) => collectedClueIds.includes(clue.id)),
+    [clues, collectedClueIds]
   );
 
   async function askAssistant() {
@@ -80,14 +118,64 @@ function App() {
     setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
   }
 
-  function speakCurrentChapter() {
-    if (!chapter) return;
-    const utterance = new SpeechSynthesisUtterance(
-      `${chapter.title}。${chapter.paragraphs.join(' ')}`
-    );
+  function speakDialogue(speaker: string, text: string, voice: VoiceConfig) {
+    const utterance = new SpeechSynthesisUtterance(`${speaker}说：${text}`);
     utterance.lang = 'zh-CN';
+    utterance.pitch = voice.pitch;
+    utterance.rate = voice.rate;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
+  }
+
+  function collectClue(clueId: string) {
+    const clue = clues.find((item) => item.id === clueId);
+    if (!clue) return;
+
+    setCollectedClueIds((prev) => {
+      if (prev.includes(clueId)) {
+        setNotice(`“${clue.label}”已经在背包里`);
+        return prev;
+      }
+      setNotice(`已收集线索：“${clue.label}”`);
+      setBagOpen(true);
+      return [...prev, clueId];
+    });
+
+    window.setTimeout(() => setNotice(''), 1800);
+  }
+
+  function renderSegment(segment: TextSegment, index: number) {
+    if (segment.type === 'dialogue') {
+      return (
+        <button
+          key={index}
+          className="dialogue-segment"
+          onClick={() => speakDialogue(segment.speaker, segment.text, segment.voice)}
+          title="点击为这个角色配音"
+        >
+          <span className="speaker">{segment.speaker}</span>
+          “{segment.text}”
+          <span className="voice-hint">点击配音</span>
+        </button>
+      );
+    }
+
+    if (segment.type === 'clue') {
+      const collected = collectedClueIds.includes(segment.clueId);
+      return (
+        <button
+          key={index}
+          className={collected ? 'clue-segment collected' : 'clue-segment'}
+          onClick={() => collectClue(segment.clueId)}
+          title="点击收集到侦探背包"
+        >
+          {segment.text}
+          <span className="clue-hint">{collected ? '已收集' : '收集线索'}</span>
+        </button>
+      );
+    }
+
+    return <span key={index}>{segment.text}</span>;
   }
 
   if (!chapter) {
@@ -137,14 +225,21 @@ function App() {
             <h2>{chapter.title}</h2>
           </div>
           <div className="toolbar-actions">
-            <button onClick={speakCurrentChapter}>朗读本章</button>
             <button onClick={() => window.speechSynthesis.cancel()}>停止语音</button>
+            <button onClick={() => setBagOpen(true)}>打开背包</button>
           </div>
         </div>
 
+        <div className="interaction-guide">
+          <span>角色对话：点击句子为角色配音</span>
+          <span>黄色线索：点击收集到背包</span>
+        </div>
+
         <article className="book-page">
-          {chapter.paragraphs.map((paragraph, index) => (
-            <p key={index}>{paragraph}</p>
+          {chapter.paragraphs.map((paragraph, paragraphIndex) => (
+            <p key={paragraphIndex}>
+              {paragraph.map((segment, segmentIndex) => renderSegment(segment, segmentIndex))}
+            </p>
           ))}
         </article>
       </section>
@@ -191,9 +286,11 @@ function App() {
         </section>
       </aside>
 
+      {notice && <div className="toast">{notice}</div>}
+
       <button className="floating-bag" onClick={() => setBagOpen((open) => !open)}>
         🎒
-        <span>背包</span>
+        <span>{collectedClues.length} 条</span>
       </button>
 
       {bagOpen && (
@@ -202,13 +299,18 @@ function App() {
             <h2>侦探背包</h2>
             <button onClick={() => setBagOpen(false)}>关闭</button>
           </div>
-          {clues.map((clue) => (
-            <article key={clue.id} className="clue-card">
-              <span>{clue.type}</span>
-              <h3>{clue.label}</h3>
-              <p>{clue.description}</p>
-            </article>
-          ))}
+
+          {collectedClues.length === 0 ? (
+            <p className="empty-bag">还没有线索。阅读正文时点击黄色高亮内容即可收集。</p>
+          ) : (
+            collectedClues.map((clue) => (
+              <article key={clue.id} className="clue-card">
+                <span>{clue.type}</span>
+                <h3>{clue.label}</h3>
+                <p>{clue.description}</p>
+              </article>
+            ))
+          )}
         </div>
       )}
     </main>
@@ -220,4 +322,3 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>
 );
-
