@@ -1,15 +1,116 @@
 import express from 'express';
 import cors from 'cors';
+import crypto from 'node:crypto';
 import { chapters, clues } from './data.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
 
+const users = [
+  {
+    id: 'demo-user',
+    username: 'demo',
+    password: '123456',
+    displayName: '演示侦探',
+    bio: '正在研究福尔摩斯探案集的沉浸式阅读体验。'
+  }
+];
+
+const sessions = new Map();
+
 app.use(cors());
 app.use(express.json());
 
+function publicUser(user) {
+  return {
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    bio: user.bio
+  };
+}
+
+function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const userId = sessions.get(token);
+  const user = users.find((item) => item.id === userId);
+
+  if (!user) {
+    res.status(401).json({ error: '请先登录' });
+    return;
+  }
+
+  req.user = user;
+  next();
+}
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'immersive-reader-backend' });
+});
+
+app.post('/api/auth/register', (req, res) => {
+  const { username, password, displayName } = req.body;
+  const safeUsername = String(username ?? '').trim();
+  const safePassword = String(password ?? '').trim();
+  const safeDisplayName = String(displayName ?? '').trim() || safeUsername;
+
+  if (safeUsername.length < 3) {
+    res.status(400).json({ error: '用户名至少需要 3 个字符' });
+    return;
+  }
+
+  if (safePassword.length < 6) {
+    res.status(400).json({ error: '密码至少需要 6 位' });
+    return;
+  }
+
+  if (users.some((user) => user.username === safeUsername)) {
+    res.status(409).json({ error: '这个用户名已经被注册' });
+    return;
+  }
+
+  const user = {
+    id: crypto.randomUUID(),
+    username: safeUsername,
+    password: safePassword,
+    displayName: safeDisplayName,
+    bio: '新的探案读者。'
+  };
+  const token = crypto.randomUUID();
+
+  users.push(user);
+  sessions.set(token, user.id);
+
+  res.status(201).json({ token, user: publicUser(user) });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  const user = users.find(
+    (item) => item.username === String(username ?? '').trim() && item.password === String(password ?? '')
+  );
+
+  if (!user) {
+    res.status(401).json({ error: '用户名或密码不正确' });
+    return;
+  }
+
+  const token = crypto.randomUUID();
+  sessions.set(token, user.id);
+
+  res.json({ token, user: publicUser(user) });
+});
+
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  res.json({ user: publicUser(req.user) });
+});
+
+app.post('/api/auth/logout', requireAuth, (req, res) => {
+  const authHeader = req.headers.authorization ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  sessions.delete(token);
+  res.json({ ok: true });
 });
 
 app.get('/api/chapters', (_req, res) => {
@@ -46,4 +147,3 @@ app.post('/api/chat', (req, res) => {
 app.listen(port, () => {
   console.log(`Immersive reader API running at http://localhost:${port}`);
 });
-
