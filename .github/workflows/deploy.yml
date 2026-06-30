@@ -1,0 +1,112 @@
+name: Deploy to Tencent Cloud
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify frontend build
+        run: npm run build
+
+      - name: Create deployment package
+        run: |
+          tar \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='frontend/dist' \
+            --exclude='*.tar.gz' \
+            --exclude='*.tgz' \
+            -czf immersive-release.tgz .
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload package to server
+        run: |
+          scp -i ~/.ssh/deploy_key immersive-release.tgz \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/${{ secrets.SERVER_USER }}/immersive-release.tgz"
+
+      - name: Deploy on server
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" <<'EOF'
+          set -e
+
+          export NVM_DIR="$HOME/.nvm"
+          if [ -s "$NVM_DIR/nvm.sh" ]; then
+            . "$NVM_DIR/nvm.sh"
+          fi
+
+          APP_DIR="$HOME/immersive-multimodal-reader"
+          NEW_DIR="$HOME/immersive-multimodal-reader.new"
+          PREV_DIR="$HOME/immersive-multimodal-reader.prev"
+          RELEASE="$HOME/immersive-release.tgz"
+          WEB_DIR="/var/www/immersive-reader"
+
+          rm -rf "$NEW_DIR"
+          mkdir -p "$NEW_DIR"
+          tar -xzf "$RELEASE" -C "$NEW_DIR"
+
+          cd "$NEW_DIR"
+
+          cat > .env <<ENVEOF
+          MINIMAX_API_KEY=${{ secrets.MINIMAX_API_KEY }}
+          MINIMAX_API_BASE=https://api.minimaxi.com
+          MINIMAX_TEXT_MODEL=MiniMax-M3
+          MINIMAX_TTS_MODEL=speech-2.8-hd
+          MINIMAX_IMAGE_MODEL=image-01
+          MINIMAX_DEFAULT_VOICE_ID=Chinese (Mandarin)_Lyrical_Voice
+          ENVEOF
+
+          npm install
+          npm run build
+
+          mkdir -p "$WEB_DIR"
+          rm -rf "$WEB_DIR"/*
+          cp -r frontend/dist/* "$WEB_DIR"/
+
+          rm -rf "$PREV_DIR"
+          if [ -d "$APP_DIR" ]; then
+            mv "$APP_DIR" "$PREV_DIR"
+          fi
+          mv "$NEW_DIR" "$APP_DIR"
+
+          cd "$APP_DIR"
+
+          if pm2 describe immersive-reader > /dev/null; then
+            pm2 restart immersive-reader --update-env
+          else
+            pm2 start backend/src/server.js --name immersive-reader
+          fi
+
+          pm2 save
+
+          curl -fsS http://127.0.0.1/api/health
+
+          rm -f "$RELEASE"
+          EOF
