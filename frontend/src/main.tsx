@@ -59,6 +59,11 @@ type ChatMessage = {
   content: string;
 };
 
+type GeneratedSceneImage = {
+  imageUrl: string;
+  prompt: string;
+};
+
 type ActiveDialogue = {
   id: string;
   speaker: string;
@@ -97,13 +102,30 @@ async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T
 const api = {
   chapters: () => requestJson<Chapter[]>('/api/chapters'),
   clues: () => requestJson<Clue[]>('/api/clues'),
-  chat: async (question: string, chapterId: string) => {
+  chat: async (question: string, chapterId: string, collectedClueIds: string[]) => {
     const data = await requestJson<{ answer: string }>('/api/chat', {
       method: 'POST',
-      body: JSON.stringify({ question, chapterId })
+      body: JSON.stringify({ question, chapterId, collectedClueIds })
     });
     return data.answer;
   },
+  aiChat: async (question: string, chapterId: string, collectedClueIds: string[]) => {
+    const data = await requestJson<{ answer: string }>('/api/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ question, chapterId, collectedClueIds })
+    });
+    return data.answer;
+  },
+  tts: async (payload: { text: string; speaker: string; speed: number; pitch: number }) =>
+    requestJson<{ audioUrl: string; durationMs: number | null; traceId: string | null }>('/api/ai/tts', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  image: async (chapterId: string) =>
+    requestJson<GeneratedSceneImage>('/api/ai/image', {
+      method: 'POST',
+      body: JSON.stringify({ chapterId })
+    }),
   register: (form: { username: string; password: string; displayName: string }) =>
     requestJson<{ token: string; user: User }>('/api/auth/register', {
       method: 'POST',
@@ -542,6 +564,9 @@ function ReaderPage({
   const [fontSize, setFontSize] = useState(19);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneGenerated, setSceneGenerated] = useState(false);
+  const [sceneLoading, setSceneLoading] = useState(false);
+  const [generatedSceneImage, setGeneratedSceneImage] = useState<GeneratedSceneImage | null>(null);
+  const [voiceLoadingId, setVoiceLoadingId] = useState<string | null>(null);
   const [sceneDiagram, setSceneDiagram] = useState<SceneDiagram>('layout');
   const [bagPulse, setBagPulse] = useState(false);
   const sceneVariant =
@@ -550,6 +575,7 @@ function ReaderPage({
   useEffect(() => {
     setActiveDialogue(null);
     setSceneGenerated(false);
+    setGeneratedSceneImage(null);
     setSceneDiagram('layout');
     window.speechSynthesis.cancel();
   }, [chapterId]);
@@ -559,17 +585,55 @@ function ReaderPage({
     const currentQuestion = question.trim();
     setQuestion('');
     setMessages((prev) => [...prev, { role: 'reader', content: currentQuestion }]);
-    const answer = await api.chat(currentQuestion, chapter.id);
+    let answer: string;
+    try {
+      answer = await api.aiChat(currentQuestion, chapter.id, collectedClueIds);
+    } catch (error) {
+      answer = await api.chat(currentQuestion, chapter.id, collectedClueIds);
+    }
     setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
   }
 
-  function speakDialogue(speaker: string, text: string, voice: VoiceConfig) {
-    const utterance = new SpeechSynthesisUtterance(`${speaker}说：${text}`);
-    utterance.lang = 'zh-CN';
-    utterance.pitch = voice.pitch;
-    utterance.rate = voice.rate;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+  async function speakDialogue(dialogueId: string, speaker: string, text: string, voice: VoiceConfig) {
+    setVoiceLoadingId(dialogueId);
+    try {
+      const result = await api.tts({
+        speaker,
+        text,
+        speed: voice.rate,
+        pitch: Math.round((voice.pitch - 1) * 4)
+      });
+      const audio = new Audio(result.audioUrl);
+      window.speechSynthesis.cancel();
+      await audio.play();
+    } catch (error) {
+      const utterance = new SpeechSynthesisUtterance(`${speaker}说：${text}`);
+      utterance.lang = 'zh-CN';
+      utterance.pitch = voice.pitch;
+      utterance.rate = voice.rate;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+      setNotice('MiniMax 配音失败，已使用浏览器语音兜底');
+      window.setTimeout(() => setNotice(''), 2200);
+    } finally {
+      setVoiceLoadingId(null);
+    }
+  }
+
+  async function generateSceneImage() {
+    if (!chapter) return;
+    setSceneLoading(true);
+    try {
+      const result = await api.image(chapter.id);
+      setGeneratedSceneImage(result);
+      setSceneGenerated(true);
+    } catch (error) {
+      setSceneGenerated(true);
+      setNotice('MiniMax 生图失败，已显示本地示意图兜底');
+      window.setTimeout(() => setNotice(''), 2200);
+    } finally {
+      setSceneLoading(false);
+    }
   }
 
   function collectClue(clueId: string) {
@@ -618,9 +682,10 @@ function ReaderPage({
             <span className="voice-popover">
               <button
                 type="button"
-                onClick={() => speakDialogue(segment.speaker, segment.text, segment.voice)}
+                onClick={() => speakDialogue(dialogueId, segment.speaker, segment.text, segment.voice)}
+                disabled={voiceLoadingId === dialogueId}
               >
-                播放
+                {voiceLoadingId === dialogueId ? '生成中' : '播放'}
               </button>
               <button type="button" className="quiet" onClick={() => setActiveDialogue(null)}>
                 收起
@@ -860,8 +925,8 @@ function ReaderPage({
             {!sceneGenerated ? (
               <div className="scene-generator-empty">
                 <p>根据当前章节生成一张帮助理解空间关系的现场示意图。</p>
-                <button type="button" onClick={() => setSceneGenerated(true)}>
-                  生成场景图
+                <button type="button" onClick={generateSceneImage} disabled={sceneLoading}>
+                  {sceneLoading ? '生成中...' : '生成场景图'}
                 </button>
               </div>
             ) : (
@@ -882,34 +947,40 @@ function ReaderPage({
                     </button>
                   ))}
                 </div>
-                <div className={`scene-visual ${sceneVariant} diagram-${sceneDiagram}`} aria-label={chapter.scene.title}>
-                  <div className="scene-sky" />
-                  <div className="scene-window">
-                    <span />
-                    <span />
+                {generatedSceneImage ? (
+                  <div className="scene-ai-image">
+                    <img src={generatedSceneImage.imageUrl} alt={chapter.scene.title} />
                   </div>
-                  <div className="scene-floor" />
-                  <div className="scene-bed" />
-                  <div className="scene-desk" />
-                  <div className="scene-fireplace" />
-                  <div className="scene-vent" />
-                  <div className="scene-rope" />
-                  <div className="scene-match" />
-                  <div className="scene-figure figure-one" />
-                  <div className="scene-figure figure-two" />
-                  <div className="scene-clue clue-one">1</div>
-                  <div className="scene-clue clue-two">2</div>
-                  <div className="scene-caption">
-                    <strong>{chapter.scene.title}</strong>
-                    <span>
-                      {sceneVariant === 'manor' ? '现场结构' : sceneVariant === 'night' ? '夜间守候' : '清晨会面'}
-                    </span>
+                ) : (
+                  <div className={`scene-visual ${sceneVariant} diagram-${sceneDiagram}`} aria-label={chapter.scene.title}>
+                    <div className="scene-sky" />
+                    <div className="scene-window">
+                      <span />
+                      <span />
+                    </div>
+                    <div className="scene-floor" />
+                    <div className="scene-bed" />
+                    <div className="scene-desk" />
+                    <div className="scene-fireplace" />
+                    <div className="scene-vent" />
+                    <div className="scene-rope" />
+                    <div className="scene-match" />
+                    <div className="scene-figure figure-one" />
+                    <div className="scene-figure figure-two" />
+                    <div className="scene-clue clue-one">1</div>
+                    <div className="scene-clue clue-two">2</div>
+                    <div className="scene-caption">
+                      <strong>{chapter.scene.title}</strong>
+                      <span>
+                        {sceneVariant === 'manor' ? '现场结构' : sceneVariant === 'night' ? '夜间守候' : '清晨会面'}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="scene-prompt">
                   <span>Prompt</span>
-                  <p>{chapter.scene.imagePrompt}</p>
-                  <button type="button" onClick={() => setSceneGenerated(false)}>
+                  <p>{generatedSceneImage?.prompt || chapter.scene.imagePrompt}</p>
+                  <button type="button" onClick={generateSceneImage} disabled={sceneLoading}>
                     重新生成
                   </button>
                 </div>

@@ -1,7 +1,15 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import crypto from 'node:crypto';
 import { chapters, clues } from './data.js';
+import {
+  buildSherlockImagePrompt,
+  chatWithMiniMax,
+  designVoice,
+  generateImage,
+  synthesizeSpeech
+} from './services/minimax.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -142,6 +150,114 @@ app.post('/api/chat', (req, res) => {
   res.json({
     answer: `根据《${chapter.title}》当前段落，建议先关注“异常物件是否真的具有表面用途”。你的问题是：“${question}”。后续这里可以接入真实大模型，让它基于章节文本回答。`
   });
+});
+
+app.post('/api/ai/chat', async (req, res) => {
+  try {
+    const { question, chapterId, collectedClueIds = [] } = req.body;
+    const chapter = chapters.find((item) => item.id === chapterId) ?? chapters[0];
+
+    if (!question || typeof question !== 'string') {
+      res.status(400).json({ error: 'Question is required' });
+      return;
+    }
+
+    const context = chapter.paragraphs
+      .flat()
+      .map((segment) => segment.text)
+      .join('\n');
+    const clueLabels = clues
+      .filter((clue) => collectedClueIds.includes(clue.id))
+      .map((clue) => clue.label);
+    const answer = await chatWithMiniMax({
+      question,
+      chapterTitle: chapter.title,
+      context,
+      collectedClues: clueLabels
+    });
+
+    res.json({ answer });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'MiniMax chat failed' });
+  }
+});
+
+app.post('/api/ai/tts', async (req, res) => {
+  try {
+    const { text, speaker, voiceId, speed = 1, pitch = 0 } = req.body;
+
+    if (!text || typeof text !== 'string') {
+      res.status(400).json({ error: 'Text is required' });
+      return;
+    }
+
+    const voiceMap = {
+      '福尔摩斯': 'Chinese (Mandarin)_Lyrical_Voice',
+      '华生': 'Chinese (Mandarin)_Lyrical_Voice',
+      '海伦·斯托纳': 'Chinese (Mandarin)_Lyrical_Voice'
+    };
+    const result = await synthesizeSpeech({
+      text: speaker ? `${speaker}说：${text}` : text,
+      voiceId: voiceId || voiceMap[speaker] || process.env.MINIMAX_DEFAULT_VOICE_ID,
+      speed,
+      pitch
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'MiniMax tts failed' });
+  }
+});
+
+app.post('/api/ai/image', async (req, res) => {
+  try {
+    const { prompt, chapterId } = req.body;
+    const chapter = chapters.find((item) => item.id === chapterId) ?? chapters[0];
+    const finalPrompt =
+      prompt ||
+      buildSherlockImagePrompt({
+        chapterTitle: chapter.title,
+        scenePrompt: chapter.scene.imagePrompt,
+        mood: chapter.scene.mood
+      });
+
+    const result = await generateImage({ prompt: finalPrompt, aspectRatio: '16:9' });
+    res.json({ ...result, prompt: finalPrompt });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'MiniMax image generation failed' });
+  }
+});
+
+app.post('/api/ai/image-prompt', async (req, res) => {
+  try {
+    const { chapterId } = req.body;
+    const chapter = chapters.find((item) => item.id === chapterId) ?? chapters[0];
+    const prompt = buildSherlockImagePrompt({
+      chapterTitle: chapter.title,
+      scenePrompt: chapter.scene.imagePrompt,
+      mood: chapter.scene.mood
+    });
+
+    res.json({ prompt });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Image prompt generation failed' });
+  }
+});
+
+app.post('/api/ai/voice-design', async (req, res) => {
+  try {
+    const { prompt, previewText, voiceId } = req.body;
+
+    if (!prompt || !previewText) {
+      res.status(400).json({ error: 'Prompt and previewText are required' });
+      return;
+    }
+
+    const result = await designVoice({ prompt, previewText, voiceId });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'MiniMax voice design failed' });
+  }
 });
 
 app.listen(port, () => {

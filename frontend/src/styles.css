@@ -2373,6 +2373,21 @@ body {
   background: #182231;
 }
 
+.scene-ai-image {
+  overflow: hidden;
+  border: 1px solid rgba(32, 45, 56, 0.12);
+  border-radius: 12px;
+  background: #101820;
+  animation: panelFadeIn 220ms ease both;
+}
+
+.scene-ai-image img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
 .diagram-legend {
   display: flex;
   flex-wrap: wrap;
