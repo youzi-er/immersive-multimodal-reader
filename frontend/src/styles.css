@@ -120,7 +120,8 @@ button:disabled {
 
 .home-page,
 .auth-page,
-.profile-page {
+.profile-page,
+.bookshelf-page {
   padding: 34px 28px;
 }
 
@@ -467,6 +468,241 @@ button:disabled {
   gap: 12px;
 }
 
+.bookshelf-page {
+  display: grid;
+  gap: 18px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.shelf-hero,
+.continue-card {
+  border: 1px solid rgba(32, 45, 56, 0.1);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.28)),
+    rgba(247, 245, 238, 0.88);
+  box-shadow: 0 18px 48px rgba(30, 40, 48, 0.08);
+}
+
+.shelf-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 24px;
+  align-items: end;
+  padding: 34px;
+}
+
+.shelf-hero h1 {
+  margin: 8px 0 10px;
+  color: #17202b;
+  font-family: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  font-size: clamp(34px, 4vw, 54px);
+  line-height: 1.12;
+}
+
+.shelf-hero p {
+  max-width: 640px;
+  margin: 0;
+  color: #5f6b74;
+  line-height: 1.75;
+}
+
+.shelf-summary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  border-left: 1px solid rgba(32, 45, 56, 0.1);
+  padding-left: 22px;
+}
+
+.shelf-summary span {
+  color: #245159;
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.shelf-summary p {
+  margin: 0 0 10px;
+  color: #7b8792;
+  font-size: 13px;
+}
+
+.continue-card {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+}
+
+.mini-cover,
+.book-cover-tile {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.1), transparent 34%),
+    linear-gradient(180deg, #263743, #111820);
+  color: #f7efe2;
+}
+
+.mini-cover {
+  display: grid;
+  align-content: space-between;
+  min-height: 142px;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.mini-cover span {
+  color: rgba(247, 239, 226, 0.64);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.mini-cover strong {
+  font-family: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  font-size: 22px;
+  line-height: 1.12;
+}
+
+.continue-card h2 {
+  margin: 6px 0;
+  color: #17202b;
+  font-family: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+}
+
+.continue-card p {
+  margin: 0;
+  color: #5f6b74;
+}
+
+.continue-card .progress {
+  margin-top: 14px;
+  max-width: 420px;
+}
+
+.continue-card button {
+  border: 0;
+  border-radius: 9px;
+  background: #245159;
+  padding: 11px 18px;
+  color: white;
+}
+
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.shelf-book {
+  position: relative;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 14px;
+  min-height: 210px;
+  border: 1px solid rgba(32, 45, 56, 0.1);
+  border-radius: 12px;
+  background: rgba(250, 250, 246, 0.78);
+  padding: 14px;
+  color: inherit;
+  text-align: left;
+  box-shadow: 0 12px 34px rgba(30, 40, 48, 0.06);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.shelf-book:hover {
+  border-color: rgba(36, 81, 89, 0.24);
+  box-shadow: 0 18px 42px rgba(30, 40, 48, 0.1);
+  transform: translateY(-2px);
+}
+
+.shelf-book.locked {
+  cursor: default;
+  opacity: 0.58;
+}
+
+.shelf-book.locked:hover {
+  border-color: rgba(32, 45, 56, 0.1);
+  box-shadow: 0 12px 34px rgba(30, 40, 48, 0.06);
+  transform: none;
+}
+
+.book-spine {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  writing-mode: vertical-rl;
+  color: rgba(247, 239, 226, 0.7);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.book-cover-tile {
+  display: grid;
+  align-content: space-between;
+  min-height: 176px;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.book-cover-tile small {
+  color: rgba(247, 239, 226, 0.64);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.book-cover-tile strong {
+  font-family: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  font-size: 24px;
+  line-height: 1.12;
+}
+
+.book-info {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.book-info strong {
+  color: #17202b;
+  font-size: 18px;
+}
+
+.book-info small {
+  color: #6f7b84;
+  line-height: 1.5;
+}
+
+.book-progress {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(36, 81, 89, 0.1);
+}
+
+.book-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #245159, #b48a52);
+}
+
+.book-status {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  border-radius: 999px;
+  background: rgba(36, 81, 89, 0.08);
+  padding: 5px 8px;
+  color: #245159;
+  font-size: 12px;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 236px minmax(620px, 1fr) 326px;
@@ -506,6 +742,43 @@ button:disabled {
   align-items: center;
   gap: 12px;
   padding: 14px;
+}
+
+.shelf-back {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid rgba(32, 45, 56, 0.1);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.3)),
+    rgba(247, 245, 238, 0.9);
+  padding: 14px;
+  color: #17202b;
+  box-shadow: 0 16px 42px rgba(30, 40, 48, 0.08);
+  text-align: left;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.shelf-back:hover {
+  border-color: rgba(36, 81, 89, 0.24);
+  transform: translateX(-2px);
+}
+
+.shelf-back span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: #182231;
+  color: #f6ead6;
+  font-size: 18px;
+}
+
+.shelf-back strong {
+  font-size: 15px;
 }
 
 .brand-mark {
@@ -1708,7 +1981,8 @@ button:disabled {
 
   .home-page,
   .auth-page,
-  .profile-page {
+  .profile-page,
+  .bookshelf-page {
     padding: 12px;
   }
 
@@ -1716,6 +1990,8 @@ button:disabled {
   .home-book-preview,
   .feature-grid,
   .profile-stats,
+  .shelf-hero,
+  .continue-card,
   .app-shell,
   .right-rail,
   .reading-settings,
@@ -1733,6 +2009,26 @@ button:disabled {
 
   .home-hero-copy h1 {
     font-size: 40px;
+  }
+
+  .shelf-hero,
+  .continue-card {
+    padding: 20px;
+  }
+
+  .shelf-summary {
+    border-left: 0;
+    border-top: 1px solid rgba(32, 45, 56, 0.1);
+    grid-template-columns: auto 1fr;
+    padding: 18px 0 0;
+  }
+
+  .continue-card {
+    align-items: stretch;
+  }
+
+  .continue-card button {
+    justify-self: start;
   }
 
   .app-shell {
