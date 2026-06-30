@@ -516,7 +516,8 @@ function ReaderPage({
     [chapters, chapter]
   );
   const previousChapter = chapterIndex > 0 ? chapters[chapterIndex - 1] : null;
-  const nextChapter = chapterIndex >= 0 && chapterIndex < chapters.length - 1 ? chapters[chapterIndex + 1] : null;
+  const nextChapter =
+    chapterIndex >= 0 && chapterIndex < chapters.length - 1 ? chapters[chapterIndex + 1] : null;
 
   const collectedClues = useMemo(
     () => clues.filter((clue) => collectedClueIds.includes(clue.id)),
@@ -578,7 +579,7 @@ function ReaderPage({
 
     setCollectedClueIds((prev) => {
       if (prev.includes(clueId)) {
-      setNotice(`“${clue.label}”已经在证物袋里`);
+        setNotice(`“${clue.label}”已经在证物袋里`);
         return prev;
       }
       setNotice(`已收入证物袋：“${clue.label}”`);
@@ -689,17 +690,17 @@ function ReaderPage({
                 item.id === chapter.id ? 'current' : item.progress < chapter.progress ? 'read' : 'unread';
 
               return (
-              <button
-                key={item.id}
-                className={`chapter ${readState}`}
-                onClick={() => setChapterId(item.id)}
-              >
-                <span className="chapter-index">{String(index + 1).padStart(2, '0')}</span>
-                <span className="chapter-text">
-                  <strong>{item.title}</strong>
-                  <small>{item.subtitle}</small>
-                </span>
-              </button>
+                <button
+                  key={item.id}
+                  className={`chapter ${readState}`}
+                  onClick={() => setChapterId(item.id)}
+                >
+                  <span className="chapter-index">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="chapter-text">
+                    <strong>{item.title}</strong>
+                    <small>{item.subtitle}</small>
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -882,7 +883,10 @@ function ReaderPage({
                     </button>
                   ))}
                 </div>
-                <div className={`scene-visual ${sceneVariant} diagram-${sceneDiagram}`} aria-label={chapter.scene.title}>
+                <div
+                  className={`scene-visual ${sceneVariant} diagram-${sceneDiagram}`}
+                  aria-label={chapter.scene.title}
+                >
                   <div className="scene-sky" />
                   <div className="scene-window">
                     <span />
