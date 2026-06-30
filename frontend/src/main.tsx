@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
-type Page = 'home' | 'reader' | 'login' | 'register' | 'profile';
+type Page = 'home' | 'bookshelf' | 'reader' | 'login' | 'register' | 'profile';
 
 type User = {
   id: string;
@@ -178,7 +178,7 @@ function App() {
     window.localStorage.setItem(TOKEN_KEY, token);
     window.localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
     setUser(nextUser);
-    setPage('reader');
+    setPage('bookshelf');
   }
 
   async function logout() {
@@ -200,29 +200,47 @@ function App() {
       {page === 'home' && <HomePage user={user} setPage={setPage} />}
       {page === 'login' && <AuthPage mode="login" saveSession={saveSession} setPage={setPage} />}
       {page === 'register' && <AuthPage mode="register" saveSession={saveSession} setPage={setPage} />}
-      {page === 'profile' && (
-        <ProfilePage user={user} setPage={setPage} collectedClueIds={collectedClueIds} clues={clues} />
-      )}
-      {page === 'reader' && (
-        <ReaderPage
-          user={user}
-          chapters={chapters}
-          clues={clues}
-          collectedClueIds={collectedClueIds}
-          setCollectedClueIds={setCollectedClueIds}
-          chapterId={chapterId}
-          setChapterId={setChapterId}
-          bagOpen={bagOpen}
-          setBagOpen={setBagOpen}
-          notice={notice}
-          setNotice={setNotice}
-          question={question}
-          setQuestion={setQuestion}
-          messages={messages}
-          setMessages={setMessages}
-          setPage={setPage}
-        />
-      )}
+      {page === 'bookshelf' &&
+        (user ? (
+          <BookshelfPage
+            user={user}
+            chapters={chapters}
+            collectedClueCount={collectedClueIds.length}
+            setChapterId={setChapterId}
+            setPage={setPage}
+          />
+        ) : (
+          <AuthPage mode="login" saveSession={saveSession} setPage={setPage} />
+        ))}
+      {page === 'profile' &&
+        (user ? (
+          <ProfilePage user={user} setPage={setPage} collectedClueIds={collectedClueIds} clues={clues} />
+        ) : (
+          <AuthPage mode="login" saveSession={saveSession} setPage={setPage} />
+        ))}
+      {page === 'reader' &&
+        (user ? (
+          <ReaderPage
+            user={user}
+            chapters={chapters}
+            clues={clues}
+            collectedClueIds={collectedClueIds}
+            setCollectedClueIds={setCollectedClueIds}
+            chapterId={chapterId}
+            setChapterId={setChapterId}
+            bagOpen={bagOpen}
+            setBagOpen={setBagOpen}
+            notice={notice}
+            setNotice={setNotice}
+            question={question}
+            setQuestion={setQuestion}
+            messages={messages}
+            setMessages={setMessages}
+            setPage={setPage}
+          />
+        ) : (
+          <AuthPage mode="login" saveSession={saveSession} setPage={setPage} />
+        ))}
     </main>
   );
 }
@@ -248,11 +266,14 @@ function TopNav({
         <button className={page === 'home' ? 'active' : ''} onClick={() => setPage('home')}>
           首页
         </button>
-        <button className={page === 'reader' ? 'active' : ''} onClick={() => setPage('reader')}>
-          阅读桌
-        </button>
         {user ? (
           <>
+            <button
+              className={page === 'bookshelf' || page === 'reader' ? 'active' : ''}
+              onClick={() => setPage('bookshelf')}
+            >
+              我的书架
+            </button>
             <button className={page === 'profile' ? 'active' : ''} onClick={() => setPage('profile')}>
               阅读档案
             </button>
@@ -284,7 +305,9 @@ function HomePage({ user, setPage }: { user: User | null; setPage: (page: Page) 
             系统围绕小说正文展开，只在对白、空间关系和证物整理这些关键时刻提供辅助。
           </p>
           <div className="home-actions">
-            <button onClick={() => setPage('reader')}>继续阅读</button>
+            <button onClick={() => setPage(user ? 'bookshelf' : 'login')}>
+              {user ? '进入书架' : '登录后阅读'}
+            </button>
             <button className="secondary" onClick={() => setPage(user ? 'profile' : 'register')}>
               {user ? '阅读档案' : '建立档案'}
             </button>
@@ -339,6 +362,134 @@ function HomePage({ user, setPage }: { user: User | null; setPage: (page: Page) 
           <p>收集关键物件、地点和人物信息，为后续非剧透推理提供上下文。</p>
         </article>
       </div>
+    </section>
+  );
+}
+
+function BookshelfPage({
+  user,
+  chapters,
+  collectedClueCount,
+  setChapterId,
+  setPage
+}: {
+  user: User;
+  chapters: Chapter[];
+  collectedClueCount: number;
+  setChapterId: (id: string) => void;
+  setPage: (page: Page) => void;
+}) {
+  const currentChapter = chapters[0];
+  const lastChapter = chapters.length
+    ? chapters.reduce((best, chapter) => (chapter.progress > best.progress ? chapter : best))
+    : null;
+  const shelfProgress = lastChapter?.progress ?? 18;
+  const lastRead = lastChapter?.subtitle ?? '贝克街的求助';
+  const books = [
+    {
+      id: 'speckled-band',
+      title: '斑点带子案',
+      author: 'Arthur Conan Doyle',
+      category: '福尔摩斯探案集',
+      progress: shelfProgress,
+      lastRead,
+      totalChapters: chapters.length || 3,
+      clueCount: collectedClueCount,
+      status: '继续阅读'
+    },
+    {
+      id: 'red-headed-league',
+      title: '红发会',
+      author: 'Arthur Conan Doyle',
+      category: '即将开放',
+      progress: 0,
+      lastRead: '尚未开始',
+      totalChapters: 0,
+      clueCount: 0,
+      status: '待解锁'
+    },
+    {
+      id: 'blue-carbuncle',
+      title: '蓝宝石案',
+      author: 'Arthur Conan Doyle',
+      category: '即将开放',
+      progress: 0,
+      lastRead: '尚未开始',
+      totalChapters: 0,
+      clueCount: 0,
+      status: '待解锁'
+    }
+  ];
+
+  function openBook(bookId: string) {
+    if (bookId !== 'speckled-band') return;
+    setChapterId(currentChapter?.id ?? 'speckled-band-1');
+    setPage('reader');
+  }
+
+  return (
+    <section className="bookshelf-page">
+      <header className="shelf-hero">
+        <div>
+          <p className="eyebrow">My Library</p>
+          <h1>{user.displayName} 的书架</h1>
+          <p>这里保存你读过和正在阅读的作品。进入某本书后，系统才会打开对应阅读器。</p>
+        </div>
+        <div className="shelf-summary">
+          <span>{books.length}</span>
+          <p>书架藏书</p>
+          <span>{collectedClueCount}</span>
+          <p>已收集证物</p>
+        </div>
+      </header>
+
+      <section className="continue-card">
+        <div className="mini-cover">
+          <span>Case</span>
+          <strong>斑点带子案</strong>
+        </div>
+        <div>
+          <p className="eyebrow">最近阅读</p>
+          <h2>《斑点带子案》</h2>
+          <p>上次读到：{lastRead}</p>
+          <div className="progress">
+            <span style={{ width: `${shelfProgress}%` }} />
+          </div>
+        </div>
+        <button onClick={() => openBook('speckled-band')}>继续</button>
+      </section>
+
+      <section className="book-grid" aria-label="我的书架">
+        {books.map((book) => {
+          const available = book.id === 'speckled-band';
+
+          return (
+            <button
+              key={book.id}
+              className={available ? 'shelf-book' : 'shelf-book locked'}
+              onClick={() => openBook(book.id)}
+              type="button"
+            >
+              <span className="book-spine">{book.category}</span>
+              <span className="book-cover-tile">
+                <small>{book.author}</small>
+                <strong>{book.title}</strong>
+              </span>
+              <span className="book-info">
+                <strong>{book.title}</strong>
+                <small>{book.lastRead}</small>
+                <span className="book-progress">
+                  <span style={{ width: `${book.progress}%` }} />
+                </span>
+                <small>
+                  {book.totalChapters ? `${book.totalChapters} 章 · ${book.clueCount} 件证物` : '内容准备中'}
+                </small>
+              </span>
+              <span className="book-status">{book.status}</span>
+            </button>
+          );
+        })}
+      </section>
     </section>
   );
 }
@@ -477,7 +628,7 @@ function ProfilePage({
       <div className="profile-card">
         <h2>我的证物袋</h2>
         {collectedClues.length === 0 ? (
-          <p>还没有收集证物。进入阅读桌，点击正文中的可疑细节即可加入证物袋。</p>
+          <p>还没有收集证物。进入书架中的作品，点击正文里的可疑细节即可加入证物袋。</p>
         ) : (
           <div className="profile-clues">
             {collectedClues.map((clue) => (
@@ -538,7 +689,8 @@ function ReaderPage({
     [chapters, chapter]
   );
   const previousChapter = chapterIndex > 0 ? chapters[chapterIndex - 1] : null;
-  const nextChapter = chapterIndex >= 0 && chapterIndex < chapters.length - 1 ? chapters[chapterIndex + 1] : null;
+  const nextChapter =
+    chapterIndex >= 0 && chapterIndex < chapters.length - 1 ? chapters[chapterIndex + 1] : null;
 
   const collectedClues = useMemo(
     () => clues.filter((clue) => collectedClueIds.includes(clue.id)),
@@ -642,7 +794,7 @@ function ReaderPage({
 
     setCollectedClueIds((prev) => {
       if (prev.includes(clueId)) {
-      setNotice(`“${clue.label}”已经在证物袋里`);
+        setNotice(`“${clue.label}”已经在证物袋里`);
         return prev;
       }
       setNotice(`已收入证物袋：“${clue.label}”`);
@@ -721,23 +873,10 @@ function ReaderPage({
   return (
     <section className="app-shell">
       <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-mark">🔎</span>
-          <div>
-            <h1>CaseReader</h1>
-            <p>{user ? `${user.displayName} 的案件档案` : '游客模式'}</p>
-          </div>
-        </div>
-
-        {!user && (
-          <section className="panel compact">
-            <h2>游客提示</h2>
-            <p>注册或登录后，可在个人中心查看你的阅读档案。</p>
-            <button className="panel-action" onClick={() => setPage('login')}>
-              去登录
-            </button>
-          </section>
-        )}
+        <button className="shelf-back" onClick={() => setPage('bookshelf')} type="button">
+          <span>←</span>
+          <strong>返回书架</strong>
+        </button>
 
         <section className="panel">
           <div className="toc-header">
@@ -754,17 +893,17 @@ function ReaderPage({
                 item.id === chapter.id ? 'current' : item.progress < chapter.progress ? 'read' : 'unread';
 
               return (
-              <button
-                key={item.id}
-                className={`chapter ${readState}`}
-                onClick={() => setChapterId(item.id)}
-              >
-                <span className="chapter-index">{String(index + 1).padStart(2, '0')}</span>
-                <span className="chapter-text">
-                  <strong>{item.title}</strong>
-                  <small>{item.subtitle}</small>
-                </span>
-              </button>
+                <button
+                  key={item.id}
+                  className={`chapter ${readState}`}
+                  onClick={() => setChapterId(item.id)}
+                >
+                  <span className="chapter-index">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="chapter-text">
+                    <strong>{item.title}</strong>
+                    <small>{item.subtitle}</small>
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -952,7 +1091,10 @@ function ReaderPage({
                     <img src={generatedSceneImage.imageUrl} alt={chapter.scene.title} />
                   </div>
                 ) : (
-                  <div className={`scene-visual ${sceneVariant} diagram-${sceneDiagram}`} aria-label={chapter.scene.title}>
+                  <div
+                    className={`scene-visual ${sceneVariant} diagram-${sceneDiagram}`}
+                    aria-label={chapter.scene.title}
+                  >
                     <div className="scene-sky" />
                     <div className="scene-window">
                       <span />
