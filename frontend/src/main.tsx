@@ -103,7 +103,7 @@ type SelectedParagraph = {
   range: TextRange;
 };
 
-type ContextTab = 'scene' | 'clues' | 'ai';
+type ContextTab = 'scene' | 'ai' | 'bag';
 type ReadingTheme = 'light' | 'paper' | 'night';
 type ReadingWidth = 'narrow' | 'standard' | 'wide';
 type SceneDiagram = 'layout' | 'positions' | 'clues';
@@ -197,7 +197,6 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
   const [chapterId, setChapterId] = useState('speckled-band-1');
-  const [bagOpen, setBagOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -270,8 +269,6 @@ function App() {
             setCollectedClueIds={setCollectedClueIds}
             chapterId={chapterId}
             setChapterId={setChapterId}
-            bagOpen={bagOpen}
-            setBagOpen={setBagOpen}
             notice={notice}
             setNotice={setNotice}
             question={question}
@@ -695,8 +692,6 @@ function ReaderPage({
   setCollectedClueIds,
   chapterId,
   setChapterId,
-  bagOpen,
-  setBagOpen,
   notice,
   setNotice,
   question,
@@ -712,8 +707,6 @@ function ReaderPage({
   setCollectedClueIds: React.Dispatch<React.SetStateAction<string[]>>;
   chapterId: string;
   setChapterId: (id: string) => void;
-  bagOpen: boolean;
-  setBagOpen: React.Dispatch<React.SetStateAction<boolean>>;
   notice: string;
   setNotice: (notice: string) => void;
   question: string;
@@ -752,6 +745,7 @@ function ReaderPage({
     return clues.filter((clue) => clueIds.has(clue.id));
   }, [chapter, clues]);
   const [contextTab, setContextTab] = useState<ContextTab>('scene');
+  const [contextOpen, setContextOpen] = useState(false);
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>('light');
   const [readingWidth, setReadingWidth] = useState<ReadingWidth>('standard');
   const [fontSize, setFontSize] = useState(19);
@@ -768,6 +762,13 @@ function ReaderPage({
   const [paragraphImageLoadingKey, setParagraphImageLoadingKey] = useState<string | null>(null);
   const [paragraphSpeechLoadingKey, setParagraphSpeechLoadingKey] = useState<string | null>(null);
   const [paragraphImages, setParagraphImages] = useState<Record<string, RangeMedia<ParagraphImage>>>({});
+  const toggleContextPanel = useCallback(
+    (tab: ContextTab) => {
+      setContextOpen((open) => (open && contextTab === tab ? false : true));
+      setContextTab(tab);
+    },
+    [contextTab]
+  );
   const [paragraphAudios, setParagraphAudios] = useState<Record<string, RangeMedia<ParagraphSpeech>>>({});
   const [playingAudioKey, setPlayingAudioKey] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -1139,7 +1140,8 @@ function ReaderPage({
         return prev;
       }
       setNotice(`已收入证物袋：“${clue.label}”`);
-      setBagOpen(true);
+      setContextTab('bag');
+      setContextOpen(true);
       setBagPulse(true);
       window.setTimeout(() => setBagPulse(false), 620);
       return [...prev, clueId];
@@ -1349,7 +1351,6 @@ function ReaderPage({
               阅读设置
             </button>
             <button onClick={stopParagraphAudio}>停止语音</button>
-            <button onClick={() => setBagOpen(true)}>证物袋</button>
           </div>
         </div>
 
@@ -1533,35 +1534,47 @@ function ReaderPage({
         </footer>
       </section>
 
-      <aside className="right-rail">
+      <aside className={contextOpen ? 'right-rail open' : 'right-rail'} aria-label="阅读辅助浮窗">
         <div className="context-tabs" role="tablist" aria-label="阅读辅助">
           <button
             type="button"
             role="tab"
-            className={contextTab === 'scene' ? 'active' : ''}
-            onClick={() => setContextTab('scene')}
+            className={contextOpen && contextTab === 'scene' ? 'active' : ''}
+            aria-expanded={contextOpen && contextTab === 'scene'}
+            onClick={() => toggleContextPanel('scene')}
           >
             现场
           </button>
           <button
             type="button"
             role="tab"
-            className={contextTab === 'clues' ? 'active' : ''}
-            onClick={() => setContextTab('clues')}
-          >
-            证物
-          </button>
-          <button
-            type="button"
-            role="tab"
-            className={contextTab === 'ai' ? 'active' : ''}
-            onClick={() => setContextTab('ai')}
+            className={contextOpen && contextTab === 'ai' ? 'active' : ''}
+            aria-expanded={contextOpen && contextTab === 'ai'}
+            onClick={() => toggleContextPanel('ai')}
           >
             助手
+          </button>          <button
+            type="button"
+            role="tab"
+            className={contextOpen && contextTab === 'bag' ? 'active' : ''}
+            aria-expanded={contextOpen && contextTab === 'bag'}
+            onClick={() => toggleContextPanel('bag')}
+          >
+            证物袋
+            <span>{collectedClues.length}</span>
           </button>
         </div>
 
-        {contextTab === 'scene' && (
+        {contextOpen && (
+          <div className="context-popover">
+            <div className="context-popover-header">
+              <strong>{contextTab === 'scene' ? '现场' : contextTab === 'ai' ? '助手' : '证物袋'}</strong>
+              <button type="button" onClick={() => setContextOpen(false)} aria-label="关闭阅读辅助浮窗">
+                关闭
+              </button>
+            </div>
+
+            {contextTab === 'scene' && (
           <section className="scene-card context-card">
             <div className="context-heading">
               <h2>现场图</h2>
@@ -1655,32 +1668,7 @@ function ReaderPage({
           </section>
         )}
 
-        {contextTab === 'clues' && (
-          <section className="clue-board context-card">
-            <div className="context-heading">
-                  <h2>本章证物</h2>
-              <span>{chapterClues.length} 项</span>
-            </div>
-            <div className="clue-board-list">
-              {chapterClues.length === 0 ? (
-                <p className="empty-bag">这一章暂时没有可收入证物袋的细节。</p>
-              ) : (
-                chapterClues.map((clue) => (
-                  <article
-                    key={clue.id}
-                    className={collectedClueIds.includes(clue.id) ? 'clue-card collected' : 'clue-card'}
-                  >
-                    <span>{clue.type}</span>
-                    <h3>{clue.label}</h3>
-                    <p>{clue.description}</p>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
-        )}
-
-        {contextTab === 'ai' && (
+            {contextTab === 'ai' && (
           <section className="chat-card context-card">
             <div className="context-heading">
               <h2>案情助手</h2>
@@ -1706,35 +1694,32 @@ function ReaderPage({
             </div>
           </section>
         )}
+
+            {contextTab === 'bag' && (
+              <section className="bag-card context-card">
+                <div className="context-heading">
+                  <h2>证物袋</h2>
+                  <span>{collectedClues.length} 件</span>
+                </div>
+
+                {collectedClues.length === 0 ? (
+                  <p className="empty-bag">还没有证物。阅读正文时点击可疑细节即可收入证物袋。</p>
+                ) : (
+                  <div className="clue-board-list">
+                    {collectedClues.map((clue) => (
+                      <article key={clue.id} className="clue-card">
+                        <span>{clue.type}</span>
+                        <h3>{clue.label}</h3>
+                        <p>{clue.description}</p>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}          </div>
+        )}
       </aside>
-
       {notice && <div className="toast">{notice}</div>}
-
-      <button className={bagPulse ? 'floating-bag pulse' : 'floating-bag'} onClick={() => setBagOpen((open) => !open)}>
-        <span className="bag-icon">EV</span>
-        <span>{collectedClues.length} 件</span>
-      </button>
-
-      {bagOpen && (
-        <div className="bag-panel">
-          <div className="bag-header">
-            <h2>证物袋</h2>
-            <button onClick={() => setBagOpen(false)}>关闭</button>
-          </div>
-
-          {collectedClues.length === 0 ? (
-            <p className="empty-bag">还没有证物。阅读正文时点击可疑细节即可收入证物袋。</p>
-          ) : (
-            collectedClues.map((clue) => (
-              <article key={clue.id} className="clue-card">
-                <span>{clue.type}</span>
-                <h3>{clue.label}</h3>
-                <p>{clue.description}</p>
-              </article>
-            ))
-          )}
-        </div>
-      )}
     </section>
   );
 }
