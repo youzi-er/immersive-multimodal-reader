@@ -14,6 +14,9 @@ coverage/
 .env.*
 !.env.example
 
+# Speech voice cache (voice_design results)
+backend/cache/
+
 # Logs
 *.log
 npm-debug.log*
@@ -36,3 +39,7 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# 本地 prompt 开发参考（不提交仓库）
+提示词模版/
+team-development-workflow.md

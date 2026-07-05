@@ -78,67 +78,63 @@ function splitParagraphs(text) {
     .filter(Boolean);
 }
 
-function inferSpeaker(beforeText, quoteText) {
-  const scope = `${beforeText} ${quoteText}`;
+function findClueMatches(paragraph) {
+  const matches = [];
 
-  if (/福尔摩斯|歇洛克/.test(scope)) return '福尔摩斯';
-  if (/华生|我/.test(scope)) return '华生';
-  if (/斯托纳|小姐|女士|她/.test(scope)) return '海伦·斯托纳';
-  if (/罗伊洛特|医生|继父/.test(scope)) return '罗伊洛特医生';
+  for (const clue of clues) {
+    for (const keyword of clue.keywords ?? []) {
+      let pos = 0;
+      while (pos <= paragraph.length - keyword.length) {
+        const index = paragraph.indexOf(keyword, pos);
+        if (index === -1) break;
+        matches.push({
+          start: index,
+          end: index + keyword.length,
+          clueId: clue.id,
+          length: keyword.length
+        });
+        pos = index + 1;
+      }
+    }
+  }
 
-  return '角色对白';
-}
+  matches.sort((a, b) => a.start - b.start || b.length - a.length);
 
-function clueForText(text) {
-  return clues.find((clue) =>
-    clue.keywords?.some((keyword) => text.includes(keyword))
-  );
+  const resolved = [];
+  let lastEnd = 0;
+  for (const match of matches) {
+    if (match.start >= lastEnd) {
+      resolved.push(match);
+      lastEnd = match.end;
+    }
+  }
+
+  return resolved;
 }
 
 function segmentParagraph(paragraph) {
+  const matches = findClueMatches(paragraph);
+  if (matches.length === 0) {
+    return [{ type: 'narration', text: paragraph }];
+  }
+
   const segments = [];
-  const quotePattern = /“([^”]+)”/g;
-  let lastIndex = 0;
-  let match;
+  let cursor = 0;
 
-  while ((match = quotePattern.exec(paragraph)) !== null) {
-    const before = paragraph.slice(lastIndex, match.index);
-    if (before) {
-      const clue = clueForText(before);
-      segments.push(
-        clue
-          ? { type: 'clue', clueId: clue.id, text: before }
-          : { type: 'narration', text: before }
-      );
+  for (const match of matches) {
+    if (match.start > cursor) {
+      segments.push({ type: 'narration', text: paragraph.slice(cursor, match.start) });
     }
-
     segments.push({
-      type: 'dialogue',
-      speaker: inferSpeaker(paragraph.slice(0, match.index), match[1]),
-      text: match[1],
-      voice: { pitch: 0.95, rate: 0.95 }
+      type: 'clue',
+      clueId: match.clueId,
+      text: paragraph.slice(match.start, match.end)
     });
-
-    lastIndex = match.index + match[0].length;
+    cursor = match.end;
   }
 
-  const after = paragraph.slice(lastIndex);
-  if (after) {
-    const clue = clueForText(after);
-    segments.push(
-      clue
-        ? { type: 'clue', clueId: clue.id, text: after }
-        : { type: 'narration', text: after }
-    );
-  }
-
-  if (segments.length === 0) {
-    const clue = clueForText(paragraph);
-    segments.push(
-      clue
-        ? { type: 'clue', clueId: clue.id, text: paragraph }
-        : { type: 'narration', text: paragraph }
-    );
+  if (cursor < paragraph.length) {
+    segments.push({ type: 'narration', text: paragraph.slice(cursor) });
   }
 
   return segments;
@@ -194,13 +190,12 @@ function buildSceneForChapter(index, title) {
 
 function buildChaptersFromBook(text) {
   const paragraphs = splitParagraphs(text);
-  const bodyParagraphs = paragraphs.filter((paragraph) => paragraph.length > 8);
   const paragraphsPerChapter = 18;
-  const totalChapters = Math.max(1, Math.ceil(bodyParagraphs.length / paragraphsPerChapter));
+  const totalChapters = Math.max(1, Math.ceil(paragraphs.length / paragraphsPerChapter));
 
   return Array.from({ length: totalChapters }, (_, index) => {
     const start = index * paragraphsPerChapter;
-    const chunk = bodyParagraphs.slice(start, start + paragraphsPerChapter);
+    const chunk = paragraphs.slice(start, start + paragraphsPerChapter);
     const progress = Math.min(100, Math.round(((index + 1) / totalChapters) * 100));
     const title = index === 0 ? '斑点带子案：开端' : `斑点带子案：第 ${index + 1} 节`;
 
@@ -227,6 +222,59 @@ export const chapters = RAW_BOOK_TEXT
         scene: buildSceneForChapter(0, '斑点带子案')
       }
     ];
+
+function paragraphToPlainText(paragraph) {
+  return paragraph.map((segment) => segment.text).join('');
+}
+
+export const bookParagraphIndex = chapters.flatMap((chapter) =>
+  chapter.paragraphs.map((paragraph, paragraphIndex) => ({
+    chapterId: chapter.id,
+    chapterTitle: chapter.title,
+    paragraphIndex,
+    text: paragraphToPlainText(paragraph)
+  }))
+);
+
+const linearBookText = bookParagraphIndex.map((paragraph) => paragraph.text).join('\n\n');
+
+const paragraphOffsets = [];
+let paragraphOffset = 0;
+for (const paragraph of bookParagraphIndex) {
+  paragraphOffsets.push({
+    ...paragraph,
+    start: paragraphOffset,
+    end: paragraphOffset + paragraph.text.length
+  });
+  paragraphOffset += paragraph.text.length + 2;
+}
+
+export function getBookText() {
+  return normalizeBookText(RAW_BOOK_TEXT);
+}
+
+export function getParagraphContext({ chapterId, paragraphIndex, contextChars = 1000 }) {
+  const target = paragraphOffsets.find(
+    (paragraph) => paragraph.chapterId === chapterId && paragraph.paragraphIndex === paragraphIndex
+  );
+
+  if (!target) {
+    return null;
+  }
+
+  const before = linearBookText.slice(Math.max(0, target.start - contextChars), target.start).trim();
+  const after = linearBookText.slice(target.end, target.end + contextChars).trim();
+
+  return {
+    chapterId: target.chapterId,
+    chapterTitle: target.chapterTitle,
+    paragraphIndex: target.paragraphIndex,
+    originalTarget: target.text,
+    context: [before, target.text, after].filter(Boolean).join('\n\n'),
+    before,
+    after
+  };
+}
 
 export const bookMeta = {
   id: 'speckled-band',

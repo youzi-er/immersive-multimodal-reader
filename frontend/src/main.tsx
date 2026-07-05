@@ -1,5 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import {
+  computeSelectionLayout,
+  getCaretPointFromPointer,
+  getTextFromRange,
+  normalizeRange,
+  rangeKey,
+  type SelectionLayout,
+  type TextRange
+} from './readerTextSelection';
 import './styles.css';
 
 type Page = 'home' | 'bookshelf' | 'reader' | 'login' | 'register' | 'profile';
@@ -11,21 +20,10 @@ type User = {
   bio: string;
 };
 
-type VoiceConfig = {
-  pitch: number;
-  rate: number;
-};
-
 type TextSegment =
   | {
       type: 'narration';
       text: string;
-    }
-  | {
-      type: 'dialogue';
-      speaker: string;
-      text: string;
-      voice: VoiceConfig;
     }
   | {
       type: 'clue';
@@ -52,6 +50,7 @@ type Clue = {
   label: string;
   type: '线索' | '人物' | '地点';
   description: string;
+  keywords?: string[];
 };
 
 type ChatMessage = {
@@ -64,11 +63,44 @@ type GeneratedSceneImage = {
   prompt: string;
 };
 
-type ActiveDialogue = {
-  id: string;
-  speaker: string;
+type ParagraphImage = {
+  imageUrl: string;
+  prompt: string;
+  sceneSummaryCn: string;
+  componentType: string;
+  promptCharCount: number;
+  traceId: string | null;
+  styleInitializedNow: boolean;
+};
+
+type ParagraphSpeechScriptLine = {
+  segmentId: string;
+  speakerCode: string | null;
+  templateCode: string | null;
+  displayName: string;
   text: string;
-  voice: VoiceConfig;
+  durationMs: number | null;
+};
+
+type ParagraphSpeech = {
+  audioUrl: string;
+  durationMs: number | null;
+  segmentCount: number;
+  script: ParagraphSpeechScriptLine[];
+  voicesInitializedNow: boolean;
+  traceId: string | null;
+};
+
+type RangeMedia<T> = T & {
+  chapterId: string;
+  range: TextRange;
+};
+
+type SelectedParagraph = {
+  chapterId: string;
+  paragraphIndex: number;
+  draft: string;
+  range: TextRange;
 };
 
 type ContextTab = 'scene' | 'clues' | 'ai';
@@ -125,6 +157,16 @@ const api = {
     requestJson<GeneratedSceneImage>('/api/ai/image', {
       method: 'POST',
       body: JSON.stringify({ chapterId })
+    }),
+  paragraphImage: async (payload: { chapterId: string; paragraphIndex: number; targetSegment: string }) =>
+    requestJson<ParagraphImage>('/api/ai/paragraph-image', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  paragraphSpeech: async (payload: { chapterId: string; paragraphIndex: number; targetSegment: string }) =>
+    requestJson<ParagraphSpeech>('/api/ai/paragraph-speech', {
+      method: 'POST',
+      body: JSON.stringify(payload)
     }),
   register: (form: { username: string; password: string; displayName: string }) =>
     requestJson<{ token: string; user: User }>('/api/auth/register', {
@@ -709,7 +751,6 @@ function ReaderPage({
     });
     return clues.filter((clue) => clueIds.has(clue.id));
   }, [chapter, clues]);
-  const [activeDialogue, setActiveDialogue] = useState<ActiveDialogue | null>(null);
   const [contextTab, setContextTab] = useState<ContextTab>('scene');
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>('light');
   const [readingWidth, setReadingWidth] = useState<ReadingWidth>('standard');
@@ -718,19 +759,345 @@ function ReaderPage({
   const [sceneGenerated, setSceneGenerated] = useState(false);
   const [sceneLoading, setSceneLoading] = useState(false);
   const [generatedSceneImage, setGeneratedSceneImage] = useState<GeneratedSceneImage | null>(null);
-  const [voiceLoadingId, setVoiceLoadingId] = useState<string | null>(null);
   const [sceneDiagram, setSceneDiagram] = useState<SceneDiagram>('layout');
   const [bagPulse, setBagPulse] = useState(false);
+  const [selectedParagraph, setSelectedParagraph] = useState<SelectedParagraph | null>(null);
+  const [selectionLayout, setSelectionLayout] = useState<SelectionLayout | null>(null);
+  const [draggingHandle, setDraggingHandle] = useState<'start' | 'end' | null>(null);
+  const bookPageRef = useRef<HTMLElement | null>(null);
+  const [paragraphImageLoadingKey, setParagraphImageLoadingKey] = useState<string | null>(null);
+  const [paragraphSpeechLoadingKey, setParagraphSpeechLoadingKey] = useState<string | null>(null);
+  const [paragraphImages, setParagraphImages] = useState<Record<string, RangeMedia<ParagraphImage>>>({});
+  const [paragraphAudios, setParagraphAudios] = useState<Record<string, RangeMedia<ParagraphSpeech>>>({});
+  const [playingAudioKey, setPlayingAudioKey] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const longPressTimer = useRef<number | null>(null);
   const sceneVariant =
     chapter?.id === 'speckled-band-2' ? 'manor' : chapter?.id === 'speckled-band-3' ? 'night' : 'baker';
 
   useEffect(() => {
-    setActiveDialogue(null);
     setSceneGenerated(false);
     setGeneratedSceneImage(null);
     setSceneDiagram('layout');
-    window.speechSynthesis.cancel();
+    setSelectedParagraph(null);
+    stopParagraphAudio();
   }, [chapterId]);
+
+  function stopParagraphAudio() {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.removeAttribute('src');
+      audio.load();
+    }
+    setPlayingAudioKey(null);
+    window.speechSynthesis.cancel();
+  }
+
+  function playParagraphAudio(key: string, audioUrl: string) {
+    stopParagraphAudio();
+
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+    setPlayingAudioKey(key);
+
+    audio.addEventListener('ended', () => {
+      setPlayingAudioKey((current) => (current === key ? null : current));
+    });
+
+    void audio.play().catch(() => {
+      setNotice('音频播放失败');
+      window.setTimeout(() => setNotice(''), 1800);
+      setPlayingAudioKey(null);
+    });
+  }
+
+  function toggleParagraphAudio(key: string, audioUrl: string) {
+    const audio = audioRef.current;
+    if (playingAudioKey === key && audio && !audio.paused) {
+      audio.pause();
+      setPlayingAudioKey(null);
+      return;
+    }
+
+    if (playingAudioKey === key && audio?.paused) {
+      void audio.play().catch(() => {
+        setNotice('音频播放失败');
+        window.setTimeout(() => setNotice(''), 1800);
+      });
+      setPlayingAudioKey(key);
+      return;
+    }
+
+    playParagraphAudio(key, audioUrl);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current !== null) {
+        window.clearTimeout(longPressTimer.current);
+      }
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.removeAttribute('src');
+      }
+    };
+  }, []);
+
+  function paragraphKey(paragraphIndex: number) {
+    return `${chapter.id}-${paragraphIndex}`;
+  }
+
+  function paragraphToText(paragraph: TextSegment[]) {
+    return paragraph.map((segment) => segment.text).join('');
+  }
+
+  function clearLongPressTimer() {
+    if (longPressTimer.current !== null) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+  const refreshSelectionLayout = useCallback(() => {
+    if (!selectedParagraph || !bookPageRef.current) {
+      setSelectionLayout(null);
+      return;
+    }
+
+    setSelectionLayout(computeSelectionLayout(bookPageRef.current, selectedParagraph.range));
+  }, [selectedParagraph]);
+
+  useEffect(() => {
+    if (!selectedParagraph) {
+      setSelectionLayout(null);
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => refreshSelectionLayout());
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedParagraph, refreshSelectionLayout, fontSize, readingWidth, chapter.id]);
+
+  useEffect(() => {
+    if (!selectedParagraph) {
+      return;
+    }
+
+    const handleViewportChange = () => refreshSelectionLayout();
+    window.addEventListener('scroll', handleViewportChange, true);
+    window.addEventListener('resize', handleViewportChange);
+
+    return () => {
+      window.removeEventListener('scroll', handleViewportChange, true);
+      window.removeEventListener('resize', handleViewportChange);
+    };
+  }, [selectedParagraph, refreshSelectionLayout]);
+
+  useEffect(() => {
+    if (!draggingHandle || !selectedParagraph || !bookPageRef.current) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const point = getCaretPointFromPointer(
+        bookPageRef.current!,
+        event.clientX,
+        event.clientY,
+        chapter.paragraphs.length
+      );
+
+      if (!point) {
+        return;
+      }
+
+      setSelectedParagraph((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const nextRange =
+          draggingHandle === 'start'
+            ? {
+                ...current.range,
+                startParagraphIndex: point.paragraphIndex,
+                startOffset: point.offset
+              }
+            : {
+                ...current.range,
+                endParagraphIndex: point.paragraphIndex,
+                endOffset: point.offset
+              };
+        const normalizedRange = normalizeRange(nextRange);
+        const draft = getTextFromRange(chapter.paragraphs, normalizedRange);
+
+        return {
+          ...current,
+          paragraphIndex: normalizedRange.startParagraphIndex,
+          range: normalizedRange,
+          draft
+        };
+      });
+    };
+
+    const handlePointerUp = () => setDraggingHandle(null);
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [chapter.paragraphs, draggingHandle, selectedParagraph]);
+
+  useEffect(() => {
+    if (!selectedParagraph) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedParagraph(null);
+      }
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        target.closest('.text-selection-layer') ||
+        target.closest('.reader-paragraph') ||
+        target.closest('.inline-audio-play')
+      ) {
+        return;
+      }
+      setSelectedParagraph(null);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('pointerdown', handlePointerDown, true);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('pointerdown', handlePointerDown, true);
+    };
+  }, [selectedParagraph]);
+
+  function selectParagraph(paragraph: TextSegment[], paragraphIndex: number) {
+    clearLongPressTimer();
+    const draft = paragraphToText(paragraph);
+    const range: TextRange = {
+      startParagraphIndex: paragraphIndex,
+      startOffset: 0,
+      endParagraphIndex: paragraphIndex,
+      endOffset: draft.length
+    };
+
+    setSelectedParagraph({
+      chapterId: chapter.id,
+      paragraphIndex,
+      draft,
+      range
+    });
+  }
+
+  function handleParagraphContextMenu(event: React.MouseEvent, paragraph: TextSegment[], paragraphIndex: number) {
+    event.preventDefault();
+    selectParagraph(paragraph, paragraphIndex);
+  }
+
+  function handleParagraphPointerDown(
+    event: React.PointerEvent,
+    paragraph: TextSegment[],
+    paragraphIndex: number
+  ) {
+    if (event.button !== 0 || (event.target as HTMLElement).closest('button')) {
+      return;
+    }
+
+    clearLongPressTimer();
+    longPressTimer.current = window.setTimeout(() => {
+      selectParagraph(paragraph, paragraphIndex);
+    }, 560);
+  }
+
+  async function generateParagraphSpeech() {
+    if (!selectedParagraph || paragraphSpeechLoadingKey) return;
+
+    const targetSegment = selectedParagraph.draft.trim();
+    if (!targetSegment) {
+      setNotice('目标段落不能为空');
+      window.setTimeout(() => setNotice(''), 1800);
+      return;
+    }
+
+    const key = rangeKey(selectedParagraph.chapterId, selectedParagraph.range);
+    const savedRange = selectedParagraph.range;
+    const savedChapterId = selectedParagraph.chapterId;
+    const savedParagraphIndex = selectedParagraph.paragraphIndex;
+
+    setParagraphSpeechLoadingKey(key);
+    setNotice('正在生成段落配音，首次使用会先初始化全书音色，可能较慢');
+    try {
+      const result = await api.paragraphSpeech({
+        chapterId: savedChapterId,
+        paragraphIndex: savedParagraphIndex,
+        targetSegment
+      });
+      setParagraphAudios((prev) => ({
+        ...prev,
+        [key]: { ...result, chapterId: savedChapterId, range: savedRange }
+      }));
+      setSelectedParagraph(null);
+      setNotice('段落配音已生成');
+      window.setTimeout(() => setNotice(''), 1800);
+      playParagraphAudio(key, result.audioUrl);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '段落配音生成失败');
+      window.setTimeout(() => setNotice(''), 2600);
+    } finally {
+      setParagraphSpeechLoadingKey(null);
+    }
+  }
+
+  async function generateParagraphImage() {
+    if (!selectedParagraph || paragraphImageLoadingKey) return;
+
+    const targetSegment = selectedParagraph.draft.trim();
+    if (!targetSegment) {
+      setNotice('目标段落不能为空');
+      window.setTimeout(() => setNotice(''), 1800);
+      return;
+    }
+
+    const key = rangeKey(selectedParagraph.chapterId, selectedParagraph.range);
+    const savedRange = selectedParagraph.range;
+    const savedChapterId = selectedParagraph.chapterId;
+    const savedParagraphIndex = selectedParagraph.paragraphIndex;
+
+    setParagraphImageLoadingKey(key);
+    setNotice('正在生成段落插图，首次使用会先初始化全书风格，可能较慢');
+    try {
+      const result = await api.paragraphImage({
+        chapterId: savedChapterId,
+        paragraphIndex: savedParagraphIndex,
+        targetSegment
+      });
+      setParagraphImages((prev) => ({
+        ...prev,
+        [key]: { ...result, chapterId: savedChapterId, range: savedRange }
+      }));
+      setSelectedParagraph(null);
+      setNotice('段落插图已生成');
+      window.setTimeout(() => setNotice(''), 1800);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '段落插图生成失败');
+      window.setTimeout(() => setNotice(''), 2600);
+    } finally {
+      setParagraphImageLoadingKey(null);
+    }
+  }
 
   async function askAssistant() {
     if (!question.trim() || !chapter) return;
@@ -744,32 +1111,6 @@ function ReaderPage({
       answer = await api.chat(currentQuestion, chapter.id, collectedClueIds);
     }
     setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
-  }
-
-  async function speakDialogue(dialogueId: string, speaker: string, text: string, voice: VoiceConfig) {
-    setVoiceLoadingId(dialogueId);
-    try {
-      const result = await api.tts({
-        speaker,
-        text,
-        speed: voice.rate,
-        pitch: Math.round((voice.pitch - 1) * 4)
-      });
-      const audio = new Audio(result.audioUrl);
-      window.speechSynthesis.cancel();
-      await audio.play();
-    } catch (error) {
-      const utterance = new SpeechSynthesisUtterance(`${speaker}说：${text}`);
-      utterance.lang = 'zh-CN';
-      utterance.pitch = voice.pitch;
-      utterance.rate = voice.rate;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-      setNotice('MiniMax 配音失败，已使用浏览器语音兜底');
-      window.setTimeout(() => setNotice(''), 2200);
-    } finally {
-      setVoiceLoadingId(null);
-    }
   }
 
   async function generateSceneImage() {
@@ -807,68 +1148,147 @@ function ReaderPage({
     window.setTimeout(() => setNotice(''), 1800);
   }
 
-  function renderSegment(segment: TextSegment, index: number, paragraphIndex: number) {
-    if (segment.type === 'dialogue') {
-      const dialogueId = `${chapter.id}-${paragraphIndex}-${index}`;
-      const selected = activeDialogue?.id === dialogueId;
-
-      return (
-        <span key={index} className={selected ? 'dialogue-wrap active' : 'dialogue-wrap'}>
-          <button
-            className="dialogue-segment"
-            onClick={() =>
-              setActiveDialogue({
-                id: dialogueId,
-                speaker: segment.speaker,
-                text: segment.text,
-                voice: segment.voice
-              })
-            }
-            title="点击显示配音按钮"
-            type="button"
-          >
-            <span className="speaker">{segment.speaker}</span>
-            “{segment.text}”
-          </button>
-          {selected && (
-            <span className="voice-popover">
-              <button
-                type="button"
-                onClick={() => speakDialogue(dialogueId, segment.speaker, segment.text, segment.voice)}
-                disabled={voiceLoadingId === dialogueId}
-              >
-                {voiceLoadingId === dialogueId ? '生成中' : '播放'}
-              </button>
-              <button type="button" className="quiet" onClick={() => setActiveDialogue(null)}>
-                收起
-              </button>
-            </span>
-          )}
-        </span>
-      );
+  function renderSegmentSlice(segment: TextSegment, segmentIndex: number, text: string) {
+    if (!text) {
+      return null;
     }
 
     if (segment.type === 'clue') {
-      const collected = collectedClueIds.includes(segment.clueId);
+      if (text.length !== segment.text.length) {
+        return <span key={`${segmentIndex}-${text}`}>{text}</span>;
+      }
+
+      if (collectedClueIds.includes(segment.clueId)) {
+        return <span key={segmentIndex}>{text}</span>;
+      }
+
       return (
         <button
-          key={index}
-          className={collected ? 'clue-segment collected' : 'clue-segment'}
+          key={segmentIndex}
+          className="clue-segment"
           onClick={() => collectClue(segment.clueId)}
           title="点击收入证物袋"
+          type="button"
         >
-          {segment.text}
-          <span className="clue-hint">{collected ? '已入袋' : '收入证物袋'}</span>
+          {text}
         </button>
       );
     }
 
-    return <span key={index}>{segment.text}</span>;
+    return <span key={`${segmentIndex}-${text}`}>{text}</span>;
+  }
+
+  function renderTextRange(paragraph: TextSegment[], start: number, end: number) {
+    if (start >= end) {
+      return [];
+    }
+
+    const nodes: React.ReactNode[] = [];
+    let offset = 0;
+
+    paragraph.forEach((segment, segmentIndex) => {
+      const segmentStart = offset;
+      const segmentEnd = offset + segment.text.length;
+      offset = segmentEnd;
+
+      if (segmentEnd <= start || segmentStart >= end) {
+        return;
+      }
+
+      const sliceStart = Math.max(0, start - segmentStart);
+      const sliceEnd = Math.min(segment.text.length, end - segmentStart);
+      const slice = segment.text.slice(sliceStart, sliceEnd);
+      const node = renderSegmentSlice(segment, segmentIndex, slice);
+
+      if (node) {
+        nodes.push(node);
+      }
+    });
+
+    return nodes;
+  }
+
+  function renderInlinePlayButton(mediaKey: string, audio: RangeMedia<ParagraphSpeech>) {
+    const isPlaying = playingAudioKey === mediaKey;
+
+    return (
+      <button
+        key={`play-${mediaKey}`}
+        type="button"
+        className={`inline-audio-play${isPlaying ? ' playing' : ''}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          toggleParagraphAudio(mediaKey, audio.audioUrl);
+        }}
+        aria-label={isPlaying ? '暂停配音' : '播放配音'}
+        title={isPlaying ? '暂停' : '播放配音'}
+      />
+    );
+  }
+
+  function renderParagraphWithMedia(paragraph: TextSegment[], paragraphIndex: number) {
+    type ParagraphInjection =
+      | { kind: 'audio'; offset: number; key: string; audio: RangeMedia<ParagraphSpeech> }
+      | { kind: 'image'; offset: number; key: string; image: RangeMedia<ParagraphImage> };
+
+    const injections: ParagraphInjection[] = [];
+
+    Object.entries(paragraphAudios).forEach(([key, entry]) => {
+      if (entry.chapterId === chapter.id && entry.range.startParagraphIndex === paragraphIndex) {
+        injections.push({ kind: 'audio', offset: entry.range.startOffset, key, audio: entry });
+      }
+    });
+
+    Object.entries(paragraphImages).forEach(([key, entry]) => {
+      if (entry.chapterId === chapter.id && entry.range.endParagraphIndex === paragraphIndex) {
+        injections.push({ kind: 'image', offset: entry.range.endOffset, key, image: entry });
+      }
+    });
+
+    injections.sort((left, right) => {
+      if (left.offset !== right.offset) {
+        return left.offset - right.offset;
+      }
+      return left.kind === 'audio' ? -1 : 1;
+    });
+
+    const nodes: React.ReactNode[] = [];
+    let position = 0;
+    const paragraphLength = paragraphToText(paragraph).length;
+
+    injections.forEach((injection) => {
+      nodes.push(...renderTextRange(paragraph, position, injection.offset));
+
+      if (injection.kind === 'audio') {
+        nodes.push(renderInlinePlayButton(injection.key, injection.audio));
+        position = injection.offset;
+        return;
+      }
+
+      nodes.push(
+        <img
+          key={`image-${injection.key}`}
+          className="inline-selection-image"
+          src={injection.image.imageUrl}
+          alt=""
+        />
+      );
+      position = injection.offset;
+    });
+
+    nodes.push(...renderTextRange(paragraph, position, paragraphLength));
+    return nodes;
   }
 
   if (!chapter) {
     return <main className="loading">正在加载阅读桌...</main>;
   }
+
+  const currentRangeKey = selectedParagraph
+    ? rangeKey(selectedParagraph.chapterId, selectedParagraph.range)
+    : null;
+  const imageGenerating = Boolean(currentRangeKey && paragraphImageLoadingKey === currentRangeKey);
+  const speechGenerating = Boolean(currentRangeKey && paragraphSpeechLoadingKey === currentRangeKey);
 
   return (
     <section className="app-shell">
@@ -928,7 +1348,7 @@ function ReaderPage({
             >
               阅读设置
             </button>
-            <button onClick={() => window.speechSynthesis.cancel()}>停止语音</button>
+            <button onClick={stopParagraphAudio}>停止语音</button>
             <button onClick={() => setBagOpen(true)}>证物袋</button>
           </div>
         </div>
@@ -994,16 +1414,103 @@ function ReaderPage({
 
         <article
           key={chapter.id}
-          className="book-page"
+          ref={bookPageRef}
+          className={selectedParagraph ? 'book-page selecting' : 'book-page'}
           style={{ '--reader-font-size': `${fontSize}px` } as React.CSSProperties}
         >
-          {chapter.paragraphs.map((paragraph, paragraphIndex) => (
-            <p key={paragraphIndex}>
-              {paragraph.map((segment, segmentIndex) =>
-                renderSegment(segment, segmentIndex, paragraphIndex)
+          {chapter.paragraphs.map((paragraph, paragraphIndex) => {
+            const key = paragraphKey(paragraphIndex);
+
+            return (
+              <p
+                key={key}
+                className="reader-paragraph"
+                data-paragraph-index={paragraphIndex}
+                onContextMenu={(event) => handleParagraphContextMenu(event, paragraph, paragraphIndex)}
+                onPointerDown={(event) => handleParagraphPointerDown(event, paragraph, paragraphIndex)}
+                onPointerUp={clearLongPressTimer}
+                onPointerCancel={clearLongPressTimer}
+                onPointerLeave={clearLongPressTimer}
+                title="长按或右键选取段落，拖动两端符号调整范围"
+              >
+                {renderParagraphWithMedia(paragraph, paragraphIndex)}
+              </p>
+            );
+          })}
+
+          {selectedParagraph && selectionLayout && (
+            <div className="text-selection-layer" aria-hidden="true">
+              {selectionLayout.rects.map((rect, index) => (
+                <span
+                  key={`${rect.top}-${rect.left}-${index}`}
+                  className="selection-highlight"
+                  style={{
+                    top: `${rect.top}px`,
+                    left: `${rect.left}px`,
+                    width: `${rect.width}px`,
+                    height: `${rect.height}px`
+                  }}
+                />
+              ))}
+              <button
+                type="button"
+                className="selection-handle selection-handle-start"
+                style={{
+                  top: `${selectionLayout.startHandle.y}px`,
+                  left: `${selectionLayout.startHandle.x}px`,
+                  height: `${selectionLayout.startHandle.height}px`
+                }}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  setDraggingHandle('start');
+                }}
+                aria-label="拖动调整选取起点"
+              />
+              <button
+                type="button"
+                className="selection-handle selection-handle-end"
+                style={{
+                  top: `${selectionLayout.endHandle.y}px`,
+                  left: `${selectionLayout.endHandle.x}px`,
+                  height: `${selectionLayout.endHandle.height}px`
+                }}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  setDraggingHandle('end');
+                }}
+                aria-label="拖动调整选取终点"
+              />
+              {!draggingHandle && (
+                <div
+                  className="selection-toolbar"
+                  style={{
+                    top: `${selectionLayout.toolbar.top}px`,
+                    left: `${selectionLayout.toolbar.left}px`,
+                    width: `${selectionLayout.toolbar.width}px`
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={generateParagraphImage}
+                    disabled={imageGenerating || speechGenerating}
+                  >
+                    {imageGenerating ? '生成中...' : '生成插图'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generateParagraphSpeech}
+                    disabled={imageGenerating || speechGenerating}
+                  >
+                    {speechGenerating ? '生成中...' : '生成配音'}
+                  </button>
+                </div>
               )}
-            </p>
-          ))}
+            </div>
+          )}
         </article>
 
         <footer className="page-turner">
