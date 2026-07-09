@@ -1,7 +1,12 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import crypto from 'node:crypto';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 import { chapters, clues } from './data.js';
 import { createMediaAsset, deleteMediaAsset, ensureSchema, getMediaAsset, listMediaAssets } from './db.js';
 import { mediaRoot, removeStoredMedia, saveAudioDataUrl, saveImageFromUrl } from './media-store.js';
@@ -12,6 +17,8 @@ import {
   generateImage,
   synthesizeSpeech
 } from './services/minimax.js';
+import { generateParagraphIllustration } from './services/paragraphIllustration.js';
+import { generateParagraphSpeech, getSpeechVoicesStatus } from './services/paragraphSpeech.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -389,6 +396,146 @@ app.post('/api/ai/image', optionalAuth, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message || 'MiniMax image generation failed' });
+  }
+});
+
+app.post('/api/ai/paragraph-image', optionalAuth, async (req, res) => {
+  try {
+    const { chapterId, paragraphIndex, targetSegment, range } = req.body;
+    const safeChapterId = String(chapterId ?? '').trim();
+    const safeParagraphIndex = Number(paragraphIndex);
+    const safeTargetSegment = String(targetSegment ?? '').trim();
+
+    if (!safeChapterId) {
+      res.status(400).json({ error: 'chapterId is required' });
+      return;
+    }
+
+    if (!Number.isInteger(safeParagraphIndex) || safeParagraphIndex < 0) {
+      res.status(400).json({ error: 'paragraphIndex must be a non-negative integer' });
+      return;
+    }
+
+    if (!safeTargetSegment) {
+      res.status(400).json({ error: 'targetSegment is required' });
+      return;
+    }
+
+    const result = await generateParagraphIllustration({
+      chapterId: safeChapterId,
+      paragraphIndex: safeParagraphIndex,
+      targetSegment: safeTargetSegment
+    });
+
+    const saved = await saveImageFromUrl(result.imageUrl);
+    const asset = await createMediaAsset({
+      id: crypto.randomUUID(),
+      articleId: 'speckled-band',
+      chapterId: safeChapterId,
+      paragraphIndex: safeParagraphIndex,
+      segmentIndex: null,
+      mediaType: 'image',
+      url: saved.url,
+      filePath: saved.filePath,
+      prompt: result.prompt || null,
+      sourceText: safeTargetSegment,
+      provider: 'minimax',
+      model: process.env.MINIMAX_IMAGE_MODEL || 'image-01',
+      userId: currentUserId(req),
+      metadata: {
+        range: range || null,
+        sourceImageUrl: result.imageUrl,
+        traceId: result.traceId,
+        sceneSummaryCn: result.sceneSummaryCn || null,
+        componentType: result.componentType || null,
+        promptCharCount: result.promptCharCount || null,
+        styleInitializedNow: Boolean(result.styleInitializedNow)
+      }
+    });
+
+    res.json({
+      ...result,
+      imageUrl: saved.url,
+      sourceImageUrl: result.imageUrl,
+      mediaAssetId: asset.id,
+      asset
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'MiniMax paragraph image generation failed' });
+  }
+});
+
+app.get('/api/ai/speech-voices', async (_req, res) => {
+  try {
+    const result = await getSpeechVoicesStatus();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Speech voices status failed' });
+  }
+});
+
+app.post('/api/ai/paragraph-speech', optionalAuth, async (req, res) => {
+  try {
+    const { chapterId, paragraphIndex, targetSegment, range } = req.body;
+    const safeChapterId = String(chapterId ?? '').trim();
+    const safeParagraphIndex = Number(paragraphIndex);
+    const safeTargetSegment = String(targetSegment ?? '').trim();
+
+    if (!safeChapterId) {
+      res.status(400).json({ error: 'chapterId is required' });
+      return;
+    }
+
+    if (!Number.isInteger(safeParagraphIndex) || safeParagraphIndex < 0) {
+      res.status(400).json({ error: 'paragraphIndex must be a non-negative integer' });
+      return;
+    }
+
+    if (!safeTargetSegment) {
+      res.status(400).json({ error: 'targetSegment is required' });
+      return;
+    }
+
+    const result = await generateParagraphSpeech({
+      chapterId: safeChapterId,
+      paragraphIndex: safeParagraphIndex,
+      targetSegment: safeTargetSegment
+    });
+
+    const saved = await saveAudioDataUrl(result.audioUrl);
+    const asset = await createMediaAsset({
+      id: crypto.randomUUID(),
+      articleId: 'speckled-band',
+      chapterId: safeChapterId,
+      paragraphIndex: safeParagraphIndex,
+      segmentIndex: null,
+      mediaType: 'audio',
+      url: saved.url,
+      filePath: saved.filePath,
+      prompt: safeTargetSegment,
+      sourceText: safeTargetSegment,
+      provider: 'minimax',
+      model: process.env.MINIMAX_TTS_MODEL || 'speech-2.8-hd',
+      userId: currentUserId(req),
+      metadata: {
+        range: range || null,
+        durationMs: result.durationMs,
+        segmentCount: result.segmentCount,
+        script: result.script || [],
+        voicesInitializedNow: Boolean(result.voicesInitializedNow),
+        traceId: result.traceId
+      }
+    });
+
+    res.json({
+      ...result,
+      audioUrl: saved.url,
+      sourceAudioUrl: result.audioUrl,
+      mediaAssetId: asset.id,
+      asset
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'MiniMax paragraph speech generation failed' });
   }
 });
 

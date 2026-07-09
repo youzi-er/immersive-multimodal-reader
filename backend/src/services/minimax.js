@@ -1,5 +1,10 @@
-const MINIMAX_API_BASE = process.env.MINIMAX_API_BASE || 'https://api.minimaxi.com';
+const MINIMAX_API_BASE = (process.env.MINIMAX_API_BASE || 'https://api.minimaxi.com').replace(/\/$/, '');
 const MINIMAX_TIMEOUT_MS = Number(process.env.MINIMAX_TIMEOUT_MS || 45000);
+const MAX_API_PROMPT_CHARS = 1500;
+const RETRYABLE_STATUS_CODES = new Set([1002]);
+const VALID_IMAGE_MODELS = new Set(['image-01', 'image-01-live']);
+const VALID_ASPECT_RATIOS = new Set(['1:1', '16:9', '4:3', '3:2', '2:3', '3:4', '9:16', '21:9']);
+const VALID_RESPONSE_FORMATS = new Set(['url', 'base64']);
 
 function getApiKey() {
   const apiKey = process.env.MINIMAX_API_KEY;
@@ -7,6 +12,20 @@ function getApiKey() {
     throw new Error('MINIMAX_API_KEY is not configured');
   }
   return apiKey;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseMiniMaxError(data, httpStatus) {
+  const statusCode = data?.base_resp?.status_code;
+  const statusMsg = data?.base_resp?.status_msg || data?.error?.message || data?.message;
+  const err = new Error(statusMsg || `MiniMax request failed: ${httpStatus}`);
+  err.statusCode = statusCode;
+  err.httpStatus = httpStatus;
+  err.retryable = RETRYABLE_STATUS_CODES.has(statusCode);
+  return err;
 }
 
 async function requestMiniMax(path, body) {
@@ -36,14 +55,32 @@ async function requestMiniMax(path, body) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data?.base_resp?.status_msg || data?.error?.message || `MiniMax request failed: ${response.status}`);
+    throw parseMiniMaxError(data, response.status);
   }
 
   if (data?.base_resp && data.base_resp.status_code !== 0) {
-    throw new Error(data.base_resp.status_msg || `MiniMax error code: ${data.base_resp.status_code}`);
+    throw parseMiniMaxError(data, response.status);
   }
 
   return data;
+}
+
+async function requestMiniMaxWithRetry(path, body, maxRetries = 3) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
+    try {
+      return await requestMiniMax(path, body);
+    } catch (error) {
+      lastError = error;
+      if (!error.retryable || attempt === maxRetries) {
+        throw error;
+      }
+      await sleep(1000 * 2 ** (attempt - 1));
+    }
+  }
+
+  throw lastError;
 }
 
 function hexToDataUrl(hex, format = 'mp3') {
@@ -54,6 +91,141 @@ function hexToDataUrl(hex, format = 'mp3') {
 
   const buffer = Buffer.from(cleanHex, 'hex');
   return `data:audio/${format};base64,${buffer.toString('base64')}`;
+}
+
+export function extractJsonFromText(text) {
+  if (!text || typeof text !== 'string') {
+    throw new Error('LLM 返回内容为空');
+  }
+
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced ? fenced[1].trim() : trimmed;
+  const start = candidate.indexOf('{');
+  const end = candidate.lastIndexOf('}');
+
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error(`无法从 LLM 回复中定位 JSON 对象。原文前 500 字：\n${trimmed.slice(0, 500)}`);
+  }
+
+  try {
+    return JSON.parse(candidate.slice(start, end + 1));
+  } catch (error) {
+    throw new Error(`JSON 解析失败：${error.message}\n原文前 500 字：\n${trimmed.slice(0, 500)}`);
+  }
+}
+
+export function assertRequiredFields(obj, fields, label = '输出') {
+  const missing = fields.filter((key) => {
+    const value = obj?.[key];
+    if (value === undefined || value === null) return true;
+    if (typeof value === 'string' && value.trim() === '') return true;
+    return false;
+  });
+
+  if (missing.length > 0) {
+    throw new Error(`${label} 缺少必填字段：${missing.join(', ')}`);
+  }
+}
+
+function contentToText(content) {
+  return (Array.isArray(content) ? content : [])
+    .map((item) => (typeof item === 'string' ? item : item?.text || ''))
+    .join('')
+    .trim();
+}
+
+export async function callMessagesApi({ system, user, temperature = 0.7, maxTokens = 1600 }) {
+  const data = await requestMiniMax('/anthropic/v1/messages', {
+    model: process.env.MINIMAX_TEXT_MODEL || 'MiniMax-M3',
+    max_tokens: maxTokens,
+    temperature,
+    system,
+    messages: [
+      {
+        role: 'user',
+        content: user
+      }
+    ]
+  });
+
+  return contentToText(data.content);
+}
+
+export async function callMessagesApiForJson(options) {
+  return extractJsonFromText(await callMessagesApi(options));
+}
+
+export async function callMessagesApiForJsonWithRetry(options) {
+  try {
+    return await callMessagesApiForJson(options);
+  } catch (firstError) {
+    try {
+      return await callMessagesApiForJson({ ...options, temperature: 0.2 });
+    } catch (secondError) {
+      throw new Error(`${firstError.message}\n重试后仍失败：${secondError.message}`);
+    }
+  }
+}
+
+function validateImageRequestBody(body) {
+  if (!body || typeof body !== 'object') {
+    throw new Error('生图请求体必须是对象');
+  }
+  if (!body.model || !VALID_IMAGE_MODELS.has(body.model)) {
+    throw new Error(`model 必须是 ${[...VALID_IMAGE_MODELS].join(' 或 ')}`);
+  }
+  if (!body.prompt?.trim()) {
+    throw new Error('prompt 不能为空');
+  }
+  if (body.prompt.length > MAX_API_PROMPT_CHARS) {
+    throw new Error(`prompt 长度 ${body.prompt.length} 超过 API 上限 ${MAX_API_PROMPT_CHARS}`);
+  }
+  if (body.aspect_ratio && !VALID_ASPECT_RATIOS.has(body.aspect_ratio)) {
+    throw new Error(`无效的 aspect_ratio：${body.aspect_ratio}`);
+  }
+  if (body.response_format && !VALID_RESPONSE_FORMATS.has(body.response_format)) {
+    throw new Error(`无效的 response_format：${body.response_format}`);
+  }
+  if (body.n != null && (body.n < 1 || body.n > 9)) {
+    throw new Error('n 必须在 1-9 之间');
+  }
+  if (body.model === 'image-01' && body.style) {
+    throw new Error('model 为 image-01 时不应包含 style 字段');
+  }
+}
+
+export function toImageGenerationBody(phase2Output) {
+  const {
+    model,
+    prompt,
+    aspect_ratio: aspectRatio,
+    response_format: responseFormat,
+    n,
+    prompt_optimizer: promptOptimizer,
+    aigc_watermark: aigcWatermark,
+    style,
+    width,
+    height,
+    seed
+  } = phase2Output;
+
+  const body = {
+    model,
+    prompt,
+    aspect_ratio: aspectRatio,
+    response_format: responseFormat,
+    n,
+    prompt_optimizer: promptOptimizer,
+    aigc_watermark: aigcWatermark
+  };
+
+  if (style) body.style = style;
+  if (width) body.width = width;
+  if (height) body.height = height;
+  if (seed != null) body.seed = seed;
+
+  return Object.fromEntries(Object.entries(body).filter(([, value]) => value !== undefined && value !== null));
 }
 
 export async function chatWithMiniMax({ question, chapterTitle, context, collectedClues = [] }) {
@@ -74,29 +246,81 @@ export async function chatWithMiniMax({ question, chapterTitle, context, collect
     .filter(Boolean)
     .join('\n');
 
-  const data = await requestMiniMax('/anthropic/v1/messages', {
-    model: process.env.MINIMAX_TEXT_MODEL || 'MiniMax-M3',
-    max_tokens: 800,
+  const answer = await callMessagesApi({
     system: systemPrompt,
-    messages: [
-      {
-        role: 'user',
-        content: userPrompt
-      }
-    ]
+    user: userPrompt,
+    maxTokens: 800
   });
-
-  const content = Array.isArray(data.content) ? data.content : [];
-  const answer = content
-    .map((item) => (typeof item === 'string' ? item : item?.text || ''))
-    .join('')
-    .trim();
 
   return answer || '当前没有生成有效回答，请稍后再试。';
 }
 
+const VALID_TTS_EMOTIONS = new Set([
+  'happy',
+  'sad',
+  'angry',
+  'fearful',
+  'disgusted',
+  'surprised',
+  'calm',
+  'fluent',
+  'whisper'
+]);
+
+const SPEECH_28_UNSUPPORTED_EMOTIONS = new Set(['whisper', 'fluent']);
+
+function isSpeech28Model(model) {
+  return /^speech-2\.8/i.test(String(model || ''));
+}
+
+function normalizeTtsBody(body) {
+  if (!body || typeof body !== 'object') {
+    throw new Error('TTS 请求体必须是对象');
+  }
+
+  const voiceId = body.voice_setting?.voice_id;
+  if (!voiceId?.trim()) {
+    throw new Error('TTS 请求体缺少 voice_setting.voice_id');
+  }
+
+  if (!body.text?.trim()) {
+    throw new Error('TTS 请求体缺少 text');
+  }
+
+  const emotion = body.voice_setting?.emotion;
+  if (emotion && !VALID_TTS_EMOTIONS.has(emotion)) {
+    throw new Error(`无效的 emotion：${emotion}`);
+  }
+
+  const model = String(body.model || '');
+  if (isSpeech28Model(model) && emotion && SPEECH_28_UNSUPPORTED_EMOTIONS.has(emotion)) {
+    delete body.voice_setting.emotion;
+  }
+
+  return body;
+}
+
+function parseTtsResponse(data) {
+  const audioHex = data?.data?.audio;
+  const format = data?.extra_info?.audio_format || 'mp3';
+
+  return {
+    audioHex,
+    audioUrl: hexToDataUrl(audioHex, format),
+    durationMs: data?.extra_info?.audio_length ?? null,
+    traceId: data?.trace_id ?? null,
+    audioFormat: format
+  };
+}
+
+export async function synthesizeSpeechFromBody(body) {
+  const normalized = normalizeTtsBody(body);
+  const data = await requestMiniMaxWithRetry('/v1/t2a_v2', normalized);
+  return parseTtsResponse(data);
+}
+
 export async function synthesizeSpeech({ text, voiceId, speed = 1, pitch = 0, emotion = 'calm' }) {
-  const data = await requestMiniMax('/v1/t2a_v2', {
+  return synthesizeSpeechFromBody({
     model: process.env.MINIMAX_TTS_MODEL || 'speech-2.8-hd',
     text,
     stream: false,
@@ -118,23 +342,21 @@ export async function synthesizeSpeech({ text, voiceId, speed = 1, pitch = 0, em
     output_format: 'hex',
     aigc_watermark: false
   });
-
-  const audioHex = data?.data?.audio;
-  return {
-    audioUrl: hexToDataUrl(audioHex, data?.extra_info?.audio_format || 'mp3'),
-    durationMs: data?.extra_info?.audio_length ?? null,
-    traceId: data?.trace_id ?? null
-  };
 }
 
 export async function generateImage({ prompt, aspectRatio = '16:9' }) {
-  const data = await requestMiniMax('/v1/image_generation', {
+  return generateImageFromRequest({
     model: process.env.MINIMAX_IMAGE_MODEL || 'image-01',
     prompt,
     aspect_ratio: aspectRatio,
     response_format: 'url',
     n: 1
   });
+}
+
+export async function generateImageFromRequest(body) {
+  validateImageRequestBody(body);
+  const data = await requestMiniMaxWithRetry('/v1/image_generation', body);
 
   const imageUrl = data?.data?.image_urls?.[0];
   if (!imageUrl) {
