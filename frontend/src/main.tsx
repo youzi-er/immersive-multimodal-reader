@@ -1,5 +1,16 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import { createRoot } from 'react-dom/client';
+import {
+  computeSelectionLayout,
+  getCaretPointFromPointer,
+  getTextFromRange,
+  normalizeRange,
+  rangeKey,
+  type SelectionLayout,
+  type TextRange
+} from './readerTextSelection';
 import './styles.css';
 
 type Page = 'home' | 'bookshelf' | 'reader' | 'login' | 'register' | 'profile';
@@ -11,21 +22,10 @@ type User = {
   bio: string;
 };
 
-type VoiceConfig = {
-  pitch: number;
-  rate: number;
-};
-
 type TextSegment =
   | {
       type: 'narration';
       text: string;
-    }
-  | {
-      type: 'dialogue';
-      speaker: string;
-      text: string;
-      voice: VoiceConfig;
     }
   | {
       type: 'clue';
@@ -52,6 +52,7 @@ type Clue = {
   label: string;
   type: '线索' | '人物' | '地点';
   description: string;
+  keywords?: string[];
 };
 
 type ChatMessage = {
@@ -80,14 +81,47 @@ type MediaAsset = {
   createdAt: string;
 };
 
-type ActiveDialogue = {
-  id: string;
-  speaker: string;
-  text: string;
-  voice: VoiceConfig;
+type ParagraphImage = {
+  imageUrl: string;
+  prompt: string;
+  sceneSummaryCn: string;
+  componentType: string;
+  promptCharCount: number;
+  traceId: string | null;
+  styleInitializedNow: boolean;
 };
 
-type ContextTab = 'scene' | 'clues' | 'ai';
+type ParagraphSpeechScriptLine = {
+  segmentId: string;
+  speakerCode: string | null;
+  templateCode: string | null;
+  displayName: string;
+  text: string;
+  durationMs: number | null;
+};
+
+type ParagraphSpeech = {
+  audioUrl: string;
+  durationMs: number | null;
+  segmentCount: number;
+  script: ParagraphSpeechScriptLine[];
+  voicesInitializedNow: boolean;
+  traceId: string | null;
+};
+
+type RangeMedia<T> = T & {
+  chapterId: string;
+  range: TextRange;
+};
+
+type SelectedParagraph = {
+  chapterId: string;
+  paragraphIndex: number;
+  draft: string;
+  range: TextRange;
+};
+
+type ContextTab = 'scene' | 'ai' | 'bag';
 type ReadingTheme = 'light' | 'paper' | 'night';
 type ReadingWidth = 'narrow' | 'standard' | 'wide';
 type SceneDiagram = 'layout' | 'positions' | 'clues';
@@ -163,10 +197,16 @@ const api = {
       method: 'POST',
       body: JSON.stringify({ articleId: 'speckled-band', ...payload })
     }),
-  mediaAssets: (chapterId: string) =>
-    requestJson<{ assets: MediaAsset[] }>(
-      `/api/media/assets?articleId=speckled-band&chapterId=${encodeURIComponent(chapterId)}`
-    ),
+  paragraphImage: async (payload: { chapterId: string; paragraphIndex: number; targetSegment: string }) =>
+    requestJson<ParagraphImage>('/api/ai/paragraph-image', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  paragraphSpeech: async (payload: { chapterId: string; paragraphIndex: number; targetSegment: string }) =>
+    requestJson<ParagraphSpeech>('/api/ai/paragraph-speech', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
   register: (form: { username: string; password: string; displayName: string }) =>
     requestJson<{ token: string; user: User }>('/api/auth/register', {
       method: 'POST',
@@ -196,7 +236,6 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
   const [chapterId, setChapterId] = useState('speckled-band-1');
-  const [bagOpen, setBagOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -269,8 +308,6 @@ function App() {
             setCollectedClueIds={setCollectedClueIds}
             chapterId={chapterId}
             setChapterId={setChapterId}
-            bagOpen={bagOpen}
-            setBagOpen={setBagOpen}
             notice={notice}
             setNotice={setNotice}
             question={question}
@@ -694,8 +731,6 @@ function ReaderPage({
   setCollectedClueIds,
   chapterId,
   setChapterId,
-  bagOpen,
-  setBagOpen,
   notice,
   setNotice,
   question,
@@ -711,8 +746,6 @@ function ReaderPage({
   setCollectedClueIds: React.Dispatch<React.SetStateAction<string[]>>;
   chapterId: string;
   setChapterId: (id: string) => void;
-  bagOpen: boolean;
-  setBagOpen: React.Dispatch<React.SetStateAction<boolean>>;
   notice: string;
   setNotice: (notice: string) => void;
   question: string;
@@ -750,8 +783,8 @@ function ReaderPage({
     });
     return clues.filter((clue) => clueIds.has(clue.id));
   }, [chapter, clues]);
-  const [activeDialogue, setActiveDialogue] = useState<ActiveDialogue | null>(null);
   const [contextTab, setContextTab] = useState<ContextTab>('scene');
+  const [contextOpen, setContextOpen] = useState(false);
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>('light');
   const [readingWidth, setReadingWidth] = useState<ReadingWidth>('standard');
   const [fontSize, setFontSize] = useState(19);
@@ -759,63 +792,356 @@ function ReaderPage({
   const [sceneGenerated, setSceneGenerated] = useState(false);
   const [sceneLoading, setSceneLoading] = useState(false);
   const [generatedSceneImage, setGeneratedSceneImage] = useState<GeneratedSceneImage | null>(null);
-  const [voiceLoadingId, setVoiceLoadingId] = useState<string | null>(null);
-  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
-  const [imageLoadingParagraph, setImageLoadingParagraph] = useState<number | 'scene' | null>(null);
-  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
-  const [mediaLoading, setMediaLoading] = useState(false);
+
   const [sceneDiagram, setSceneDiagram] = useState<SceneDiagram>('layout');
   const [bagPulse, setBagPulse] = useState(false);
-  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [selectedParagraph, setSelectedParagraph] = useState<SelectedParagraph | null>(null);
+  const [selectionLayout, setSelectionLayout] = useState<SelectionLayout | null>(null);
+  const [draggingHandle, setDraggingHandle] = useState<'start' | 'end' | null>(null);
+  const bookPageRef = useRef<HTMLElement | null>(null);
+  const [paragraphImageLoadingKey, setParagraphImageLoadingKey] = useState<string | null>(null);
+  const [paragraphSpeechLoadingKey, setParagraphSpeechLoadingKey] = useState<string | null>(null);
+  const [paragraphImages, setParagraphImages] = useState<Record<string, RangeMedia<ParagraphImage>>>({});
+  const toggleContextPanel = useCallback(
+    (tab: ContextTab) => {
+      setContextOpen((open) => (open && contextTab === tab ? false : true));
+      setContextTab(tab);
+    },
+    [contextTab]
+  );
+  const [paragraphAudios, setParagraphAudios] = useState<Record<string, RangeMedia<ParagraphSpeech>>>({});
+  const [playingAudioKey, setPlayingAudioKey] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const longPressTimer = useRef<number | null>(null);
+
   const sceneVariant =
     chapter?.id === 'speckled-band-2' ? 'manor' : chapter?.id === 'speckled-band-3' ? 'night' : 'baker';
 
   useEffect(() => {
-    setActiveDialogue(null);
     setSceneGenerated(false);
     setGeneratedSceneImage(null);
     setSceneDiagram('layout');
-    activeAudioRef.current?.pause();
-    activeAudioRef.current = null;
-    setPlayingVoiceId(null);
-    window.speechSynthesis.cancel();
+
+    setSelectedParagraph(null);
+    stopParagraphAudio();
   }, [chapterId]);
 
-  useEffect(() => {
-    if (!chapter?.id) return;
+  function stopParagraphAudio() {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.removeAttribute('src');
+      audio.load();
+    }
+    setPlayingAudioKey(null);
+    window.speechSynthesis.cancel();
+  }
 
-    let cancelled = false;
-    setMediaLoading(true);
-    api
-      .mediaAssets(chapter.id)
-      .then(({ assets }) => {
-        if (cancelled) return;
-        setMediaAssets(assets);
-        const sceneImage = assets.find((asset) => asset.mediaType === 'image' && asset.paragraphIndex === null);
-        if (sceneImage) {
-          setGeneratedSceneImage({
-            imageUrl: sceneImage.url,
-            prompt: sceneImage.prompt || chapter.scene.imagePrompt,
-            asset: sceneImage
-          });
-          setSceneGenerated(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setMediaAssets([]);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setMediaLoading(false);
-        }
+  function playParagraphAudio(key: string, audioUrl: string) {
+    stopParagraphAudio();
+
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+    setPlayingAudioKey(key);
+
+    audio.addEventListener('ended', () => {
+      setPlayingAudioKey((current) => (current === key ? null : current));
+    });
+
+    void audio.play().catch(() => {
+      setNotice('音频播放失败');
+      window.setTimeout(() => setNotice(''), 1800);
+      setPlayingAudioKey(null);
+    });
+  }
+
+  function toggleParagraphAudio(key: string, audioUrl: string) {
+    const audio = audioRef.current;
+    if (playingAudioKey === key && audio && !audio.paused) {
+      audio.pause();
+      setPlayingAudioKey(null);
+      return;
+    }
+
+    if (playingAudioKey === key && audio?.paused) {
+      void audio.play().catch(() => {
+        setNotice('音频播放失败');
+        window.setTimeout(() => setNotice(''), 1800);
       });
+      setPlayingAudioKey(key);
+      return;
+    }
+
+    playParagraphAudio(key, audioUrl);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current !== null) {
+        window.clearTimeout(longPressTimer.current);
+      }
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.removeAttribute('src');
+      }
+    };
+  }, []);
+
+  function paragraphKey(paragraphIndex: number) {
+    return `${chapter.id}-${paragraphIndex}`;
+  }
+
+  function paragraphToText(paragraph: TextSegment[]) {
+    return paragraph.map((segment) => segment.text).join('');
+  }
+
+  function clearLongPressTimer() {
+    if (longPressTimer.current !== null) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+  const refreshSelectionLayout = useCallback(() => {
+    if (!selectedParagraph || !bookPageRef.current) {
+      setSelectionLayout(null);
+      return;
+    }
+
+    setSelectionLayout(computeSelectionLayout(bookPageRef.current, selectedParagraph.range));
+  }, [selectedParagraph]);
+
+  useEffect(() => {
+    if (!selectedParagraph) {
+      setSelectionLayout(null);
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => refreshSelectionLayout());
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedParagraph, refreshSelectionLayout, fontSize, readingWidth, chapter.id]);
+
+  useEffect(() => {
+    if (!selectedParagraph) {
+      return;
+    }
+
+    const handleViewportChange = () => refreshSelectionLayout();
+    window.addEventListener('scroll', handleViewportChange, true);
+    window.addEventListener('resize', handleViewportChange);
 
     return () => {
-      cancelled = true;
+      window.removeEventListener('scroll', handleViewportChange, true);
+      window.removeEventListener('resize', handleViewportChange);
     };
-  }, [chapter]);
+  }, [selectedParagraph, refreshSelectionLayout]);
+
+  useEffect(() => {
+    if (!draggingHandle || !selectedParagraph || !bookPageRef.current) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const point = getCaretPointFromPointer(
+        bookPageRef.current!,
+        event.clientX,
+        event.clientY,
+        chapter.paragraphs.length
+      );
+
+      if (!point) {
+        return;
+      }
+
+      setSelectedParagraph((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const nextRange =
+          draggingHandle === 'start'
+            ? {
+                ...current.range,
+                startParagraphIndex: point.paragraphIndex,
+                startOffset: point.offset
+              }
+            : {
+                ...current.range,
+                endParagraphIndex: point.paragraphIndex,
+                endOffset: point.offset
+              };
+        const normalizedRange = normalizeRange(nextRange);
+        const draft = getTextFromRange(chapter.paragraphs, normalizedRange);
+
+        return {
+          ...current,
+          paragraphIndex: normalizedRange.startParagraphIndex,
+          range: normalizedRange,
+          draft
+        };
+      });
+    };
+
+    const handlePointerUp = () => setDraggingHandle(null);
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [chapter.paragraphs, draggingHandle, selectedParagraph]);
+
+  useEffect(() => {
+    if (!selectedParagraph) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedParagraph(null);
+      }
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        target.closest('.text-selection-layer') ||
+        target.closest('.reader-paragraph') ||
+        target.closest('.inline-audio-play')
+      ) {
+        return;
+      }
+      setSelectedParagraph(null);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('pointerdown', handlePointerDown, true);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('pointerdown', handlePointerDown, true);
+    };
+  }, [selectedParagraph]);
+
+  function selectParagraph(paragraph: TextSegment[], paragraphIndex: number) {
+    clearLongPressTimer();
+    const draft = paragraphToText(paragraph);
+    const range: TextRange = {
+      startParagraphIndex: paragraphIndex,
+      startOffset: 0,
+      endParagraphIndex: paragraphIndex,
+      endOffset: draft.length
+    };
+
+    setSelectedParagraph({
+      chapterId: chapter.id,
+      paragraphIndex,
+      draft,
+      range
+    });
+  }
+
+  function handleParagraphContextMenu(event: React.MouseEvent, paragraph: TextSegment[], paragraphIndex: number) {
+    event.preventDefault();
+    selectParagraph(paragraph, paragraphIndex);
+  }
+
+  function handleParagraphPointerDown(
+    event: React.PointerEvent,
+    paragraph: TextSegment[],
+    paragraphIndex: number
+  ) {
+    if (event.button !== 0 || (event.target as HTMLElement).closest('button')) {
+      return;
+    }
+
+    clearLongPressTimer();
+    longPressTimer.current = window.setTimeout(() => {
+      selectParagraph(paragraph, paragraphIndex);
+    }, 560);
+  }
+
+  async function generateParagraphSpeech() {
+    if (!selectedParagraph || paragraphSpeechLoadingKey) return;
+
+    const targetSegment = selectedParagraph.draft.trim();
+    if (!targetSegment) {
+      setNotice('目标段落不能为空');
+      window.setTimeout(() => setNotice(''), 1800);
+      return;
+    }
+
+    const key = rangeKey(selectedParagraph.chapterId, selectedParagraph.range);
+    const savedRange = selectedParagraph.range;
+    const savedChapterId = selectedParagraph.chapterId;
+    const savedParagraphIndex = selectedParagraph.paragraphIndex;
+
+    setParagraphSpeechLoadingKey(key);
+    setNotice('正在生成段落配音，首次使用会先初始化全书音色，可能较慢');
+    try {
+      const result = await api.paragraphSpeech({
+        chapterId: savedChapterId,
+        paragraphIndex: savedParagraphIndex,
+        targetSegment
+      });
+      setParagraphAudios((prev) => ({
+        ...prev,
+        [key]: { ...result, chapterId: savedChapterId, range: savedRange }
+      }));
+      setSelectedParagraph(null);
+      setNotice('段落配音已生成');
+      window.setTimeout(() => setNotice(''), 1800);
+      playParagraphAudio(key, result.audioUrl);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '段落配音生成失败');
+      window.setTimeout(() => setNotice(''), 2600);
+    } finally {
+      setParagraphSpeechLoadingKey(null);
+    }
+  }
+
+  async function generateParagraphImage() {
+    if (!selectedParagraph || paragraphImageLoadingKey) return;
+
+    const targetSegment = selectedParagraph.draft.trim();
+    if (!targetSegment) {
+      setNotice('目标段落不能为空');
+      window.setTimeout(() => setNotice(''), 1800);
+      return;
+    }
+
+    const key = rangeKey(selectedParagraph.chapterId, selectedParagraph.range);
+    const savedRange = selectedParagraph.range;
+    const savedChapterId = selectedParagraph.chapterId;
+    const savedParagraphIndex = selectedParagraph.paragraphIndex;
+
+    setParagraphImageLoadingKey(key);
+    setNotice('正在生成段落插图，首次使用会先初始化全书风格，可能较慢');
+    try {
+      const result = await api.paragraphImage({
+        chapterId: savedChapterId,
+        paragraphIndex: savedParagraphIndex,
+        targetSegment
+      });
+      setParagraphImages((prev) => ({
+        ...prev,
+        [key]: { ...result, chapterId: savedChapterId, range: savedRange }
+      }));
+      setSelectedParagraph(null);
+      setNotice('段落插图已生成');
+      window.setTimeout(() => setNotice(''), 1800);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '段落插图生成失败');
+      window.setTimeout(() => setNotice(''), 2600);
+    } finally {
+      setParagraphImageLoadingKey(null);
+    }
+  }
+
 
   async function askAssistant() {
     if (!question.trim() || !chapter) return;
@@ -830,6 +1156,7 @@ function ReaderPage({
     }
     setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
   }
+
 
   function addOrReplaceMediaAsset(asset?: MediaAsset) {
     if (!asset) return;
@@ -929,6 +1256,7 @@ function ReaderPage({
     }
   }
 
+
   async function generateSceneImage() {
     if (!chapter) return;
     setSceneLoading(true);
@@ -1011,7 +1339,8 @@ function ReaderPage({
         return prev;
       }
       setNotice(`已收入证物袋：“${clue.label}”`);
-      setBagOpen(true);
+      setContextTab('bag');
+      setContextOpen(true);
       setBagPulse(true);
       window.setTimeout(() => setBagPulse(false), 620);
       return [...prev, clueId];
@@ -1019,6 +1348,8 @@ function ReaderPage({
 
     window.setTimeout(() => setNotice(''), 1800);
   }
+
+
 
   function renderSegment(segment: TextSegment, index: number, paragraphIndex: number) {
     if (segment.type === 'dialogue') {
@@ -1066,29 +1397,145 @@ function ReaderPage({
           )}
         </span>
       );
+
     }
 
     if (segment.type === 'clue') {
-      const collected = collectedClueIds.includes(segment.clueId);
+      if (text.length !== segment.text.length) {
+        return <span key={`${segmentIndex}-${text}`}>{text}</span>;
+      }
+
+      if (collectedClueIds.includes(segment.clueId)) {
+        return <span key={segmentIndex}>{text}</span>;
+      }
+
       return (
         <button
-          key={index}
-          className={collected ? 'clue-segment collected' : 'clue-segment'}
+          key={segmentIndex}
+          className="clue-segment"
           onClick={() => collectClue(segment.clueId)}
           title="点击收入证物袋"
+          type="button"
         >
-          {segment.text}
-          <span className="clue-hint">{collected ? '已入袋' : '收入证物袋'}</span>
+          {text}
         </button>
       );
     }
 
-    return <span key={index}>{segment.text}</span>;
+    return <span key={`${segmentIndex}-${text}`}>{text}</span>;
+  }
+
+  function renderTextRange(paragraph: TextSegment[], start: number, end: number) {
+    if (start >= end) {
+      return [];
+    }
+
+    const nodes: React.ReactNode[] = [];
+    let offset = 0;
+
+    paragraph.forEach((segment, segmentIndex) => {
+      const segmentStart = offset;
+      const segmentEnd = offset + segment.text.length;
+      offset = segmentEnd;
+
+      if (segmentEnd <= start || segmentStart >= end) {
+        return;
+      }
+
+      const sliceStart = Math.max(0, start - segmentStart);
+      const sliceEnd = Math.min(segment.text.length, end - segmentStart);
+      const slice = segment.text.slice(sliceStart, sliceEnd);
+      const node = renderSegmentSlice(segment, segmentIndex, slice);
+
+      if (node) {
+        nodes.push(node);
+      }
+    });
+
+    return nodes;
+  }
+
+  function renderInlinePlayButton(mediaKey: string, audio: RangeMedia<ParagraphSpeech>) {
+    const isPlaying = playingAudioKey === mediaKey;
+
+    return (
+      <button
+        key={`play-${mediaKey}`}
+        type="button"
+        className={`inline-audio-play${isPlaying ? ' playing' : ''}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          toggleParagraphAudio(mediaKey, audio.audioUrl);
+        }}
+        aria-label={isPlaying ? '暂停配音' : '播放配音'}
+        title={isPlaying ? '暂停' : '播放配音'}
+      />
+    );
+  }
+
+  function renderParagraphWithMedia(paragraph: TextSegment[], paragraphIndex: number) {
+    type ParagraphInjection =
+      | { kind: 'audio'; offset: number; key: string; audio: RangeMedia<ParagraphSpeech> }
+      | { kind: 'image'; offset: number; key: string; image: RangeMedia<ParagraphImage> };
+
+    const injections: ParagraphInjection[] = [];
+
+    Object.entries(paragraphAudios).forEach(([key, entry]) => {
+      if (entry.chapterId === chapter.id && entry.range.startParagraphIndex === paragraphIndex) {
+        injections.push({ kind: 'audio', offset: entry.range.startOffset, key, audio: entry });
+      }
+    });
+
+    Object.entries(paragraphImages).forEach(([key, entry]) => {
+      if (entry.chapterId === chapter.id && entry.range.endParagraphIndex === paragraphIndex) {
+        injections.push({ kind: 'image', offset: entry.range.endOffset, key, image: entry });
+      }
+    });
+
+    injections.sort((left, right) => {
+      if (left.offset !== right.offset) {
+        return left.offset - right.offset;
+      }
+      return left.kind === 'audio' ? -1 : 1;
+    });
+
+    const nodes: React.ReactNode[] = [];
+    let position = 0;
+    const paragraphLength = paragraphToText(paragraph).length;
+
+    injections.forEach((injection) => {
+      nodes.push(...renderTextRange(paragraph, position, injection.offset));
+
+      if (injection.kind === 'audio') {
+        nodes.push(renderInlinePlayButton(injection.key, injection.audio));
+        position = injection.offset;
+        return;
+      }
+
+      nodes.push(
+        <img
+          key={`image-${injection.key}`}
+          className="inline-selection-image"
+          src={injection.image.imageUrl}
+          alt=""
+        />
+      );
+      position = injection.offset;
+    });
+
+    nodes.push(...renderTextRange(paragraph, position, paragraphLength));
+    return nodes;
   }
 
   if (!chapter) {
     return <main className="loading">正在加载阅读桌...</main>;
   }
+
+  const currentRangeKey = selectedParagraph
+    ? rangeKey(selectedParagraph.chapterId, selectedParagraph.range)
+    : null;
+  const imageGenerating = Boolean(currentRangeKey && paragraphImageLoadingKey === currentRangeKey);
+  const speechGenerating = Boolean(currentRangeKey && paragraphSpeechLoadingKey === currentRangeKey);
 
   return (
     <section className="app-shell">
@@ -1148,8 +1595,7 @@ function ReaderPage({
             >
               阅读设置
             </button>
-            <button onClick={() => window.speechSynthesis.cancel()}>停止语音</button>
-            <button onClick={() => setBagOpen(true)}>证物袋</button>
+            <button onClick={stopParagraphAudio}>停止语音</button>
           </div>
         </div>
 
@@ -1214,9 +1660,103 @@ function ReaderPage({
 
         <article
           key={chapter.id}
-          className="book-page"
+          ref={bookPageRef}
+          className={selectedParagraph ? 'book-page selecting' : 'book-page'}
           style={{ '--reader-font-size': `${fontSize}px` } as React.CSSProperties}
         >
+          {chapter.paragraphs.map((paragraph, paragraphIndex) => {
+            const key = paragraphKey(paragraphIndex);
+
+            return (
+              <p
+                key={key}
+                className="reader-paragraph"
+                data-paragraph-index={paragraphIndex}
+                onContextMenu={(event) => handleParagraphContextMenu(event, paragraph, paragraphIndex)}
+                onPointerDown={(event) => handleParagraphPointerDown(event, paragraph, paragraphIndex)}
+                onPointerUp={clearLongPressTimer}
+                onPointerCancel={clearLongPressTimer}
+                onPointerLeave={clearLongPressTimer}
+                title="长按或右键选取段落，拖动两端符号调整范围"
+              >
+                {renderParagraphWithMedia(paragraph, paragraphIndex)}
+              </p>
+            );
+          })}
+
+          {selectedParagraph && selectionLayout && (
+            <div className="text-selection-layer" aria-hidden="true">
+              {selectionLayout.rects.map((rect, index) => (
+                <span
+                  key={`${rect.top}-${rect.left}-${index}`}
+                  className="selection-highlight"
+                  style={{
+                    top: `${rect.top}px`,
+                    left: `${rect.left}px`,
+                    width: `${rect.width}px`,
+                    height: `${rect.height}px`
+                  }}
+                />
+              ))}
+              <button
+                type="button"
+                className="selection-handle selection-handle-start"
+                style={{
+                  top: `${selectionLayout.startHandle.y}px`,
+                  left: `${selectionLayout.startHandle.x}px`,
+                  height: `${selectionLayout.startHandle.height}px`
+                }}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  setDraggingHandle('start');
+                }}
+                aria-label="拖动调整选取起点"
+              />
+              <button
+                type="button"
+                className="selection-handle selection-handle-end"
+                style={{
+                  top: `${selectionLayout.endHandle.y}px`,
+                  left: `${selectionLayout.endHandle.x}px`,
+                  height: `${selectionLayout.endHandle.height}px`
+                }}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  setDraggingHandle('end');
+                }}
+                aria-label="拖动调整选取终点"
+              />
+              {!draggingHandle && (
+                <div
+                  className="selection-toolbar"
+                  style={{
+                    top: `${selectionLayout.toolbar.top}px`,
+                    left: `${selectionLayout.toolbar.left}px`,
+                    width: `${selectionLayout.toolbar.width}px`
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={generateParagraphImage}
+                    disabled={imageGenerating || speechGenerating}
+                  >
+                    {imageGenerating ? '生成中...' : '生成插图'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generateParagraphSpeech}
+                    disabled={imageGenerating || speechGenerating}
+                  >
+                    {speechGenerating ? '生成中...' : '生成配音'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {chapter.paragraphs.map((paragraph, paragraphIndex) => (
             <React.Fragment key={paragraphIndex}>
               <p>
@@ -1249,35 +1789,47 @@ function ReaderPage({
         </footer>
       </section>
 
-      <aside className="right-rail">
+      <aside className={contextOpen ? 'right-rail open' : 'right-rail'} aria-label="阅读辅助浮窗">
         <div className="context-tabs" role="tablist" aria-label="阅读辅助">
           <button
             type="button"
             role="tab"
-            className={contextTab === 'scene' ? 'active' : ''}
-            onClick={() => setContextTab('scene')}
+            className={contextOpen && contextTab === 'scene' ? 'active' : ''}
+            aria-expanded={contextOpen && contextTab === 'scene'}
+            onClick={() => toggleContextPanel('scene')}
           >
             现场
           </button>
           <button
             type="button"
             role="tab"
-            className={contextTab === 'clues' ? 'active' : ''}
-            onClick={() => setContextTab('clues')}
-          >
-            证物
-          </button>
-          <button
-            type="button"
-            role="tab"
-            className={contextTab === 'ai' ? 'active' : ''}
-            onClick={() => setContextTab('ai')}
+            className={contextOpen && contextTab === 'ai' ? 'active' : ''}
+            aria-expanded={contextOpen && contextTab === 'ai'}
+            onClick={() => toggleContextPanel('ai')}
           >
             助手
+          </button>          <button
+            type="button"
+            role="tab"
+            className={contextOpen && contextTab === 'bag' ? 'active' : ''}
+            aria-expanded={contextOpen && contextTab === 'bag'}
+            onClick={() => toggleContextPanel('bag')}
+          >
+            证物袋
+            <span>{collectedClues.length}</span>
           </button>
         </div>
 
-        {contextTab === 'scene' && (
+        {contextOpen && (
+          <div className="context-popover">
+            <div className="context-popover-header">
+              <strong>{contextTab === 'scene' ? '现场' : contextTab === 'ai' ? '助手' : '证物袋'}</strong>
+              <button type="button" onClick={() => setContextOpen(false)} aria-label="关闭阅读辅助浮窗">
+                关闭
+              </button>
+            </div>
+
+            {contextTab === 'scene' && (
           <section className="scene-card context-card">
             <div className="context-heading">
               <h2>现场图</h2>
@@ -1371,32 +1923,7 @@ function ReaderPage({
           </section>
         )}
 
-        {contextTab === 'clues' && (
-          <section className="clue-board context-card">
-            <div className="context-heading">
-                  <h2>本章证物</h2>
-              <span>{chapterClues.length} 项</span>
-            </div>
-            <div className="clue-board-list">
-              {chapterClues.length === 0 ? (
-                <p className="empty-bag">这一章暂时没有可收入证物袋的细节。</p>
-              ) : (
-                chapterClues.map((clue) => (
-                  <article
-                    key={clue.id}
-                    className={collectedClueIds.includes(clue.id) ? 'clue-card collected' : 'clue-card'}
-                  >
-                    <span>{clue.type}</span>
-                    <h3>{clue.label}</h3>
-                    <p>{clue.description}</p>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
-        )}
-
-        {contextTab === 'ai' && (
+            {contextTab === 'ai' && (
           <section className="chat-card context-card">
             <div className="context-heading">
               <h2>案情助手</h2>
@@ -1422,35 +1949,32 @@ function ReaderPage({
             </div>
           </section>
         )}
+
+            {contextTab === 'bag' && (
+              <section className="bag-card context-card">
+                <div className="context-heading">
+                  <h2>证物袋</h2>
+                  <span>{collectedClues.length} 件</span>
+                </div>
+
+                {collectedClues.length === 0 ? (
+                  <p className="empty-bag">还没有证物。阅读正文时点击可疑细节即可收入证物袋。</p>
+                ) : (
+                  <div className="clue-board-list">
+                    {collectedClues.map((clue) => (
+                      <article key={clue.id} className="clue-card">
+                        <span>{clue.type}</span>
+                        <h3>{clue.label}</h3>
+                        <p>{clue.description}</p>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}          </div>
+        )}
       </aside>
-
       {notice && <div className="toast">{notice}</div>}
-
-      <button className={bagPulse ? 'floating-bag pulse' : 'floating-bag'} onClick={() => setBagOpen((open) => !open)}>
-        <span className="bag-icon">EV</span>
-        <span>{collectedClues.length} 件</span>
-      </button>
-
-      {bagOpen && (
-        <div className="bag-panel">
-          <div className="bag-header">
-            <h2>证物袋</h2>
-            <button onClick={() => setBagOpen(false)}>关闭</button>
-          </div>
-
-          {collectedClues.length === 0 ? (
-            <p className="empty-bag">还没有证物。阅读正文时点击可疑细节即可收入证物袋。</p>
-          ) : (
-            collectedClues.map((clue) => (
-              <article key={clue.id} className="clue-card">
-                <span>{clue.type}</span>
-                <h3>{clue.label}</h3>
-                <p>{clue.description}</p>
-              </article>
-            ))
-          )}
-        </div>
-      )}
     </section>
   );
 }

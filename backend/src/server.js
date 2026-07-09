@@ -1,7 +1,12 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import crypto from 'node:crypto';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 import { chapters, clues } from './data.js';
 import { createMediaAsset, deleteMediaAsset, ensureSchema, getMediaAsset, listMediaAssets } from './db.js';
 import { mediaRoot, removeStoredMedia, saveAudioDataUrl, saveImageFromUrl } from './media-store.js';
@@ -12,6 +17,8 @@ import {
   generateImage,
   synthesizeSpeech
 } from './services/minimax.js';
+import { generateParagraphIllustration } from './services/paragraphIllustration.js';
+import { generateParagraphSpeech, getSpeechVoicesStatus } from './services/paragraphSpeech.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -389,6 +396,83 @@ app.post('/api/ai/image', optionalAuth, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message || 'MiniMax image generation failed' });
+  }
+});
+
+app.post('/api/ai/paragraph-image', async (req, res) => {
+  try {
+    const { chapterId, paragraphIndex, targetSegment } = req.body;
+    const safeChapterId = String(chapterId ?? '').trim();
+    const safeParagraphIndex = Number(paragraphIndex);
+    const safeTargetSegment = String(targetSegment ?? '').trim();
+
+    if (!safeChapterId) {
+      res.status(400).json({ error: 'chapterId is required' });
+      return;
+    }
+
+    if (!Number.isInteger(safeParagraphIndex) || safeParagraphIndex < 0) {
+      res.status(400).json({ error: 'paragraphIndex must be a non-negative integer' });
+      return;
+    }
+
+    if (!safeTargetSegment) {
+      res.status(400).json({ error: 'targetSegment is required' });
+      return;
+    }
+
+    const result = await generateParagraphIllustration({
+      chapterId: safeChapterId,
+      paragraphIndex: safeParagraphIndex,
+      targetSegment: safeTargetSegment
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'MiniMax paragraph image generation failed' });
+  }
+});
+
+app.get('/api/ai/speech-voices', async (_req, res) => {
+  try {
+    const result = await getSpeechVoicesStatus();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Speech voices status failed' });
+  }
+});
+
+app.post('/api/ai/paragraph-speech', async (req, res) => {
+  try {
+    const { chapterId, paragraphIndex, targetSegment } = req.body;
+    const safeChapterId = String(chapterId ?? '').trim();
+    const safeParagraphIndex = Number(paragraphIndex);
+    const safeTargetSegment = String(targetSegment ?? '').trim();
+
+    if (!safeChapterId) {
+      res.status(400).json({ error: 'chapterId is required' });
+      return;
+    }
+
+    if (!Number.isInteger(safeParagraphIndex) || safeParagraphIndex < 0) {
+      res.status(400).json({ error: 'paragraphIndex must be a non-negative integer' });
+      return;
+    }
+
+    if (!safeTargetSegment) {
+      res.status(400).json({ error: 'targetSegment is required' });
+      return;
+    }
+
+    const result = await generateParagraphSpeech({
+      chapterId: safeChapterId,
+      paragraphIndex: safeParagraphIndex,
+      targetSegment: safeTargetSegment
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'MiniMax paragraph speech generation failed' });
   }
 });
 
