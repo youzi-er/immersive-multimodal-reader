@@ -275,7 +275,8 @@ app.post('/api/ai/chat', async (req, res) => {
     const context = chapter.paragraphs
       .flat()
       .map((segment) => segment.text)
-      .join('\n');
+      .join('\n')
+      .slice(0, Number(process.env.MINIMAX_CHAT_CONTEXT_LIMIT || 6000));
     const clueLabels = clues
       .filter((clue) => collectedClueIds.includes(clue.id))
       .map((clue) => clue.label);
