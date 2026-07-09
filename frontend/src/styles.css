@@ -1533,11 +1533,27 @@ button:disabled {
   box-shadow: 5px 0 0 #8b5a2f;
 }
 
+.inline-audio-play.library-media {
+  border-style: dashed;
+  border-color: #245159;
+  box-shadow: 0 0 0 4px rgba(36, 81, 89, 0.08);
+}
+
+.inline-audio-play.library-media::before {
+  border-left-color: #245159;
+}
+
 .inline-selection-image {
   display: block;
   width: min(100%, 480px);
   margin: 10px auto 6px;
   border-radius: 10px;
+}
+
+.inline-selection-image.library-media {
+  border: 2px dashed rgba(36, 81, 89, 0.58);
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.68);
 }
 
 .dialogue-wrap {
@@ -2261,6 +2277,13 @@ button:disabled {
   padding: 14px;
 }
 
+.clue-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .clue-card.collected {
   border-color: rgba(72, 122, 88, 0.26);
   background: rgba(241, 248, 239, 0.74);
@@ -2270,6 +2293,22 @@ button:disabled {
   color: #245159;
   font-size: 13px;
   font-weight: 700;
+}
+
+.clue-card-header button {
+  flex: 0 0 auto;
+  border: 1px solid rgba(36, 81, 89, 0.18);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 5px 8px;
+  color: #245159;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.clue-card-header button:hover {
+  background: #245159;
+  color: white;
 }
 
 .clue-card h3 {
