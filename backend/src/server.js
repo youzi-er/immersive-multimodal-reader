@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import crypto from 'node:crypto';
 import { chapters, clues } from './data.js';
+import { createMediaAsset, deleteMediaAsset, ensureSchema, getMediaAsset, listMediaAssets } from './db.js';
+import { mediaRoot, removeStoredMedia, saveAudioDataUrl, saveImageFromUrl } from './media-store.js';
 import {
   buildSherlockImagePrompt,
   chatWithMiniMax,
@@ -28,6 +30,7 @@ const sessions = new Map();
 
 app.use(cors());
 app.use(express.json());
+app.use('/media', express.static(mediaRoot));
 
 function publicUser(user) {
   return {
@@ -51,6 +54,41 @@ function requireAuth(req, res, next) {
 
   req.user = user;
   next();
+}
+
+function optionalAuth(req, _res, next) {
+  const authHeader = req.headers.authorization ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const userId = sessions.get(token);
+  const user = users.find((item) => item.id === userId);
+
+  if (user) {
+    req.user = user;
+  }
+
+  next();
+}
+
+function normalizeInteger(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  const number = Number(value);
+  return Number.isInteger(number) ? number : null;
+}
+
+function normalizeMediaPosition(body) {
+  return {
+    articleId: String(body.articleId || 'speckled-band'),
+    chapterId: body.chapterId ? String(body.chapterId) : null,
+    paragraphIndex: normalizeInteger(body.paragraphIndex),
+    segmentIndex: normalizeInteger(body.segmentIndex)
+  };
+}
+
+function currentUserId(req) {
+  return req.user?.id || 'anonymous';
 }
 
 app.get('/api/health', (_req, res) => {
@@ -138,6 +176,78 @@ app.get('/api/clues', (_req, res) => {
   res.json(clues);
 });
 
+app.get('/api/media/assets', async (req, res) => {
+  try {
+    const { articleId, chapterId, mediaType } = req.query;
+
+    const assets = await listMediaAssets({
+      articleId: articleId ? String(articleId) : undefined,
+      chapterId: chapterId ? String(chapterId) : undefined,
+      mediaType: mediaType ? String(mediaType) : undefined
+    });
+
+    res.json({ assets });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to list media assets' });
+  }
+});
+
+app.post('/api/media/assets', optionalAuth, async (req, res) => {
+  try {
+    const { mediaType, url, filePath, prompt, sourceText, provider, model, metadata } = req.body;
+
+    if (!['image', 'audio'].includes(mediaType)) {
+      res.status(400).json({ error: 'mediaType must be image or audio' });
+      return;
+    }
+
+    if (!url || !filePath) {
+      res.status(400).json({ error: 'url and filePath are required' });
+      return;
+    }
+
+    const asset = await createMediaAsset({
+      id: crypto.randomUUID(),
+      ...normalizeMediaPosition(req.body),
+      mediaType,
+      url,
+      filePath,
+      prompt,
+      sourceText,
+      provider: provider || 'manual',
+      model,
+      userId: currentUserId(req),
+      metadata
+    });
+
+    res.status(201).json({ asset });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to create media asset' });
+  }
+});
+
+app.delete('/api/media/assets/:id', requireAuth, async (req, res) => {
+  try {
+    const asset = await getMediaAsset(req.params.id);
+
+    if (!asset) {
+      res.status(404).json({ error: 'Media asset not found' });
+      return;
+    }
+
+    if (asset.userId !== req.user.id) {
+      res.status(403).json({ error: 'You can only delete your own media asset' });
+      return;
+    }
+
+    await deleteMediaAsset(req.params.id);
+    await removeStoredMedia(asset.filePath);
+    res.json({ ok: true, asset });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to delete media asset' });
+  }
+});
+
 app.post('/api/chat', (req, res) => {
   const { question, chapterId } = req.body;
   const chapter = chapters.find((item) => item.id === chapterId) ?? chapters[0];
@@ -182,7 +292,7 @@ app.post('/api/ai/chat', async (req, res) => {
   }
 });
 
-app.post('/api/ai/tts', async (req, res) => {
+app.post('/api/ai/tts', optionalAuth, async (req, res) => {
   try {
     const { text, speaker, voiceId, speed = 1, pitch = 0 } = req.body;
 
@@ -203,13 +313,41 @@ app.post('/api/ai/tts', async (req, res) => {
       pitch
     });
 
-    res.json(result);
+    const saved = await saveAudioDataUrl(result.audioUrl);
+    const asset = await createMediaAsset({
+      id: crypto.randomUUID(),
+      ...normalizeMediaPosition(req.body),
+      mediaType: 'audio',
+      url: saved.url,
+      filePath: saved.filePath,
+      prompt: speaker ? `${speaker}: ${text}` : text,
+      sourceText: text,
+      provider: 'minimax',
+      model: process.env.MINIMAX_TTS_MODEL || 'speech-2.8-hd',
+      userId: currentUserId(req),
+      metadata: {
+        speaker: speaker || null,
+        voiceId: voiceId || voiceMap[speaker] || process.env.MINIMAX_DEFAULT_VOICE_ID || null,
+        speed,
+        pitch,
+        durationMs: result.durationMs,
+        traceId: result.traceId
+      }
+    });
+
+    res.json({
+      ...result,
+      audioUrl: saved.url,
+      sourceAudioUrl: result.audioUrl,
+      mediaAssetId: asset.id,
+      asset
+    });
   } catch (error) {
     res.status(500).json({ error: error.message || 'MiniMax tts failed' });
   }
 });
 
-app.post('/api/ai/image', async (req, res) => {
+app.post('/api/ai/image', optionalAuth, async (req, res) => {
   try {
     const { prompt, chapterId } = req.body;
     const chapter = chapters.find((item) => item.id === chapterId) ?? chapters[0];
@@ -222,7 +360,32 @@ app.post('/api/ai/image', async (req, res) => {
       });
 
     const result = await generateImage({ prompt: finalPrompt, aspectRatio: '16:9' });
-    res.json({ ...result, prompt: finalPrompt });
+    const saved = await saveImageFromUrl(result.imageUrl);
+    const asset = await createMediaAsset({
+      id: crypto.randomUUID(),
+      ...normalizeMediaPosition(req.body),
+      mediaType: 'image',
+      url: saved.url,
+      filePath: saved.filePath,
+      prompt: finalPrompt,
+      sourceText: req.body.sourceText || null,
+      provider: 'minimax',
+      model: process.env.MINIMAX_IMAGE_MODEL || 'image-01',
+      userId: currentUserId(req),
+      metadata: {
+        sourceImageUrl: result.imageUrl,
+        traceId: result.traceId
+      }
+    });
+
+    res.json({
+      ...result,
+      imageUrl: saved.url,
+      sourceImageUrl: result.imageUrl,
+      mediaAssetId: asset.id,
+      asset,
+      prompt: finalPrompt
+    });
   } catch (error) {
     res.status(500).json({ error: error.message || 'MiniMax image generation failed' });
   }
