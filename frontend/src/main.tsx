@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
@@ -62,6 +62,22 @@ type ChatMessage = {
 type GeneratedSceneImage = {
   imageUrl: string;
   prompt: string;
+  asset?: MediaAsset;
+};
+
+type MediaAsset = {
+  id: string;
+  articleId: string;
+  chapterId: string | null;
+  paragraphIndex: number | null;
+  segmentIndex: number | null;
+  mediaType: 'image' | 'audio';
+  url: string;
+  prompt: string | null;
+  sourceText: string | null;
+  userId: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
 };
 
 type ActiveDialogue = {
@@ -116,16 +132,41 @@ const api = {
     });
     return data.answer;
   },
-  tts: async (payload: { text: string; speaker: string; speed: number; pitch: number }) =>
-    requestJson<{ audioUrl: string; durationMs: number | null; traceId: string | null }>('/api/ai/tts', {
+  tts: async (payload: {
+    text: string;
+    speaker: string;
+    speed: number;
+    pitch: number;
+    articleId: string;
+    chapterId: string;
+    paragraphIndex: number;
+    segmentIndex: number;
+  }) =>
+    requestJson<{
+      audioUrl: string;
+      durationMs: number | null;
+      traceId: string | null;
+      mediaAssetId?: string;
+      asset?: MediaAsset;
+    }>('/api/ai/tts', {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
-  image: async (chapterId: string) =>
+  image: async (payload: {
+    chapterId: string;
+    paragraphIndex?: number;
+    segmentIndex?: number;
+    prompt?: string;
+    sourceText?: string;
+  }) =>
     requestJson<GeneratedSceneImage>('/api/ai/image', {
       method: 'POST',
-      body: JSON.stringify({ chapterId })
+      body: JSON.stringify({ articleId: 'speckled-band', ...payload })
     }),
+  mediaAssets: (chapterId: string) =>
+    requestJson<{ assets: MediaAsset[] }>(
+      `/api/media/assets?articleId=speckled-band&chapterId=${encodeURIComponent(chapterId)}`
+    ),
   register: (form: { username: string; password: string; displayName: string }) =>
     requestJson<{ token: string; user: User }>('/api/auth/register', {
       method: 'POST',
@@ -719,8 +760,13 @@ function ReaderPage({
   const [sceneLoading, setSceneLoading] = useState(false);
   const [generatedSceneImage, setGeneratedSceneImage] = useState<GeneratedSceneImage | null>(null);
   const [voiceLoadingId, setVoiceLoadingId] = useState<string | null>(null);
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const [imageLoadingParagraph, setImageLoadingParagraph] = useState<number | 'scene' | null>(null);
+  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
   const [sceneDiagram, setSceneDiagram] = useState<SceneDiagram>('layout');
   const [bagPulse, setBagPulse] = useState(false);
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const sceneVariant =
     chapter?.id === 'speckled-band-2' ? 'manor' : chapter?.id === 'speckled-band-3' ? 'night' : 'baker';
 
@@ -729,8 +775,47 @@ function ReaderPage({
     setSceneGenerated(false);
     setGeneratedSceneImage(null);
     setSceneDiagram('layout');
+    activeAudioRef.current?.pause();
+    activeAudioRef.current = null;
+    setPlayingVoiceId(null);
     window.speechSynthesis.cancel();
   }, [chapterId]);
+
+  useEffect(() => {
+    if (!chapter?.id) return;
+
+    let cancelled = false;
+    setMediaLoading(true);
+    api
+      .mediaAssets(chapter.id)
+      .then(({ assets }) => {
+        if (cancelled) return;
+        setMediaAssets(assets);
+        const sceneImage = assets.find((asset) => asset.mediaType === 'image' && asset.paragraphIndex === null);
+        if (sceneImage) {
+          setGeneratedSceneImage({
+            imageUrl: sceneImage.url,
+            prompt: sceneImage.prompt || chapter.scene.imagePrompt,
+            asset: sceneImage
+          });
+          setSceneGenerated(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMediaAssets([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setMediaLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [chapter]);
 
   async function askAssistant() {
     if (!question.trim() || !chapter) return;
@@ -746,24 +831,96 @@ function ReaderPage({
     setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
   }
 
-  async function speakDialogue(dialogueId: string, speaker: string, text: string, voice: VoiceConfig) {
+  function addOrReplaceMediaAsset(asset?: MediaAsset) {
+    if (!asset) return;
+    setMediaAssets((prev) => [asset, ...prev.filter((item) => item.id !== asset.id)]);
+  }
+
+  function paragraphText(paragraphIndex: number) {
+    return chapter.paragraphs[paragraphIndex]?.map((segment) => segment.text).join('') || '';
+  }
+
+  function findMediaAsset(mediaType: 'image' | 'audio', paragraphIndex: number | null, segmentIndex: number | null) {
+    return mediaAssets.find(
+      (asset) =>
+        asset.mediaType === mediaType &&
+        asset.paragraphIndex === paragraphIndex &&
+        asset.segmentIndex === segmentIndex
+    );
+  }
+
+  function stopCurrentVoice() {
+    activeAudioRef.current?.pause();
+    activeAudioRef.current = null;
+    window.speechSynthesis.cancel();
+    setPlayingVoiceId(null);
+  }
+
+  async function playVoice(dialogueId: string, audioUrl: string) {
+    stopCurrentVoice();
+    const audio = new Audio(audioUrl);
+    activeAudioRef.current = audio;
+    setPlayingVoiceId(dialogueId);
+    audio.onended = () => {
+      if (activeAudioRef.current === audio) {
+        activeAudioRef.current = null;
+        setPlayingVoiceId(null);
+      }
+    };
+    audio.onerror = () => {
+      if (activeAudioRef.current === audio) {
+        activeAudioRef.current = null;
+        setPlayingVoiceId(null);
+      }
+    };
+    await audio.play();
+  }
+
+  async function speakDialogue(
+    dialogueId: string,
+    speaker: string,
+    text: string,
+    voice: VoiceConfig,
+    paragraphIndex: number,
+    segmentIndex: number
+  ) {
+    if (playingVoiceId === dialogueId) {
+      stopCurrentVoice();
+      return;
+    }
+
     setVoiceLoadingId(dialogueId);
     try {
+      const existing = findMediaAsset('audio', paragraphIndex, segmentIndex);
+      if (existing) {
+        await playVoice(dialogueId, existing.url);
+        setNotice('已播放媒体库中的角色配音');
+        window.setTimeout(() => setNotice(''), 1600);
+        return;
+      }
+
       const result = await api.tts({
         speaker,
         text,
         speed: voice.rate,
-        pitch: Math.round((voice.pitch - 1) * 4)
+        pitch: Math.round((voice.pitch - 1) * 4),
+        articleId: 'speckled-band',
+        chapterId: chapter.id,
+        paragraphIndex,
+        segmentIndex
       });
-      const audio = new Audio(result.audioUrl);
-      window.speechSynthesis.cancel();
-      await audio.play();
+      addOrReplaceMediaAsset(result.asset);
+      await playVoice(dialogueId, result.audioUrl);
+      setNotice('已生成并保存角色配音');
+      window.setTimeout(() => setNotice(''), 1600);
     } catch (error) {
       const utterance = new SpeechSynthesisUtterance(`${speaker}说：${text}`);
       utterance.lang = 'zh-CN';
       utterance.pitch = voice.pitch;
       utterance.rate = voice.rate;
-      window.speechSynthesis.cancel();
+      stopCurrentVoice();
+      utterance.onend = () => setPlayingVoiceId(null);
+      setPlayingVoiceId(dialogueId);
       window.speechSynthesis.speak(utterance);
       setNotice('MiniMax 配音失败，已使用浏览器语音兜底');
       window.setTimeout(() => setNotice(''), 2200);
@@ -775,9 +932,11 @@ function ReaderPage({
   async function generateSceneImage() {
     if (!chapter) return;
     setSceneLoading(true);
+    setImageLoadingParagraph('scene');
     try {
-      const result = await api.image(chapter.id);
+      const result = await api.image({ chapterId: chapter.id });
       setGeneratedSceneImage(result);
+      addOrReplaceMediaAsset(result.asset);
       setSceneGenerated(true);
     } catch (error) {
       setSceneGenerated(true);
@@ -785,7 +944,61 @@ function ReaderPage({
       window.setTimeout(() => setNotice(''), 2200);
     } finally {
       setSceneLoading(false);
+      setImageLoadingParagraph(null);
     }
+  }
+
+  async function generateParagraphImage(paragraphIndex: number) {
+    if (!chapter) return;
+
+    const sourceText = paragraphText(paragraphIndex);
+    const prompt = [
+      'cinematic realistic detective novel illustration, Victorian mystery atmosphere, no text, no watermark,',
+      `chapter: ${chapter.title}.`,
+      `scene from this paragraph: ${sourceText.slice(0, 360)}`
+    ].join(' ');
+
+    setImageLoadingParagraph(paragraphIndex);
+    try {
+      const result = await api.image({
+        chapterId: chapter.id,
+        paragraphIndex,
+        prompt,
+        sourceText
+      });
+      addOrReplaceMediaAsset(result.asset);
+      setNotice('已生成并保存段落插图');
+      window.setTimeout(() => setNotice(''), 1800);
+    } catch (error) {
+      setNotice('段落插图生成失败，请稍后重试');
+      window.setTimeout(() => setNotice(''), 2200);
+    } finally {
+      setImageLoadingParagraph(null);
+    }
+  }
+
+  function renderParagraphMedia(paragraphIndex: number) {
+    const imageAsset = findMediaAsset('image', paragraphIndex, null);
+
+    if (imageAsset) {
+      return (
+        <figure className="paragraph-media">
+          <img src={imageAsset.url} alt={imageAsset.prompt || '段落插图'} />
+          <figcaption>媒体库插图 · {imageAsset.userId === user?.id ? '由你生成' : '团队生成'}</figcaption>
+        </figure>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        className="paragraph-media-placeholder"
+        onClick={() => generateParagraphImage(paragraphIndex)}
+        disabled={imageLoadingParagraph === paragraphIndex}
+      >
+        {imageLoadingParagraph === paragraphIndex ? '正在生成插图...' : '+ 为这一段生成插图'}
+      </button>
+    );
   }
 
   function collectClue(clueId: string) {
@@ -834,11 +1047,18 @@ function ReaderPage({
             <span className="voice-popover">
               <button
                 type="button"
-                onClick={() => speakDialogue(dialogueId, segment.speaker, segment.text, segment.voice)}
+                onClick={() =>
+                  speakDialogue(dialogueId, segment.speaker, segment.text, segment.voice, paragraphIndex, index)
+                }
                 disabled={voiceLoadingId === dialogueId}
               >
                 {voiceLoadingId === dialogueId ? '生成中' : '播放'}
               </button>
+              {playingVoiceId === dialogueId && (
+                <button type="button" className="quiet" onClick={stopCurrentVoice}>
+                  停止
+                </button>
+              )}
               <button type="button" className="quiet" onClick={() => setActiveDialogue(null)}>
                 收起
               </button>
@@ -998,11 +1218,14 @@ function ReaderPage({
           style={{ '--reader-font-size': `${fontSize}px` } as React.CSSProperties}
         >
           {chapter.paragraphs.map((paragraph, paragraphIndex) => (
-            <p key={paragraphIndex}>
-              {paragraph.map((segment, segmentIndex) =>
-                renderSegment(segment, segmentIndex, paragraphIndex)
-              )}
-            </p>
+            <React.Fragment key={paragraphIndex}>
+              <p>
+                {paragraph.map((segment, segmentIndex) =>
+                  renderSegment(segment, segmentIndex, paragraphIndex)
+                )}
+              </p>
+              {paragraphIndex % 3 === 0 && renderParagraphMedia(paragraphIndex)}
+            </React.Fragment>
           ))}
         </article>
 

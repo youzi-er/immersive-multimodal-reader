@@ -1150,6 +1150,53 @@ button:disabled {
   margin: 0 0 18px;
 }
 
+.paragraph-media,
+.paragraph-media-placeholder {
+  width: min(100%, 620px);
+  margin: 8px auto 24px;
+}
+
+.paragraph-media {
+  overflow: hidden;
+  border: 1px solid rgba(36, 81, 89, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 16px 36px rgba(54, 41, 29, 0.12);
+}
+
+.paragraph-media img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.paragraph-media figcaption {
+  padding: 8px 12px;
+  color: #5c6873;
+  font-family: Inter, "PingFang SC", sans-serif;
+  font-size: 12px;
+}
+
+.paragraph-media-placeholder {
+  display: block;
+  border: 1px dashed rgba(36, 81, 89, 0.32);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(36, 81, 89, 0.08), transparent 48%),
+    rgba(255, 255, 255, 0.42);
+  padding: 18px;
+  color: #245159;
+  font-family: Inter, "PingFang SC", sans-serif;
+  font-size: 14px;
+  text-align: center;
+}
+
+.paragraph-media-placeholder:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .dialogue-wrap {
   position: relative;
   display: inline;
