@@ -1,9 +1,11 @@
+
 const MINIMAX_API_BASE = (process.env.MINIMAX_API_BASE || 'https://api.minimaxi.com').replace(/\/$/, '');
 const MAX_API_PROMPT_CHARS = 1500;
 const RETRYABLE_STATUS_CODES = new Set([1002]);
 const VALID_IMAGE_MODELS = new Set(['image-01', 'image-01-live']);
 const VALID_ASPECT_RATIOS = new Set(['1:1', '16:9', '4:3', '3:2', '2:3', '3:4', '9:16', '21:9']);
 const VALID_RESPONSE_FORMATS = new Set(['url', 'base64']);
+
 
 function getApiKey() {
   const apiKey = process.env.MINIMAX_API_KEY;
@@ -28,14 +30,28 @@ function parseMiniMaxError(data, httpStatus) {
 }
 
 async function requestMiniMax(path, body) {
-  const response = await fetch(`${MINIMAX_API_BASE}${path}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${getApiKey()}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), MINIMAX_TIMEOUT_MS);
+  let response;
+
+  try {
+    response = await fetch(`${MINIMAX_API_BASE}${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${getApiKey()}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`MiniMax request timed out after ${MINIMAX_TIMEOUT_MS}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const data = await response.json().catch(() => ({}));
 
