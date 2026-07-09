@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bookMeta, getBookText, getParagraphContext } from '../data.js';
@@ -12,6 +12,8 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROMPTS_DIR = path.resolve(__dirname, '../prompts');
+const CACHE_DIR = path.resolve(__dirname, '../../cache');
+const DEBUG_LOG_PATH = path.resolve(__dirname, '../../../debug-d022cd.log');
 
 const MAX_PROMPT_CHARS = 1400;
 const MAX_PHASE2_ATTEMPTS = 3;
@@ -56,6 +58,40 @@ async function loadPrompt(name) {
   return readFile(path.join(PROMPTS_DIR, name), 'utf8');
 }
 
+function styleCachePath() {
+  return path.join(CACHE_DIR, `${bookMeta.id}-style.json`);
+}
+
+function debugLog(location, message, data, hypothesisId, runId = 'image-trace') {
+  const payload = {
+    sessionId: 'd022cd',
+    runId,
+    location,
+    message,
+    data,
+    hypothesisId,
+    timestamp: Date.now()
+  };
+  appendFile(DEBUG_LOG_PATH, `${JSON.stringify(payload)}\n`).catch(() => {});
+}
+
+async function loadStyleCacheFromDisk() {
+  try {
+    const raw = await readFile(styleCachePath(), 'utf8');
+    return JSON.parse(raw);
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function saveStyleCacheToDisk(style) {
+  await mkdir(CACHE_DIR, { recursive: true });
+  await writeFile(styleCachePath(), JSON.stringify(style, null, 2), 'utf8');
+}
+
 function validatePhase1Output(data) {
   assertRequiredFields(data, PHASE1_REQUIRED, '阶段一输出');
   if (typeof data.style_profile_cn !== 'object' || data.style_profile_cn === null) {
@@ -75,11 +111,23 @@ async function buildBookStyle() {
   }
 
   const system = await loadPrompt('phase1-system.md');
+  debugLog(
+    'paragraphIllustration.js:buildBookStyle',
+    'image phase1 prompt sent',
+    { systemPrompt: system, novelTextLength: novelText.length },
+    'I1-send'
+  );
   const result = await callMessagesApiForJsonWithRetry({
     system,
     user: novelText,
     maxTokens: 1600
   });
+  debugLog(
+    'paragraphIllustration.js:buildBookStyle',
+    'image phase1 raw response',
+    { raw: result },
+    'I1-recv'
+  );
   validatePhase1Output(result);
 
   return {
@@ -95,10 +143,17 @@ async function ensureBookStyle() {
     return { style: styleCache, initializedNow: false };
   }
 
+  const cached = await loadStyleCacheFromDisk();
+  if (cached) {
+    styleCache = cached;
+    return { style: cached, initializedNow: false };
+  }
+
   if (!stylePromise) {
     stylePromise = buildBookStyle()
-      .then((style) => {
+      .then(async (style) => {
         styleCache = style;
+        await saveStyleCacheToDisk(style);
         return style;
       })
       .finally(() => {
@@ -190,6 +245,179 @@ function validatePhase2Output(data, lockedStylePrompt) {
   }
 }
 
+function redactDebugValue(key, value) {
+  if (key === 'imageUrl' || key === 'base64' || key === 'audioHex' || key === 'audioUrl') {
+    return undefined;
+  }
+
+  if (/api[_-]?key|authorization/i.test(key)) {
+    return '[redacted]';
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeDebugPayload(item))
+      .filter((item) => item !== undefined);
+  }
+
+  if (value && typeof value === 'object') {
+    return sanitizeDebugPayload(value);
+  }
+
+  return value;
+}
+
+function sanitizeDebugPayload(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeDebugPayload(item))
+      .filter((item) => item !== undefined);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([key, entryValue]) => [key, redactDebugValue(key, entryValue)])
+      .filter(([, entryValue]) => entryValue !== undefined)
+  );
+}
+
+async function readImageDebugEvents() {
+  let logText = '';
+  try {
+    logText = await readFile(DEBUG_LOG_PATH, 'utf8');
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
+
+  return logText
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter((event) => event && event.runId === 'image-trace')
+    .sort((left, right) => (left.timestamp ?? 0) - (right.timestamp ?? 0))
+    .map((event) => ({
+      timestamp: event.timestamp,
+      runId: event.runId,
+      location: event.location,
+      message: event.message,
+      hypothesisId: event.hypothesisId,
+      data: sanitizeDebugPayload(event.data)
+    }));
+}
+
+function summarizeImageRecord(events, index) {
+  const start = events.find((event) => event.message === 'image generation started');
+  const normalized = events.find((event) => event.message === 'image phase2 normalized request');
+  const response = events.find((event) => event.message === 'image response received');
+
+  return {
+    id: `${start?.timestamp ?? events[0]?.timestamp ?? Date.now()}-${index}`,
+    startedAt: start?.timestamp ?? events[0]?.timestamp ?? null,
+    targetSegment: start?.data?.targetSegment ?? '',
+    chapterId: start?.data?.chapterId ?? '',
+    paragraphIndex: start?.data?.paragraphIndex ?? null,
+    componentType: normalized?.data?.componentType ?? '',
+    promptCharCount: normalized?.data?.promptCharCount ?? null,
+    traceId: response?.data?.traceId ?? null,
+    events
+  };
+}
+
+function groupImageDebugRecords(events, limit) {
+  const records = [];
+  let current = null;
+
+  for (const event of events) {
+    if (event.message === 'image generation started') {
+      if (current?.length) {
+        records.push(current);
+      }
+      current = [event];
+      continue;
+    }
+
+    if (!current) {
+      current = [event];
+    } else {
+      current.push(event);
+    }
+  }
+
+  if (current?.length) {
+    records.push(current);
+  }
+
+  return records
+    .slice(-limit)
+    .map((recordEvents, index) => summarizeImageRecord(recordEvents, index))
+    .reverse();
+}
+
+function buildImageStyleDebugCache(style) {
+  if (!style) {
+    return {
+      initialized: false,
+      bookId: bookMeta.id,
+      status: '未初始化',
+      style: null
+    };
+  }
+
+  return {
+    initialized: true,
+    bookId: style.book_id,
+    createdAt: style.created_at,
+    sourceNovel: style.source_novel,
+    status: '可生成',
+    style: {
+      global_style_prompt: style.global_style_prompt,
+      global_negative_prompt: style.global_negative_prompt,
+      style_profile_cn: style.style_profile_cn,
+      usage_notes: style.usage_notes
+    }
+  };
+}
+
+export async function regenerateBookStyle() {
+  const style = await buildBookStyle();
+  styleCache = style;
+  await saveStyleCacheToDisk(style);
+  return buildImageStyleDebugCache(style);
+}
+
+export async function getImageDebugInfo({ limit = 20 } = {}) {
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 20));
+  const style = styleCache || (await loadStyleCacheFromDisk());
+  const [phase1SystemPrompt, phase2SystemPrompt, events] = await Promise.all([
+    loadPrompt('phase1-system.md'),
+    loadPrompt('phase2-system.md'),
+    readImageDebugEvents()
+  ]);
+
+  return {
+    cache: buildImageStyleDebugCache(style),
+    prompts: {
+      phase1System: phase1SystemPrompt,
+      phase2System: phase2SystemPrompt
+    },
+    records: groupImageDebugRecords(events, safeLimit),
+    eventCount: events.length
+  };
+}
+
 function buildRetryUserMessage(baseInput, attempt, lastPromptLength) {
   if (attempt === 1) {
     return JSON.stringify(baseInput, null, 2);
@@ -219,17 +447,42 @@ async function runPhase2({ context, targetSegment, style }) {
 
   let lastPromptLength = 0;
   for (let attempt = 1; attempt <= MAX_PHASE2_ATTEMPTS; attempt += 1) {
+    const user = buildRetryUserMessage(llmInput, attempt, lastPromptLength);
+    debugLog(
+      'paragraphIllustration.js:runPhase2',
+      'image phase2 prompt sent',
+      { attempt, systemPrompt: system, userPayload: llmInput, userJsonLength: user.length },
+      'I2-send'
+    );
     const raw = await callMessagesApiForJson({
       system,
-      user: buildRetryUserMessage(llmInput, attempt, lastPromptLength),
+      user,
       temperature: attempt === 1 ? 0.7 : 0.3,
       maxTokens: 1800
     });
+    debugLog(
+      'paragraphIllustration.js:runPhase2',
+      'image phase2 raw response',
+      { attempt, raw },
+      'I2-recv'
+    );
     const result = normalizePhase2Result(raw, llmInput.locked_style_prompt);
     lastPromptLength = result.prompt?.length ?? 0;
 
     try {
       validatePhase2Output(result, llmInput.locked_style_prompt);
+      debugLog(
+        'paragraphIllustration.js:runPhase2',
+        'image phase2 normalized request',
+        {
+          attempt,
+          componentType: result._meta.component_type,
+          sceneSummaryCn: result._meta.scene_summary_cn,
+          promptCharCount: result.prompt.length,
+          imageRequest: result
+        },
+        'I2-normalized'
+      );
       return {
         ...result,
         _meta: {
@@ -240,6 +493,12 @@ async function runPhase2({ context, targetSegment, style }) {
         created_at: new Date().toISOString()
       };
     } catch (error) {
+      debugLog(
+        'paragraphIllustration.js:runPhase2',
+        'image phase2 validation failed',
+        { attempt, error: error.message, promptLength: lastPromptLength },
+        'I2-error'
+      );
       if (attempt === MAX_PHASE2_ATTEMPTS) {
         throw new Error(`${MAX_PHASE2_ATTEMPTS} 次尝试后仍不满足要求：${error.message}`);
       }
@@ -260,6 +519,18 @@ export async function generateParagraphIllustration({ chapterId, paragraphIndex,
     throw new Error('目标段落不能为空');
   }
 
+  debugLog(
+    'paragraphIllustration.js:generateParagraphIllustration',
+    'image generation started',
+    {
+      chapterId,
+      paragraphIndex,
+      targetSegment: safeTarget,
+      contextPreview: paragraphContext.context.slice(0, 500)
+    },
+    'I-entry'
+  );
+
   const { style, initializedNow } = await ensureBookStyle();
   const phase2Output = await runPhase2({
     context: paragraphContext.context,
@@ -267,7 +538,19 @@ export async function generateParagraphIllustration({ chapterId, paragraphIndex,
     style
   });
   const imageRequest = toImageGenerationBody(phase2Output);
+  debugLog(
+    'paragraphIllustration.js:generateParagraphIllustration',
+    'image request sent',
+    { imageRequest },
+    'I-send'
+  );
   const image = await generateImageFromRequest(imageRequest);
+  debugLog(
+    'paragraphIllustration.js:generateParagraphIllustration',
+    'image response received',
+    { traceId: image.traceId, imageUrlPresent: Boolean(image.imageUrl) },
+    'I-recv'
+  );
 
   return {
     ...image,

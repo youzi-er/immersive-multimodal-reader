@@ -11,7 +11,7 @@ import {
 } from './readerTextSelection';
 import './styles.css';
 
-type Page = 'home' | 'bookshelf' | 'reader' | 'login' | 'register' | 'profile';
+type Page = 'home' | 'bookshelf' | 'reader' | 'login' | 'register' | 'profile' | 'speech-debug';
 
 type User = {
   id: string;
@@ -91,6 +91,75 @@ type ParagraphSpeech = {
   traceId: string | null;
 };
 
+type SpeechDebugEvent = {
+  timestamp: number | null;
+  runId: string;
+  location: string;
+  message: string;
+  hypothesisId: string;
+  data: unknown;
+};
+
+type SpeechDebugRecord = {
+  id: string;
+  startedAt: number | null;
+  targetSegment: string;
+  chapterId: string;
+  paragraphIndex: number | null;
+  segmentCount: number;
+  traceIds: string[];
+  events: SpeechDebugEvent[];
+};
+
+type SpeechDebugInfo = {
+  cache: {
+    initialized: boolean;
+    status: string;
+    bookId: string;
+    createdAt?: string;
+    skipVoiceDesign?: boolean;
+    atmosphere: Record<string, unknown> | null;
+    roles: Array<{ code: string; label: string; tier: string; voiceId: string }>;
+    templates: Array<{ code: string; label: string; voiceId: string }>;
+    pronunciationToneCount: number;
+  };
+  prompts: {
+    phase1System: string;
+    phase3aSystem: string;
+  };
+  records: SpeechDebugRecord[];
+  eventCount: number;
+};
+
+type ImageDebugRecord = {
+  id: string;
+  startedAt: number | null;
+  targetSegment: string;
+  chapterId: string;
+  paragraphIndex: number | null;
+  componentType: string;
+  promptCharCount: number | null;
+  traceId: string | null;
+  events: SpeechDebugEvent[];
+};
+
+type ImageDebugInfo = {
+  cache: {
+    initialized: boolean;
+    status: string;
+    bookId: string;
+    createdAt?: string;
+    sourceNovel?: string;
+    style: Record<string, unknown> | null;
+  };
+  prompts: {
+    phase1System: string;
+    phase2System: string;
+  };
+  records: ImageDebugRecord[];
+  eventCount: number;
+};
+
 type RangeMedia<T> = T & {
   chapterId: string;
   range: TextRange;
@@ -167,6 +236,16 @@ const api = {
     requestJson<ParagraphSpeech>('/api/ai/paragraph-speech', {
       method: 'POST',
       body: JSON.stringify(payload)
+    }),
+  speechDebug: (limit = 20) => requestJson<SpeechDebugInfo>(`/api/ai/speech-debug?limit=${limit}`),
+  imageDebug: (limit = 20) => requestJson<ImageDebugInfo>(`/api/ai/image-debug?limit=${limit}`),
+  regenerateSpeechVoices: () =>
+    requestJson('/api/ai/speech-debug/regenerate-voices', {
+      method: 'POST'
+    }),
+  regenerateImageStyle: () =>
+    requestJson('/api/ai/image-debug/regenerate-style', {
+      method: 'POST'
     }),
   register: (form: { username: string; password: string; displayName: string }) =>
     requestJson<{ token: string; user: User }>('/api/auth/register', {
@@ -259,6 +338,8 @@ function App() {
         ) : (
           <AuthPage mode="login" saveSession={saveSession} setPage={setPage} />
         ))}
+      {page === 'speech-debug' &&
+        (user ? <SpeechDebugPage /> : <AuthPage mode="login" saveSession={saveSession} setPage={setPage} />)}
       {page === 'reader' &&
         (user ? (
           <ReaderPage
@@ -315,6 +396,9 @@ function TopNav({
             </button>
             <button className={page === 'profile' ? 'active' : ''} onClick={() => setPage('profile')}>
               阅读档案
+            </button>
+            <button className={page === 'speech-debug' ? 'active' : ''} onClick={() => setPage('speech-debug')}>
+              生成调试
             </button>
             <button onClick={logout}>退出</button>
           </>
@@ -680,6 +764,294 @@ function ProfilePage({
           </div>
         )}
       </div>
+    </section>
+  );
+}
+
+function formatDebugTime(timestamp: number | null) {
+  if (!timestamp) {
+    return '未知时间';
+  }
+  return new Date(timestamp).toLocaleString();
+}
+
+function JsonBlock({ value }: { value: unknown }) {
+  return <pre className="debug-json">{JSON.stringify(value, null, 2)}</pre>;
+}
+
+function SpeechDebugPage() {
+  const [speechDebugInfo, setSpeechDebugInfo] = useState<SpeechDebugInfo | null>(null);
+  const [imageDebugInfo, setImageDebugInfo] = useState<ImageDebugInfo | null>(null);
+  const [activeDomain, setActiveDomain] = useState<'speech' | 'image'>('speech');
+  const [activePrompt, setActivePrompt] = useState<'speechPhase1' | 'speechPhase3a' | 'imagePhase1' | 'imagePhase2'>(
+    'speechPhase3a'
+  );
+  const [loading, setLoading] = useState(false);
+  const [regenerating, setRegenerating] = useState<'' | 'speech' | 'image'>('');
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState('');
+
+  const loadDebugInfo = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [speechResult, imageResult] = await Promise.all([api.speechDebug(20), api.imageDebug(20)]);
+      setSpeechDebugInfo(speechResult);
+      setImageDebugInfo(imageResult);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '调试信息加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadDebugInfo();
+  }, [loadDebugInfo]);
+
+  async function copyPrompt() {
+    const prompt = getActivePromptText();
+    if (!prompt) return;
+    await navigator.clipboard.writeText(prompt);
+    setCopied('提示词已复制');
+    window.setTimeout(() => setCopied(''), 1800);
+  }
+
+  async function regenerateGlobalProduct(kind: 'speech' | 'image') {
+    const label = kind === 'speech' ? '语音音色缓存' : '图像全局风格缓存';
+    const confirmed = window.confirm(`确定要重新生成${label}吗？这会覆盖当前本地全局产物，并可能调用 MiniMax API。`);
+    if (!confirmed) return;
+
+    setRegenerating(kind);
+    setError('');
+    try {
+      if (kind === 'speech') {
+        await api.regenerateSpeechVoices();
+      } else {
+        await api.regenerateImageStyle();
+      }
+      await loadDebugInfo();
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : `${label}重新生成失败`);
+    } finally {
+      setRegenerating('');
+    }
+  }
+
+  function getActivePromptText() {
+    if (activePrompt === 'speechPhase1') return speechDebugInfo?.prompts.phase1System ?? '';
+    if (activePrompt === 'speechPhase3a') return speechDebugInfo?.prompts.phase3aSystem ?? '';
+    if (activePrompt === 'imagePhase1') return imageDebugInfo?.prompts.phase1System ?? '';
+    return imageDebugInfo?.prompts.phase2System ?? '';
+  }
+
+  const activePromptText = getActivePromptText();
+  const promptLabelMap = {
+    speechPhase1: '语音阶段一 system prompt',
+    speechPhase3a: '语音阶段三 3a system prompt',
+    imagePhase1: '图像阶段一 system prompt',
+    imagePhase2: '图像阶段二 system prompt'
+  };
+
+  return (
+    <section className="speech-debug-page">
+      <div className="debug-header">
+        <div>
+          <p className="eyebrow">Generation Debug</p>
+          <h1>生成调试</h1>
+          <p>查看语音与文生图的全局缓存、提示词模板，以及最近生成链路。</p>
+        </div>
+        <div className="debug-actions">
+          <button type="button" onClick={loadDebugInfo} disabled={loading || Boolean(regenerating)}>
+            {loading ? '刷新中...' : '刷新'}
+          </button>
+          <button type="button" onClick={() => regenerateGlobalProduct('speech')} disabled={Boolean(regenerating)}>
+            {regenerating === 'speech' ? '生成中...' : '重生成音色'}
+          </button>
+          <button type="button" onClick={() => regenerateGlobalProduct('image')} disabled={Boolean(regenerating)}>
+            {regenerating === 'image' ? '生成中...' : '重生成图像风格'}
+          </button>
+        </div>
+      </div>
+
+      {error && <p className="form-error">{error}</p>}
+
+      {speechDebugInfo && imageDebugInfo && (
+        <>
+          <div className="debug-domain-tabs">
+            <button
+              type="button"
+              className={activeDomain === 'speech' ? 'active' : ''}
+              onClick={() => setActiveDomain('speech')}
+            >
+              配音
+            </button>
+            <button
+              type="button"
+              className={activeDomain === 'image' ? 'active' : ''}
+              onClick={() => setActiveDomain('image')}
+            >
+              文生图
+            </button>
+          </div>
+
+          <section className="debug-section">
+            <div className="debug-section-heading">
+              <h2>{activeDomain === 'speech' ? '配音缓存状态' : '图像风格缓存状态'}</h2>
+              <span>
+                {(activeDomain === 'speech' ? speechDebugInfo.cache.initialized : imageDebugInfo.cache.initialized)
+                  ? '已初始化'
+                  : '未初始化'}
+              </span>
+            </div>
+            {activeDomain === 'speech' ? (
+              <>
+                <div className="debug-metrics">
+                  <article>
+                    <span>Book</span>
+                    <strong>{speechDebugInfo.cache.bookId}</strong>
+                  </article>
+                  <article>
+                    <span>Roles</span>
+                    <strong>{speechDebugInfo.cache.roles.length}</strong>
+                  </article>
+                  <article>
+                    <span>Templates</span>
+                    <strong>{speechDebugInfo.cache.templates.length}</strong>
+                  </article>
+                  <article>
+                    <span>Tones</span>
+                    <strong>{speechDebugInfo.cache.pronunciationToneCount}</strong>
+                  </article>
+                </div>
+                <div className="debug-grid">
+                  <div>
+                    <h3>角色音色</h3>
+                    <JsonBlock value={speechDebugInfo.cache.roles} />
+                  </div>
+                  <div>
+                    <h3>模板声音池</h3>
+                    <JsonBlock value={speechDebugInfo.cache.templates} />
+                  </div>
+                </div>
+                <details className="debug-details">
+                  <summary>氛围配置与局部表演弹性</summary>
+                  <JsonBlock value={speechDebugInfo.cache.atmosphere} />
+                </details>
+              </>
+            ) : (
+              <>
+                <div className="debug-metrics">
+                  <article>
+                    <span>Book</span>
+                    <strong>{imageDebugInfo.cache.bookId}</strong>
+                  </article>
+                  <article>
+                    <span>Status</span>
+                    <strong>{imageDebugInfo.cache.status}</strong>
+                  </article>
+                  <article>
+                    <span>Records</span>
+                    <strong>{imageDebugInfo.records.length}</strong>
+                  </article>
+                  <article>
+                    <span>Events</span>
+                    <strong>{imageDebugInfo.eventCount}</strong>
+                  </article>
+                </div>
+                <details className="debug-details" open>
+                  <summary>全局风格产物</summary>
+                  <JsonBlock value={imageDebugInfo.cache.style} />
+                </details>
+              </>
+            )}
+          </section>
+
+          <section className="debug-section">
+            <div className="debug-section-heading">
+              <h2>当前提示词</h2>
+              <button type="button" onClick={copyPrompt}>
+                复制
+              </button>
+            </div>
+            <div className="debug-tabs">
+              <button
+                type="button"
+                className={activePrompt === 'speechPhase1' ? 'active' : ''}
+                onClick={() => setActivePrompt('speechPhase1')}
+              >
+                语音阶段一
+              </button>
+              <button
+                type="button"
+                className={activePrompt === 'speechPhase3a' ? 'active' : ''}
+                onClick={() => setActivePrompt('speechPhase3a')}
+              >
+                语音阶段三
+              </button>
+              <button
+                type="button"
+                className={activePrompt === 'imagePhase1' ? 'active' : ''}
+                onClick={() => setActivePrompt('imagePhase1')}
+              >
+                图像阶段一
+              </button>
+              <button
+                type="button"
+                className={activePrompt === 'imagePhase2' ? 'active' : ''}
+                onClick={() => setActivePrompt('imagePhase2')}
+              >
+                图像阶段二
+              </button>
+              <span>{copied || promptLabelMap[activePrompt]}</span>
+            </div>
+            <pre className="debug-prompt">{activePromptText}</pre>
+          </section>
+
+          <section className="debug-section">
+            <div className="debug-section-heading">
+              <h2>{activeDomain === 'speech' ? '最近配音记录' : '最近文生图记录'}</h2>
+              <span>
+                {activeDomain === 'speech'
+                  ? `${speechDebugInfo.records.length} 批次 / ${speechDebugInfo.eventCount} 条事件`
+                  : `${imageDebugInfo.records.length} 批次 / ${imageDebugInfo.eventCount} 条事件`}
+              </span>
+            </div>
+            {(activeDomain === 'speech' ? speechDebugInfo.records : imageDebugInfo.records).length === 0 ? (
+              <p className="debug-empty">
+                {activeDomain === 'speech' ? '还没有配音记录。生成一次配音后刷新这里。' : '还没有文生图记录。生成一次插图后刷新这里。'}
+              </p>
+            ) : (
+              <div className="debug-records">
+                {(activeDomain === 'speech' ? speechDebugInfo.records : imageDebugInfo.records).map((record) => (
+                  <details key={record.id} className="debug-record">
+                    <summary>
+                      <strong>{record.targetSegment || '未记录目标片段'}</strong>
+                      <span>
+                        {formatDebugTime(record.startedAt)} ·{' '}
+                        {'segmentCount' in record
+                          ? `${record.segmentCount} 段 · ${record.traceIds[0] ?? '无 trace'}`
+                          : `${record.componentType || '未分类'} · ${record.traceId ?? '无 trace'}`}
+                      </span>
+                    </summary>
+                    <div className="debug-record-body">
+                      {record.events.map((event, index) => (
+                        <details key={`${record.id}-${event.message}-${index}`} className="debug-event">
+                          <summary>
+                            <span>{event.message}</span>
+                            <small>{event.location}</small>
+                          </summary>
+                          <JsonBlock value={event} />
+                        </details>
+                      ))}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </section>
   );
 }

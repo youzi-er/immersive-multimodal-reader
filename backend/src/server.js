@@ -15,8 +15,17 @@ import {
   generateImage,
   synthesizeSpeech
 } from './services/minimax.js';
-import { generateParagraphIllustration } from './services/paragraphIllustration.js';
-import { generateParagraphSpeech, getSpeechVoicesStatus } from './services/paragraphSpeech.js';
+import {
+  generateParagraphIllustration,
+  getImageDebugInfo,
+  regenerateBookStyle
+} from './services/paragraphIllustration.js';
+import {
+  generateParagraphSpeech,
+  getSpeechDebugInfo,
+  getSpeechVoicesStatus,
+  regenerateSpeechVoices
+} from './services/paragraphSpeech.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -275,6 +284,42 @@ app.get('/api/ai/speech-voices', async (_req, res) => {
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message || 'Speech voices status failed' });
+  }
+});
+
+app.get('/api/ai/speech-debug', async (req, res) => {
+  try {
+    const result = await getSpeechDebugInfo({ limit: req.query.limit });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Speech debug failed' });
+  }
+});
+
+app.post('/api/ai/speech-debug/regenerate-voices', async (_req, res) => {
+  try {
+    const result = await regenerateSpeechVoices();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Speech voices regeneration failed' });
+  }
+});
+
+app.get('/api/ai/image-debug', async (req, res) => {
+  try {
+    const result = await getImageDebugInfo({ limit: req.query.limit });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Image debug failed' });
+  }
+});
+
+app.post('/api/ai/image-debug/regenerate-style', async (_req, res) => {
+  try {
+    const result = await regenerateBookStyle();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Image style regeneration failed' });
   }
 });
 

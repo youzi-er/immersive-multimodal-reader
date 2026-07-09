@@ -18,6 +18,14 @@ const CACHE_DIR = path.resolve(__dirname, '../../cache');
 const MAX_PHASE3A_ATTEMPTS = 3;
 const TTS_CONCURRENCY = Number(process.env.SPEECH_TTS_CONCURRENCY) || 3;
 const SKIP_VOICE_DESIGN = process.env.SPEECH_SKIP_VOICE_DESIGN === 'true';
+const DEFAULT_SPEECH_SPEED_LIFT = Number(process.env.SPEECH_SPEED_LIFT) || 1.08;
+
+const DEFAULT_PERFORMANCE_ELASTICITY = {
+  允许情绪峰值: true,
+  峰值场景: ['发现真相', '危险逼近', '质问', '惊吓', '死亡现场', '推理揭示'],
+  允许手段: ['短促加快', '压低但加重', '句内短停', '吸气/倒吸气', '关键词重读'],
+  禁止手段: ['长时间嘶吼', '综艺化惊叫', '现代夸张腔', '过度哭腔']
+};
 
 // #region agent log
 const DEBUG_LOG_PATH = path.resolve(__dirname, '../../../debug-d022cd.log');
@@ -64,48 +72,56 @@ const SYSTEM_VOICE_PRESETS = {
 };
 
 const EMOTION_MAP = {
-  平静: 'calm',
-  压低: 'calm',
-  克制: 'calm',
+  愤怒克制: 'angry',
+  悲伤克制: 'sad',
+  压低警告: 'angry',
+  惊惧: 'fearful',
+  震惊: 'surprised',
+  急促: 'fearful',
   紧张: 'fearful',
   恐惧: 'fearful',
   愤怒: 'angry',
   悲伤: 'sad',
   惊讶: 'surprised',
+  疑惑: 'surprised',
+  安抚: 'calm',
+  思索: 'calm',
+  冷峻: 'calm',
+  平静: 'calm',
+  压低: 'calm',
   低语: 'whisper',
+  克制: 'calm',
   高兴: 'happy',
   流畅: 'fluent'
 };
 
 const SPEED_MAP = {
-  略慢: 0.92,
-  慢: 0.88,
-  略快: 1.08,
-  快: 1.12,
-  正常: 1.0
+  略慢: 1.0,
+  慢: 0.96,
+  略快: 1.14,
+  快: 1.22,
+  正常: 1.08
 };
 
 const VALID_VOCAL_TAGS = new Set([
-  '(laughs)',
-  '(chuckle)',
-  '(coughs)',
-  '(clear-throat)',
-  '(groans)',
   '(breath)',
-  '(pant)',
   '(inhale)',
   '(exhale)',
-  '(gasps)',
-  '(sniffs)',
-  '(sighs)',
-  '(snorts)',
-  '(burps)',
-  '(lip-smacking)',
-  '(humming)',
-  '(hissing)',
-  '(emm)',
-  '(sneezes)'
+  '(gasps)'
 ]);
+
+const FIXED_PRONUNCIATION_TONES = [
+  '福尔摩斯/(fu2)(er3)(mo2)(si1)',
+  '歇洛克/(xie1)(luo4)(ke4)',
+  '华生/(hua4)(sheng1)',
+  '罗伊洛特/(luo2)(yi1)(luo4)(te4)',
+  '斯托纳/(si1)(tuo1)(na4)',
+  '斯托克莫兰/(si1)(tuo1)(ke4)(mo4)(lan2)'
+];
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
 
 let voiceCache = null;
 let voicePromise = null;
@@ -120,6 +136,13 @@ function voiceCachePath() {
 
 async function loadPrompt(name) {
   return readFile(path.join(PROMPTS_DIR, name), 'utf8');
+}
+
+function enrichAtmosphereConfig(atmosphere = {}) {
+  return {
+    ...atmosphere,
+    局部表演弹性: atmosphere.局部表演弹性 || DEFAULT_PERFORMANCE_ELASTICITY
+  };
 }
 
 function validatePhase1Output(data) {
@@ -171,7 +194,7 @@ function validatePhase3aOutput(data) {
   }
 
   for (const segment of data.片段列表) {
-    assertRequiredFields(segment, ['片段编号', '配音文本'], '配音片段');
+    assertRequiredFields(segment, ['片段编号', '配音文本', '导演判断', '演绎提示'], '配音片段');
     if (!segment.配音文本?.trim()) {
       throw new Error(`片段 ${segment.片段编号} 的配音文本不能为空`);
     }
@@ -182,6 +205,26 @@ function validatePhase3aOutput(data) {
 
     if (!segment.说话人代号 && !segment.模板代号) {
       throw new Error(`片段 ${segment.片段编号} 必须指定说话人代号或模板代号`);
+    }
+
+    if (!segment.导演判断 || typeof segment.导演判断 !== 'object') {
+      throw new Error(`片段 ${segment.片段编号} 必须包含导演判断对象`);
+    }
+
+    const hints = segment.演绎提示;
+    assertRequiredFields(
+      hints,
+      ['语速', '情绪', '强度', '停顿', '节奏', '重读词', '语气词标签'],
+      `片段 ${segment.片段编号} 演绎提示`
+    );
+
+    if (!Array.isArray(hints.重读词)) {
+      throw new Error(`片段 ${segment.片段编号} 的重读词必须是数组`);
+    }
+
+    const vocalTags = hints.语气词标签;
+    if (!vocalTags || typeof vocalTags !== 'object') {
+      throw new Error(`片段 ${segment.片段编号} 的语气词标签必须是对象`);
     }
   }
 }
@@ -257,7 +300,7 @@ async function lockSpeechVoices(phase1) {
 
   return {
     产物类型: '已锁定音色表',
-    氛围配置: phase1.氛围配置,
+    氛围配置: enrichAtmosphereConfig(phase1.氛围配置),
     角色音色列表: lockedRoles,
     模板声音池: lockedTemplates,
     发音字典: cast.发音字典 || { tone: [] },
@@ -368,12 +411,60 @@ function isSpeech28Model(model) {
 
 const SPEECH_28_UNSUPPORTED_EMOTIONS = new Set(['whisper', 'fluent']);
 
-function mapEmotion(hint, model) {
-  if (!hint) return undefined;
+function collectPerformanceSignal(segment = {}, hints = {}) {
+  const director = segment.导演判断 && typeof segment.导演判断 === 'object' ? segment.导演判断 : {};
+  return [
+    segment.配音文本,
+    hints.情绪,
+    hints.节奏,
+    ...(Array.isArray(hints.重读词) ? hints.重读词 : []),
+    director.场景压力,
+    director.表演意图
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
 
+function hasFearSignal(signal) {
+  return /害怕|恐惧|惊惧|惊恐|恐慌|惊慌|不安|颤抖|发抖|濒临崩溃|崩溃边缘/.test(signal || '');
+}
+
+function hasAngerSignal(signal) {
+  return /愤怒|恼怒|压迫|威胁|警告|质问|逼问|命令|呵斥|怒|吼|咆哮/.test(signal || '');
+}
+
+function hasSurpriseSignal(signal) {
+  return /震惊|惊讶|惊吓|突然|发现|真相|线索|意识到|倒吸|惊呼/.test(signal || '');
+}
+
+function hasUrgencySignal(signal) {
+  return /急促|短促|危险|逼近|立刻|马上|快|逃|别动|小心/.test(signal || '');
+}
+
+function mapEmotion(hint, model, hints = {}, segment = {}) {
   let emotion;
+  const emotionHint = String(hint || '');
+  const signal = collectPerformanceSignal(segment, hints);
+  const intensity = coerceIntensity(hints.强度);
+
+  if (intensity >= 3 && hasFearSignal(signal) && /压低|低语|紧张|恐惧|惊惧/.test(signal)) {
+    emotion = 'fearful';
+  }
+
+  if (!emotion && intensity >= 4 && hasAngerSignal(signal)) {
+    emotion = 'angry';
+  }
+
+  if (!emotion && intensity >= 4 && hasSurpriseSignal(signal)) {
+    emotion = 'surprised';
+  }
+
+  if (!emotion && intensity >= 4 && hasUrgencySignal(signal)) {
+    emotion = 'fearful';
+  }
+
   for (const [key, value] of Object.entries(EMOTION_MAP)) {
-    if (hint.includes(key)) {
+    if (!emotion && emotionHint.includes(key)) {
       emotion = value;
       break;
     }
@@ -390,7 +481,7 @@ function mapEmotion(hint, model) {
   return emotion;
 }
 
-function ensureLowVoiceVocalTags(hints) {
+function ensureLowVoiceVocalTags(hints, segment = {}) {
   const source = hints.语气词标签 && typeof hints.语气词标签 === 'object' ? hints.语气词标签 : {};
   const tags = {
     前: Array.isArray(source.前) ? [...source.前] : [],
@@ -398,23 +489,116 @@ function ensureLowVoiceVocalTags(hints) {
     句内: Array.isArray(source.句内) ? [...source.句内] : []
   };
 
+  const signal = collectPerformanceSignal(segment, hints);
+  const intensity = coerceIntensity(hints.强度);
+
+  if (intensity >= 3 && hasFearSignal(signal)) {
+    if (tags.前.length === 0) {
+      tags.前.push('(inhale)');
+    } else if (tags.前.length === 1 && tags.前[0] === '(breath)') {
+      tags.前[0] = '(inhale)';
+    }
+  }
+
   if (/低语|压低/.test(hints.情绪 || '') && tags.前.length === 0) {
     tags.前.push('(breath)');
+  }
+
+  if (/惊惧|震惊|恐惧|紧张/.test(hints.情绪 || '') && Number(hints.强度) >= 4 && tags.前.length === 0) {
+    tags.前.push('(inhale)');
   }
 
   return tags;
 }
 
-function mapSpeed(hint, baseSpeed = 1) {
-  if (!hint) return baseSpeed;
+function coerceIntensity(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return 2;
+  }
+  return clamp(number, 1, 5);
+}
+
+function mapSpeed(hint, baseSpeed = 1, hints = {}, segment = {}) {
+  let multiplier = DEFAULT_SPEECH_SPEED_LIFT;
+  const speedHint = String(hint || '');
 
   for (const [key, value] of Object.entries(SPEED_MAP)) {
-    if (hint.includes(key)) {
-      return value;
+    if (speedHint.includes(key)) {
+      multiplier = value;
+      break;
     }
   }
 
-  return baseSpeed;
+  const emotion = hints.情绪 || '';
+  const rhythm = hints.节奏 || '';
+  const intensity = coerceIntensity(hints.强度);
+  const signal = collectPerformanceSignal(segment, hints);
+  const fearSignal = hasFearSignal(signal);
+
+  if (/急促/.test(emotion) || /急促|短促/.test(rhythm) || hasUrgencySignal(signal)) {
+    multiplier *= 1.06;
+  }
+
+  if (intensity >= 3 && fearSignal && !/慢/.test(speedHint)) {
+    multiplier *= 1.06;
+  }
+
+  if (/低语|压低/.test(emotion) && !fearSignal && !/略快|快/.test(hint || '')) {
+    multiplier *= 0.96;
+  }
+
+  if (intensity >= 3 && fearSignal && /慢/.test(speedHint)) {
+    multiplier = Math.max(multiplier, DEFAULT_SPEECH_SPEED_LIFT * 1.04);
+  }
+
+  if (intensity >= 4 && /惊惧|震惊|恐惧|愤怒/.test(emotion) && !/慢/.test(speedHint)) {
+    multiplier *= 1.05;
+  }
+
+  if (intensity >= 4 && (hasAngerSignal(signal) || hasSurpriseSignal(signal))) {
+    multiplier *= 1.03;
+  }
+
+  return Number(clamp(baseSpeed * multiplier, 0.92, 1.3).toFixed(2));
+}
+
+function mapVolume(baseVol = 1, hints = {}, segment = {}, resolvedEmotion) {
+  const intensity = coerceIntensity(hints.强度);
+  const emotion = hints.情绪 || '';
+  const signal = collectPerformanceSignal(segment, hints);
+  const fearSignal = resolvedEmotion === 'fearful' || hasFearSignal(signal) || /惊惧|恐惧|紧张/.test(emotion);
+
+  if (intensity >= 3 && fearSignal) {
+    return Number(clamp(baseVol * (1.04 + Math.max(0, intensity - 3) * 0.03), 0.95, 1.16).toFixed(2));
+  }
+
+  if (/低语/.test(emotion)) {
+    return Number(clamp(baseVol * 0.96, 0.85, 1.08).toFixed(2));
+  }
+
+  if (/压低/.test(emotion)) {
+    return Number(clamp(baseVol, 0.85, 1.1).toFixed(2));
+  }
+
+  return Number(clamp(baseVol * (1 + Math.max(0, intensity - 2) * 0.04), 0.85, 1.18).toFixed(2));
+}
+
+function mapPitch(basePitch = 0, hints = {}, segment = {}) {
+  const emotion = hints.情绪 || '';
+  const intensity = coerceIntensity(hints.强度);
+  const signal = collectPerformanceSignal(segment, hints);
+  let shift = 0;
+
+  if (intensity >= 4 && (/震惊|惊惧|恐惧|紧张/.test(emotion) || hasSurpriseSignal(signal))) {
+    shift += 1;
+  }
+
+  if (/压低|低语|冷峻|愤怒|警告/.test(emotion) || hasAngerSignal(signal)) {
+    shift -= intensity >= 4 ? 1 : 0;
+  }
+
+  return clamp(Math.round(basePitch + shift), -3, 3);
 }
 
 function normalizeVocalTagList(value) {
@@ -449,13 +633,31 @@ function insertVocalTagAfterNthPunctuation(text, punctuation, nth, tag) {
   return output;
 }
 
-function applyVocalTags(text, vocalTagsHint) {
+function shouldKeepInlineVocalTag(tag, hints) {
+  const emotion = hints.情绪 || '';
+
+  if (tag === '(breath)') {
+    return /低语|压低|紧张|惊惧|恐惧/.test(emotion);
+  }
+
+  if (tag === '(inhale)' || tag === '(exhale)' || tag === '(gasps)') {
+    return /紧张|惊惧|恐惧|震惊|低语|压低/.test(emotion);
+  }
+
+  return false;
+}
+
+function applyVocalTags(text, vocalTagsHint, hints = {}) {
   if (!vocalTagsHint || typeof vocalTagsHint !== 'object') {
     return text;
   }
 
   let result = text;
-  const inlineItems = Array.isArray(vocalTagsHint.句内) ? [...vocalTagsHint.句内] : [];
+  const intensity = coerceIntensity(hints.强度);
+  const maxInlineTags = text.length > 80 || intensity >= 4 ? 2 : 1;
+  const inlineItems = (Array.isArray(vocalTagsHint.句内) ? [...vocalTagsHint.句内] : [])
+    .filter((item) => shouldKeepInlineVocalTag(String(item?.标签 ?? '').trim(), hints))
+    .slice(0, maxInlineTags);
 
   inlineItems.sort((left, right) => (right.序号 ?? 1) - (left.序号 ?? 1));
 
@@ -478,20 +680,114 @@ function applyVocalTags(text, vocalTagsHint) {
   return `${prefix}${result}${suffix}`;
 }
 
-function applyPauseMarkers(text, pauseHint) {
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeEmphasisWords(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((word) => String(word).trim())
+    .filter((word) => word.length >= 2 && word.length <= 8)
+    .slice(0, 3);
+}
+
+function applyEmphasisMarkers(text, hints) {
+  const words = normalizeEmphasisWords(hints.重读词);
+  if (words.length === 0) {
+    return text;
+  }
+
+  const intensity = coerceIntensity(hints.强度);
+  const signal = [hints.情绪, hints.节奏, ...words].filter(Boolean).join(' ');
+  if (
+    intensity < 4 &&
+    !(hasFearSignal(signal) || hasAngerSignal(signal) || hasSurpriseSignal(signal) || hasUrgencySignal(signal))
+  ) {
+    return text;
+  }
+
+  let result = text;
+  const beforePause = intensity >= 5 ? '<#0.05#>' : '<#0.035#>';
+  const maxMarkedWords = intensity >= 5 ? 2 : 1;
+
+  for (const word of words.slice(0, maxMarkedWords)) {
+    let replaced = false;
+    const pattern = new RegExp(escapeRegExp(word));
+    result = result.replace(pattern, (match, offset) => {
+      if (replaced) {
+        return match;
+      }
+      replaced = true;
+
+      const before = offset > 0 ? beforePause : '';
+      return `${before}${match}`;
+    });
+  }
+
+  return result;
+}
+
+function applyPauseMarkers(text, pauseHint, hints = {}) {
   if (!pauseHint || pauseHint === '无') {
     return text;
   }
 
+  const isShortLine = text.replace(/<#[\d.]+#>/g, '').length <= 18;
+  const intensity = coerceIntensity(hints.强度);
+
+  if (pauseHint.includes('关键处')) {
+    if (intensity >= 5 && isShortLine) {
+      return text.replace(/([！？])$/, '$1<#0.06#>');
+    }
+    if (intensity >= 5) {
+      return text.replace(/([，；：、])/, '$1<#0.045#>');
+    }
+    return text;
+  }
+
+  if (pauseHint.includes('短停')) {
+    if (intensity >= 4) {
+      return `${text}<#${isShortLine ? '0.055' : '0.04'}#>`;
+    }
+    return text;
+  }
+
   if (pauseHint.includes('句间')) {
-    return text.replace(/([。！？])/g, '$1<#0.4#>');
+    return text;
   }
 
   if (pauseHint.includes('句尾')) {
-    return `${text}<#0.5#>`;
+    if (intensity >= 4) {
+      return `${text}<#${isShortLine ? '0.06' : '0.04'}#>`;
+    }
+    return text;
   }
 
   return text;
+}
+
+function pronunciationTerm(entry) {
+  return String(entry || '').split('/')[0]?.trim();
+}
+
+function mergePronunciationTones(...toneLists) {
+  const merged = new Map();
+
+  for (const toneList of toneLists) {
+    for (const entry of toneList || []) {
+      const term = pronunciationTerm(entry);
+      if (!term) {
+        continue;
+      }
+      merged.set(term, entry);
+    }
+  }
+
+  return [...merged.values()];
 }
 
 function buildTtsBody(segment, voices) {
@@ -504,8 +800,10 @@ function buildTtsBody(segment, voices) {
 
   let text = segment.配音文本.trim();
   const model = atmosphere.model || process.env.MINIMAX_TTS_MODEL || 'speech-2.8-hd';
-  text = applyVocalTags(text, ensureLowVoiceVocalTags(hints));
-  text = applyPauseMarkers(text, hints.停顿);
+  text = applyEmphasisMarkers(text, hints);
+  text = applyVocalTags(text, ensureLowVoiceVocalTags(hints, segment), hints);
+  text = applyPauseMarkers(text, hints.停顿, hints);
+  const emotion = mapEmotion(hints.情绪, model, hints, segment);
 
   const body = {
     model,
@@ -514,9 +812,9 @@ function buildTtsBody(segment, voices) {
     language_boost: atmosphere.language_boost || 'Chinese',
     voice_setting: {
       voice_id: voiceId,
-      speed: mapSpeed(hints.语速, baseSpeed),
-      vol: baseVol,
-      pitch: basePitch
+      speed: mapSpeed(hints.语速, baseSpeed, hints, segment),
+      vol: mapVolume(baseVol, hints, segment, emotion),
+      pitch: mapPitch(basePitch, hints, segment)
     },
     audio_setting: atmosphere.audio_setting || {
       sample_rate: 32000,
@@ -529,15 +827,15 @@ function buildTtsBody(segment, voices) {
     aigc_watermark: atmosphere.aigc_watermark ?? false
   };
 
-  const emotion = mapEmotion(hints.情绪, model);
   if (emotion) {
     body.voice_setting.emotion = emotion;
   }
 
-  const pronunciationTone = [
-    ...(voices.发音字典?.tone || []),
-    ...(segment.追加发音 || [])
-  ].filter(Boolean);
+  const pronunciationTone = mergePronunciationTones(
+    voices.发音字典?.tone || [],
+    segment.追加发音 || [],
+    FIXED_PRONUNCIATION_TONES
+  );
 
   if (pronunciationTone.length > 0) {
     body.pronunciation_dict = { tone: pronunciationTone };
@@ -564,6 +862,162 @@ function buildVoiceSummary(voices) {
       voiceId: template.voice_id
     }))
   };
+}
+
+function redactDebugValue(key, value) {
+  if (key === 'audioHex' || key === 'audioUrl' || key === 'trialAudioUrl') {
+    return undefined;
+  }
+
+  if (/api[_-]?key|authorization/i.test(key)) {
+    return '[redacted]';
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeDebugPayload(item))
+      .filter((item) => item !== undefined);
+  }
+
+  if (value && typeof value === 'object') {
+    return sanitizeDebugPayload(value);
+  }
+
+  return value;
+}
+
+function sanitizeDebugPayload(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeDebugPayload(item))
+      .filter((item) => item !== undefined);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([key, entryValue]) => [
+        key === 'audioHexLength' ? 'audioDataLength' : key,
+        redactDebugValue(key, entryValue)
+      ])
+      .filter(([, entryValue]) => entryValue !== undefined)
+  );
+}
+
+function buildVoiceDebugCache(voices) {
+  if (!voices) {
+    return {
+      initialized: false,
+      bookId: bookMeta.id,
+      status: '未初始化',
+      atmosphere: null,
+      roles: [],
+      templates: [],
+      pronunciationToneCount: 0
+    };
+  }
+
+  return {
+    initialized: true,
+    ...buildVoiceSummary(voices),
+    atmosphere: {
+      题材类型: voices.氛围配置?.题材类型,
+      叙事视角: voices.氛围配置?.叙事视角,
+      整体氛围: voices.氛围配置?.整体氛围,
+      旁白基调: voices.氛围配置?.旁白基调,
+      节奏倾向: voices.氛围配置?.节奏倾向,
+      情绪外放度: voices.氛围配置?.情绪外放度,
+      局部表演弹性: enrichAtmosphereConfig(voices.氛围配置).局部表演弹性,
+      禁忌听感: voices.氛围配置?.禁忌听感,
+      默认合成设置: voices.氛围配置?.默认合成设置
+    },
+    pronunciationToneCount: voices.发音字典?.tone?.length ?? 0
+  };
+}
+
+async function readSpeechDebugEvents() {
+  let logText = '';
+  try {
+    logText = await readFile(DEBUG_LOG_PATH, 'utf8');
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
+
+  return logText
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter((event) => event && event.runId === 'speech-trace')
+    .sort((left, right) => (left.timestamp ?? 0) - (right.timestamp ?? 0))
+    .map((event) => ({
+      timestamp: event.timestamp,
+      runId: event.runId,
+      location: event.location,
+      message: event.message,
+      hypothesisId: event.hypothesisId,
+      data: sanitizeDebugPayload(event.data)
+    }));
+}
+
+function summarizeSpeechRecord(events, index) {
+  const start = events.find((event) => event.message === 'speech generation started');
+  const refined = events.find((event) => event.message === 'phase3a refined script');
+  const ttsRequests = events.filter((event) => event.message === 'tts request sent');
+  const ttsResponses = events.filter((event) => event.message === 'tts response received');
+  const traceIds = ttsResponses.map((event) => event.data?.traceId).filter(Boolean);
+
+  return {
+    id: `${start?.timestamp ?? events[0]?.timestamp ?? Date.now()}-${index}`,
+    startedAt: start?.timestamp ?? events[0]?.timestamp ?? null,
+    targetSegment: start?.data?.targetSegment ?? '',
+    chapterId: start?.data?.chapterId ?? '',
+    paragraphIndex: start?.data?.paragraphIndex ?? null,
+    segmentCount: refined?.data?.segmentCount ?? ttsRequests.length,
+    traceIds,
+    events
+  };
+}
+
+function groupSpeechDebugRecords(events, limit) {
+  const records = [];
+  let current = null;
+
+  for (const event of events) {
+    if (event.message === 'speech generation started') {
+      if (current?.length) {
+        records.push(current);
+      }
+      current = [event];
+      continue;
+    }
+
+    if (!current) {
+      current = [event];
+    } else {
+      current.push(event);
+    }
+  }
+
+  if (current?.length) {
+    records.push(current);
+  }
+
+  return records
+    .slice(-limit)
+    .map((recordEvents, index) => summarizeSpeechRecord(recordEvents, index))
+    .reverse();
 }
 
 const ATTRIBUTION_SPEAKER_ALIASES = {
@@ -650,9 +1104,18 @@ function cloneSegmentTemplate(segment) {
     说话人代号: segment.说话人代号,
     模板代号: segment.模板代号 ?? null,
     配音文本: segment.配音文本,
+    导演判断: segment.导演判断 || { 场景压力: '未标注', 表演意图: '按上下文自然表达', 避免: '避免夸张' },
     演绎提示: segment.演绎提示
       ? { ...segment.演绎提示 }
-      : { 语速: '正常', 情绪: '平静', 停顿: '无', 语气词标签: { 前: [], 后: [], 句内: [] } },
+      : {
+          语速: '正常',
+          情绪: '平静',
+          强度: 2,
+          停顿: '无',
+          节奏: '平稳陈述',
+          重读词: [],
+          语气词标签: { 前: [], 后: [], 句内: [] }
+        },
     追加发音: Array.isArray(segment.追加发音) ? [...segment.追加发音] : []
   };
 }
@@ -765,7 +1228,7 @@ async function runPhase3a({ context, targetSegment, voices }) {
   const llmInput = {
     上下文: context.trim(),
     目标片段: targetSegment.trim(),
-    氛围配置: voices.氛围配置,
+    氛围配置: enrichAtmosphereConfig(voices.氛围配置),
     已锁定音色表: {
       角色音色列表: voices.角色音色列表.map((role) => ({
         说话人代号: role.说话人代号,
@@ -784,7 +1247,7 @@ async function runPhase3a({ context, targetSegment, voices }) {
         ? llmInput
         : {
             ...llmInput,
-              _retry_instruction: `第 ${attempt} 次生成：只输出角色对白片段，不要输出 narrator 旁白片段；若无对白则返回空数组；每个片段须有非空配音文本与完整演绎提示（含语气词标签，无则前/后/句内为空数组）；语气词标签不得写入配音文本。`
+              _retry_instruction: `第 ${attempt} 次生成：只输出角色对白片段，不要输出 narrator 旁白片段；若无对白则返回空数组；每个片段须有非空配音文本、导演判断与完整演绎提示（语速/情绪/强度/停顿/节奏/重读词/语气词标签）；语气词标签不得写入配音文本。不要把全局克制误解成平静慢读，也不要用停顿把普通句子切碎；普通陈述的停顿填“无”。`
           };
     const userJson = JSON.stringify(userPayload, null, 2);
 
@@ -834,6 +1297,7 @@ async function runPhase3a({ context, targetSegment, voices }) {
             speakerCode: seg.说话人代号,
             templateCode: seg.模板代号,
             text: seg.配音文本,
+            director: seg.导演判断,
             hints: seg.演绎提示
           }))
         },
@@ -953,6 +1417,34 @@ export async function getSpeechVoicesStatus() {
     roles: [],
     templates: []
   };
+}
+
+export async function getSpeechDebugInfo({ limit = 20 } = {}) {
+  const safeLimit = clamp(Number(limit) || 20, 1, 50);
+  const voices = voiceCache || (await loadVoiceCacheFromDisk());
+  const [phase1SystemPrompt, phase3aSystemPrompt, events] = await Promise.all([
+    loadPrompt('speech-phase1-system.md'),
+    loadPrompt('speech-phase3a-system.md'),
+    readSpeechDebugEvents()
+  ]);
+
+  return {
+    cache: buildVoiceDebugCache(voices),
+    prompts: {
+      phase1System: phase1SystemPrompt,
+      phase3aSystem: phase3aSystemPrompt
+    },
+    records: groupSpeechDebugRecords(events, safeLimit),
+    eventCount: events.length
+  };
+}
+
+export async function regenerateSpeechVoices() {
+  const phase1 = await buildSpeechCast();
+  const voices = await lockSpeechVoices(phase1);
+  voiceCache = voices;
+  await saveVoiceCacheToDisk(voices);
+  return { initialized: true, ...buildVoiceSummary(voices) };
 }
 
 export async function generateParagraphSpeech({ chapterId, paragraphIndex, targetSegment }) {

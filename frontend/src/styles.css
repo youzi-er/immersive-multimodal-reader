@@ -122,7 +122,8 @@ button:disabled {
 .home-page,
 .auth-page,
 .profile-page,
-.bookshelf-page {
+.bookshelf-page,
+.speech-debug-page {
   padding: 34px 28px;
 }
 
@@ -467,6 +468,238 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
+}
+
+.speech-debug-page {
+  display: grid;
+  max-width: 1180px;
+  margin: 0 auto;
+  gap: 18px;
+}
+
+.debug-header,
+.debug-section {
+  border: 1px solid rgba(32, 45, 56, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 18px 48px rgba(30, 40, 48, 0.07);
+}
+
+.debug-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 28px;
+}
+
+.debug-actions,
+.debug-domain-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.debug-header h1 {
+  margin: 4px 0 8px;
+  color: #17202b;
+  font-family: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  font-size: 40px;
+}
+
+.debug-header p {
+  margin: 0;
+  color: #5f6b74;
+}
+
+.debug-header button,
+.debug-section-heading button,
+.debug-tabs button,
+.debug-domain-tabs button {
+  border: 1px solid rgba(36, 81, 89, 0.24);
+  border-radius: 8px;
+  background: #245159;
+  color: white;
+  padding: 9px 13px;
+}
+
+.debug-actions button:nth-child(n + 2) {
+  background: #fff;
+  color: #245159;
+}
+
+.debug-section {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+}
+
+.debug-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.debug-section-heading h2,
+.debug-grid h3 {
+  margin: 0;
+}
+
+.debug-section-heading span,
+.debug-tabs span {
+  color: #64717c;
+  font-size: 14px;
+}
+
+.debug-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.debug-metrics article,
+.debug-grid > div,
+.debug-details,
+.debug-record,
+.debug-event {
+  border: 1px solid rgba(32, 45, 56, 0.09);
+  border-radius: 10px;
+  background: rgba(246, 248, 244, 0.72);
+}
+
+.debug-metrics article {
+  padding: 14px;
+}
+
+.debug-metrics span {
+  display: block;
+  color: #64717c;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.debug-metrics strong {
+  display: block;
+  margin-top: 5px;
+  color: #245159;
+  font-size: 24px;
+}
+
+.debug-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.debug-grid > div,
+.debug-details,
+.debug-record {
+  padding: 14px;
+}
+
+.debug-details summary,
+.debug-record summary,
+.debug-event summary {
+  cursor: pointer;
+}
+
+.debug-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.debug-tabs button {
+  background: transparent;
+  color: #45505c;
+}
+
+.debug-tabs button.active,
+.debug-domain-tabs button.active {
+  background: #245159;
+  color: white;
+}
+
+.debug-domain-tabs {
+  justify-content: flex-start;
+}
+
+.debug-domain-tabs button {
+  background: rgba(255, 255, 255, 0.78);
+  color: #45505c;
+}
+
+.debug-prompt,
+.debug-json {
+  max-width: 100%;
+  overflow: auto;
+  border-radius: 10px;
+  background: #16212c;
+  color: #e7f0ee;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.debug-prompt {
+  max-height: 520px;
+  margin: 0;
+  padding: 16px;
+}
+
+.debug-json {
+  max-height: 360px;
+  margin: 10px 0 0;
+  padding: 12px;
+}
+
+.debug-records {
+  display: grid;
+  gap: 10px;
+}
+
+.debug-record summary {
+  display: grid;
+  gap: 4px;
+}
+
+.debug-record summary strong {
+  color: #17202b;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.debug-record summary span,
+.debug-event small {
+  color: #64717c;
+}
+
+.debug-record-body {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.debug-event {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.debug-event summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.debug-empty {
+  margin: 0;
+  color: #64717c;
 }
 
 .bookshelf-page {
