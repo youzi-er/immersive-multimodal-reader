@@ -61,8 +61,6 @@ type ChatMessage = {
 type GeneratedSceneImage = {
   imageUrl: string;
   prompt: string;
-  mediaAssetId?: string | null;
-  cacheHit?: boolean;
 };
 
 type ParagraphImage = {
@@ -73,8 +71,6 @@ type ParagraphImage = {
   promptCharCount: number;
   traceId: string | null;
   styleInitializedNow: boolean;
-  mediaAssetId?: string | null;
-  mediaPersistenceError?: string | null;
 };
 
 type ParagraphSpeechScriptLine = {
@@ -93,8 +89,6 @@ type ParagraphSpeech = {
   script: ParagraphSpeechScriptLine[];
   voicesInitializedNow: boolean;
   traceId: string | null;
-  mediaAssetId?: string | null;
-  mediaPersistenceError?: string | null;
 };
 
 type SpeechDebugEvent = {
@@ -169,28 +163,6 @@ type ImageDebugInfo = {
 type RangeMedia<T> = T & {
   chapterId: string;
   range: TextRange;
-  userId?: string;
-  fromLibrary?: boolean;
-  createdAt?: string;
-};
-
-type MediaLibraryAsset = {
-  id: string;
-  articleId: string;
-  chapterId: string | null;
-  paragraphIndex: number | null;
-  mediaType: 'image' | 'audio';
-  url: string;
-  sourceUrl: string | null;
-  filePath: string | null;
-  prompt: string | null;
-  sourceText: string | null;
-  provider: string;
-  model: string | null;
-  userId: string;
-  range: TextRange | null;
-  metadata: Record<string, unknown> | null;
-  createdAt: string;
 };
 
 type SelectedParagraph = {
@@ -255,30 +227,16 @@ const api = {
       method: 'POST',
       body: JSON.stringify({ chapterId })
     }),
-  paragraphImage: async (payload: {
-    chapterId: string;
-    paragraphIndex: number;
-    targetSegment: string;
-    range: TextRange;
-  }) =>
+  paragraphImage: async (payload: { chapterId: string; paragraphIndex: number; targetSegment: string }) =>
     requestJson<ParagraphImage>('/api/ai/paragraph-image', {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
-  paragraphSpeech: async (payload: {
-    chapterId: string;
-    paragraphIndex: number;
-    targetSegment: string;
-    range: TextRange;
-  }) =>
+  paragraphSpeech: async (payload: { chapterId: string; paragraphIndex: number; targetSegment: string }) =>
     requestJson<ParagraphSpeech>('/api/ai/paragraph-speech', {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
-  mediaAssets: (articleId: string, chapterId: string) =>
-    requestJson<{ assets: MediaLibraryAsset[] }>(
-      `/api/media/assets?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(chapterId)}`
-    ),
   speechDebug: (limit = 20) => requestJson<SpeechDebugInfo>(`/api/ai/speech-debug?limit=${limit}`),
   imageDebug: (limit = 20) => requestJson<ImageDebugInfo>(`/api/ai/image-debug?limit=${limit}`),
   regenerateSpeechVoices: () =>
@@ -1190,90 +1148,6 @@ function ReaderPage({
   const sceneVariant =
     chapter?.id === 'speckled-band-2' ? 'manor' : chapter?.id === 'speckled-band-3' ? 'night' : 'baker';
 
-  function metadataString(metadata: Record<string, unknown> | null, key: string) {
-    const value = metadata?.[key];
-    return typeof value === 'string' ? value : '';
-  }
-
-  function metadataNumber(metadata: Record<string, unknown> | null, key: string) {
-    const value = metadata?.[key];
-    return typeof value === 'number' ? value : null;
-  }
-
-  function mediaAssetKey(asset: MediaLibraryAsset) {
-    if (!asset.chapterId || !asset.range) {
-      return null;
-    }
-
-    return `${rangeKey(asset.chapterId, asset.range)}-${asset.mediaType}-${asset.id}`;
-  }
-
-  function imageFromAsset(asset: MediaLibraryAsset): RangeMedia<ParagraphImage> | null {
-    const key = mediaAssetKey(asset);
-    if (!key || asset.mediaType !== 'image' || !asset.chapterId || !asset.range) {
-      return null;
-    }
-
-    return {
-      chapterId: asset.chapterId,
-      range: asset.range,
-      imageUrl: asset.url,
-      prompt: asset.prompt || '',
-      sceneSummaryCn: metadataString(asset.metadata, 'sceneSummaryCn'),
-      componentType: metadataString(asset.metadata, 'componentType'),
-      promptCharCount: metadataNumber(asset.metadata, 'promptCharCount') ?? 0,
-      traceId: metadataString(asset.metadata, 'traceId') || null,
-      styleInitializedNow: Boolean(asset.metadata?.styleInitializedNow),
-      mediaAssetId: asset.id,
-      userId: asset.userId,
-      fromLibrary: true,
-      createdAt: asset.createdAt
-    };
-  }
-
-  function sceneImageFromAsset(asset: MediaLibraryAsset): GeneratedSceneImage | null {
-    if (asset.mediaType !== 'image' || asset.range) {
-      return null;
-    }
-
-    if (asset.metadata?.generationType !== 'scene') {
-      return null;
-    }
-
-    return {
-      imageUrl: asset.url,
-      prompt: asset.prompt || '',
-      mediaAssetId: asset.id,
-      cacheHit: true
-    };
-  }
-
-  function audioFromAsset(asset: MediaLibraryAsset): RangeMedia<ParagraphSpeech> | null {
-    const key = mediaAssetKey(asset);
-    if (!key || asset.mediaType !== 'audio' || !asset.chapterId || !asset.range) {
-      return null;
-    }
-
-    const script = Array.isArray(asset.metadata?.script)
-      ? (asset.metadata.script as ParagraphSpeechScriptLine[])
-      : [];
-
-    return {
-      chapterId: asset.chapterId,
-      range: asset.range,
-      audioUrl: asset.url,
-      durationMs: metadataNumber(asset.metadata, 'durationMs'),
-      segmentCount: metadataNumber(asset.metadata, 'segmentCount') ?? script.length,
-      script,
-      voicesInitializedNow: Boolean(asset.metadata?.voicesInitializedNow),
-      traceId: metadataString(asset.metadata, 'traceId') || null,
-      mediaAssetId: asset.id,
-      userId: asset.userId,
-      fromLibrary: true,
-      createdAt: asset.createdAt
-    };
-  }
-
   useEffect(() => {
     setSceneGenerated(false);
     setGeneratedSceneImage(null);
@@ -1281,65 +1155,6 @@ function ReaderPage({
     setSelectedParagraph(null);
     stopParagraphAudio();
   }, [chapterId]);
-
-  useEffect(() => {
-    if (!chapter?.id) {
-      return;
-    }
-
-    let cancelled = false;
-
-    api
-      .mediaAssets('speckled-band', chapter.id)
-      .then(({ assets }) => {
-        if (cancelled) {
-          return;
-        }
-
-        const nextImages: Record<string, RangeMedia<ParagraphImage>> = {};
-        const nextAudios: Record<string, RangeMedia<ParagraphSpeech>> = {};
-        let nextSceneImage: GeneratedSceneImage | null = null;
-
-        assets.forEach((asset) => {
-          if (!nextSceneImage) {
-            nextSceneImage = sceneImageFromAsset(asset);
-          }
-
-          const key = mediaAssetKey(asset);
-          if (!key) {
-            return;
-          }
-
-          const image = imageFromAsset(asset);
-          if (image) {
-            nextImages[key] = image;
-            return;
-          }
-
-          const audio = audioFromAsset(asset);
-          if (audio) {
-            nextAudios[key] = audio;
-          }
-        });
-
-        setParagraphImages(nextImages);
-        setParagraphAudios(nextAudios);
-        if (nextSceneImage) {
-          setGeneratedSceneImage(nextSceneImage);
-          setSceneGenerated(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setParagraphImages({});
-          setParagraphAudios({});
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [chapter?.id]);
 
   function stopParagraphAudio() {
     const audio = audioRef.current;
@@ -1601,12 +1416,11 @@ function ReaderPage({
       const result = await api.paragraphSpeech({
         chapterId: savedChapterId,
         paragraphIndex: savedParagraphIndex,
-        targetSegment,
-        range: savedRange
+        targetSegment
       });
       setParagraphAudios((prev) => ({
         ...prev,
-        [key]: { ...result, chapterId: savedChapterId, range: savedRange, fromLibrary: false }
+        [key]: { ...result, chapterId: savedChapterId, range: savedRange }
       }));
       setSelectedParagraph(null);
       setNotice('段落配音已生成');
@@ -1634,14 +1448,6 @@ function ReaderPage({
     const savedRange = selectedParagraph.range;
     const savedChapterId = selectedParagraph.chapterId;
     const savedParagraphIndex = selectedParagraph.paragraphIndex;
-    const existingImage = paragraphImages[key];
-
-    if (existingImage) {
-      setSelectedParagraph(null);
-      setNotice('已调用媒体库插图');
-      window.setTimeout(() => setNotice(''), 1800);
-      return;
-    }
 
     setParagraphImageLoadingKey(key);
     setNotice('正在生成段落插图，首次使用会先初始化全书风格，可能较慢');
@@ -1649,12 +1455,11 @@ function ReaderPage({
       const result = await api.paragraphImage({
         chapterId: savedChapterId,
         paragraphIndex: savedParagraphIndex,
-        targetSegment,
-        range: savedRange
+        targetSegment
       });
       setParagraphImages((prev) => ({
         ...prev,
-        [key]: { ...result, chapterId: savedChapterId, range: savedRange, fromLibrary: false }
+        [key]: { ...result, chapterId: savedChapterId, range: savedRange }
       }));
       setSelectedParagraph(null);
       setNotice('段落插图已生成');
@@ -1683,13 +1488,6 @@ function ReaderPage({
 
   async function generateSceneImage() {
     if (!chapter) return;
-    if (generatedSceneImage) {
-      setSceneGenerated(true);
-      setNotice('已调用媒体库现场图');
-      window.setTimeout(() => setNotice(''), 1800);
-      return;
-    }
-
     setSceneLoading(true);
     try {
       const result = await api.image(chapter.id);
@@ -1721,14 +1519,6 @@ function ReaderPage({
       return [...prev, clueId];
     });
 
-    window.setTimeout(() => setNotice(''), 1800);
-  }
-
-  function removeClue(clueId: string) {
-    const clue = clues.find((item) => item.id === clueId);
-
-    setCollectedClueIds((prev) => prev.filter((id) => id !== clueId));
-    setNotice(clue ? `已从证物袋取出：“${clue.label}”` : '已从证物袋取出');
     window.setTimeout(() => setNotice(''), 1800);
   }
 
@@ -1799,7 +1589,7 @@ function ReaderPage({
       <button
         key={`play-${mediaKey}`}
         type="button"
-        className={`inline-audio-play${isPlaying ? ' playing' : ''}${audio.fromLibrary ? ' library-media' : ''}`}
+        className={`inline-audio-play${isPlaying ? ' playing' : ''}`}
         onClick={(event) => {
           event.stopPropagation();
           toggleParagraphAudio(mediaKey, audio.audioUrl);
@@ -1852,10 +1642,9 @@ function ReaderPage({
       nodes.push(
         <img
           key={`image-${injection.key}`}
-          className={`inline-selection-image${injection.image.fromLibrary ? ' library-media' : ''}`}
+          className="inline-selection-image"
           src={injection.image.imageUrl}
           alt=""
-          title={injection.image.fromLibrary ? `Media library: ${injection.image.userId || 'unknown'}` : undefined}
         />
       );
       position = injection.offset;
@@ -2291,12 +2080,7 @@ function ReaderPage({
                   <div className="clue-board-list">
                     {collectedClues.map((clue) => (
                       <article key={clue.id} className="clue-card">
-                        <div className="clue-card-header">
-                          <span>{clue.type}</span>
-                          <button type="button" onClick={() => removeClue(clue.id)}>
-                            取出
-                          </button>
-                        </div>
+                        <span>{clue.type}</span>
                         <h3>{clue.label}</h3>
                         <p>{clue.description}</p>
                       </article>
