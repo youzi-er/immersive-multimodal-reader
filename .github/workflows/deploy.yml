@@ -75,6 +75,12 @@ jobs:
           MINIMAX_TTS_MODEL=speech-2.8-hd
           MINIMAX_IMAGE_MODEL=image-01
           MINIMAX_DEFAULT_VOICE_ID=Chinese (Mandarin)_Lyrical_Voice
+          MYSQL_HOST=${{ secrets.MYSQL_HOST }}
+          MYSQL_PORT=${{ secrets.MYSQL_PORT }}
+          MYSQL_USER=${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
+          MYSQL_CONNECTION_LIMIT=10
           ENVEOF
 
           npm install
@@ -100,7 +106,18 @@ jobs:
 
           pm2 save
 
-          curl -fsS http://127.0.0.1/api/health
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS http://127.0.0.1:3001/api/health; then
+              break
+            fi
+
+            if [ "$attempt" = "5" ]; then
+              pm2 logs immersive-reader --lines 80 --nostream
+              exit 1
+            fi
+
+            sleep 3
+          done
 
           rm -f "$RELEASE"
           EOF
