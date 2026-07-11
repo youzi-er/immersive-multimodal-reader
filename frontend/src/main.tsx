@@ -209,6 +209,10 @@ const TOKEN_KEY = 'immersive-reader-token';
 const USER_KEY = 'immersive-reader-user';
 const COLLECTED_CLUES_KEY = 'immersive-reader-collected-clues';
 
+function normalizeMediaUrl(url: string) {
+  return url.startsWith('/media/') ? `/api${url}` : url;
+}
+
 async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = window.localStorage.getItem(TOKEN_KEY);
   const res = await fetch(url, {
@@ -245,36 +249,47 @@ const api = {
     });
     return data.answer;
   },
-  tts: async (payload: { text: string; speaker: string; speed: number; pitch: number }) =>
-    requestJson<{ audioUrl: string; durationMs: number | null; traceId: string | null }>('/api/ai/tts', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    }),
-  image: async (chapterId: string) =>
-    requestJson<GeneratedSceneImage>('/api/ai/image', {
+  tts: async (payload: { text: string; speaker: string; speed: number; pitch: number }) => {
+    const data = await requestJson<{ audioUrl: string; durationMs: number | null; traceId: string | null }>(
+      '/api/ai/tts',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }
+    );
+    return { ...data, audioUrl: normalizeMediaUrl(data.audioUrl) };
+  },
+  image: async (chapterId: string) => {
+    const data = await requestJson<GeneratedSceneImage>('/api/ai/image', {
       method: 'POST',
       body: JSON.stringify({ chapterId })
-    }),
+    });
+    return { ...data, imageUrl: normalizeMediaUrl(data.imageUrl) };
+  },
   paragraphImage: async (payload: {
     chapterId: string;
     paragraphIndex: number;
     targetSegment: string;
     range: TextRange;
-  }) =>
-    requestJson<ParagraphImage>('/api/ai/paragraph-image', {
+  }) => {
+    const data = await requestJson<ParagraphImage>('/api/ai/paragraph-image', {
       method: 'POST',
       body: JSON.stringify(payload)
-    }),
+    });
+    return { ...data, imageUrl: normalizeMediaUrl(data.imageUrl) };
+  },
   paragraphSpeech: async (payload: {
     chapterId: string;
     paragraphIndex: number;
     targetSegment: string;
     range: TextRange;
-  }) =>
-    requestJson<ParagraphSpeech>('/api/ai/paragraph-speech', {
+  }) => {
+    const data = await requestJson<ParagraphSpeech>('/api/ai/paragraph-speech', {
       method: 'POST',
       body: JSON.stringify(payload)
-    }),
+    });
+    return { ...data, audioUrl: normalizeMediaUrl(data.audioUrl) };
+  },
   mediaAssets: (articleId: string, chapterId: string) =>
     requestJson<{ assets: MediaLibraryAsset[] }>(
       `/api/media/assets?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(chapterId)}`
@@ -1217,7 +1232,7 @@ function ReaderPage({
     return {
       chapterId: asset.chapterId,
       range: asset.range,
-      imageUrl: asset.url,
+      imageUrl: normalizeMediaUrl(asset.url),
       prompt: asset.prompt || '',
       sceneSummaryCn: metadataString(asset.metadata, 'sceneSummaryCn'),
       componentType: metadataString(asset.metadata, 'componentType'),
@@ -1241,7 +1256,7 @@ function ReaderPage({
     }
 
     return {
-      imageUrl: asset.url,
+      imageUrl: normalizeMediaUrl(asset.url),
       prompt: asset.prompt || '',
       mediaAssetId: asset.id,
       cacheHit: true
@@ -1261,7 +1276,7 @@ function ReaderPage({
     return {
       chapterId: asset.chapterId,
       range: asset.range,
-      audioUrl: asset.url,
+      audioUrl: normalizeMediaUrl(asset.url),
       durationMs: metadataNumber(asset.metadata, 'durationMs'),
       segmentCount: metadataNumber(asset.metadata, 'segmentCount') ?? script.length,
       script,
