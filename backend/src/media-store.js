@@ -13,7 +13,7 @@ function monthPath(date = new Date()) {
 }
 
 function mediaUrl(...parts) {
-  return `/api/media/${parts.map((part) => encodeURIComponent(part)).join('/')}`;
+  return `/media/${parts.map((part) => encodeURIComponent(part)).join('/')}`;
 }
 
 function extensionFromContentType(contentType, fallback) {

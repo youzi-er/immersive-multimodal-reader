@@ -48,7 +48,6 @@ const sessions = new Map();
 app.use(cors());
 app.use(express.json());
 app.use('/media', express.static(mediaRoot));
-app.use('/api/media', express.static(mediaRoot));
 
 function publicUser(user) {
   return {
