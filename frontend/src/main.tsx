@@ -1205,17 +1205,6 @@ function ReaderPage({
   const sceneVariant =
     chapter?.id === 'speckled-band-2' ? 'manor' : chapter?.id === 'speckled-band-3' ? 'night' : 'baker';
 
-  function findImageForRange(chapterId: string, range: TextRange) {
-    const key = rangeKey(chapterId, range);
-    return (
-      paragraphImages[key] ||
-      Object.values(paragraphImages).find(
-        (entry) => entry.chapterId === chapterId && rangeKey(entry.chapterId, entry.range) === key
-      ) ||
-      null
-    );
-  }
-
   function metadataString(metadata: Record<string, unknown> | null, key: string) {
     const value = metadata?.[key];
     return typeof value === 'string' ? value : '';
@@ -1660,7 +1649,7 @@ function ReaderPage({
     const savedRange = selectedParagraph.range;
     const savedChapterId = selectedParagraph.chapterId;
     const savedParagraphIndex = selectedParagraph.paragraphIndex;
-    const existingImage = findImageForRange(savedChapterId, savedRange);
+    const existingImage = paragraphImages[key];
 
     if (existingImage) {
       setSelectedParagraph(null);
