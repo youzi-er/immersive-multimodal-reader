@@ -95,13 +95,6 @@ jobs:
             -P "${{ secrets.MYSQL_PORT }}" \
             -u "${{ secrets.MYSQL_USER }}" \
             -p"${{ secrets.MYSQL_PASSWORD }}" \
-            -e "CREATE DATABASE IF NOT EXISTS \`${{ secrets.MYSQL_DATABASE }}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-
-          mysql \
-            -h "${{ secrets.MYSQL_HOST }}" \
-            -P "${{ secrets.MYSQL_PORT }}" \
-            -u "${{ secrets.MYSQL_USER }}" \
-            -p"${{ secrets.MYSQL_PASSWORD }}" \
             "${{ secrets.MYSQL_DATABASE }}" < backend/sql/001_media_assets.sql
 
           npm install
