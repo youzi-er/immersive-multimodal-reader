@@ -121,6 +121,19 @@ jobs:
 
           pm2 save
 
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:3001/api/health; then
+              break
+            fi
+
+            if [ "$i" -eq 20 ]; then
+              pm2 logs immersive-reader --lines 80 --nostream
+              exit 1
+            fi
+
+            sleep 1
+          done
+
           curl -fsS http://127.0.0.1/api/health
 
           rm -f "$RELEASE"
