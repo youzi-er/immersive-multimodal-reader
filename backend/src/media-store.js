@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(__dirname, '..');
 
-export const mediaRoot = path.resolve(backendRoot, 'storage', 'media');
+export const mediaRoot = path.resolve(process.env.MEDIA_STORAGE_ROOT || path.resolve(backendRoot, 'storage', 'media'));
 
 function monthPath(date = new Date()) {
   return [String(date.getFullYear()), String(date.getMonth() + 1).padStart(2, '0')];

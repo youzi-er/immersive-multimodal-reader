@@ -61,6 +61,7 @@ jobs:
           PREV_DIR="$HOME/immersive-multimodal-reader.prev"
           RELEASE="$HOME/immersive-release.tgz"
           WEB_DIR="/var/www/immersive-reader"
+          MEDIA_DIR="$HOME/immersive-reader-media"
 
           rm -rf "$NEW_DIR"
           mkdir -p "$NEW_DIR"
@@ -70,12 +71,38 @@ jobs:
 
           cat > .env <<ENVEOF
           MINIMAX_API_KEY=${{ secrets.MINIMAX_API_KEY }}
+          MINIMAX_GROUP_ID=${{ secrets.MINIMAX_GROUP_ID }}
           MINIMAX_API_BASE=https://api.minimaxi.com
           MINIMAX_TEXT_MODEL=MiniMax-M3
           MINIMAX_TTS_MODEL=speech-2.8-hd
           MINIMAX_IMAGE_MODEL=image-01
           MINIMAX_DEFAULT_VOICE_ID=Chinese (Mandarin)_Lyrical_Voice
+          MYSQL_HOST=${{ secrets.MYSQL_HOST }}
+          MYSQL_PORT=${{ secrets.MYSQL_PORT }}
+          MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
+          MYSQL_USER=${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
+          MEDIA_STORAGE_ROOT=$MEDIA_DIR
           ENVEOF
+
+          mkdir -p "$MEDIA_DIR"
+          if [ -d "$APP_DIR/backend/storage/media" ] && [ -z "$(ls -A "$MEDIA_DIR" 2>/dev/null)" ]; then
+            cp -a "$APP_DIR/backend/storage/media/." "$MEDIA_DIR"/
+          fi
+
+          mysql \
+            -h "${{ secrets.MYSQL_HOST }}" \
+            -P "${{ secrets.MYSQL_PORT }}" \
+            -u "${{ secrets.MYSQL_USER }}" \
+            -p"${{ secrets.MYSQL_PASSWORD }}" \
+            -e "CREATE DATABASE IF NOT EXISTS \`${{ secrets.MYSQL_DATABASE }}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+
+          mysql \
+            -h "${{ secrets.MYSQL_HOST }}" \
+            -P "${{ secrets.MYSQL_PORT }}" \
+            -u "${{ secrets.MYSQL_USER }}" \
+            -p"${{ secrets.MYSQL_PASSWORD }}" \
+            "${{ secrets.MYSQL_DATABASE }}" < backend/sql/001_media_assets.sql
 
           npm install
           npm run build
@@ -83,6 +110,7 @@ jobs:
           mkdir -p "$WEB_DIR"
           rm -rf "$WEB_DIR"/*
           cp -r frontend/dist/* "$WEB_DIR"/
+          ln -sfn "$MEDIA_DIR" "$WEB_DIR/media"
 
           rm -rf "$PREV_DIR"
           if [ -d "$APP_DIR" ]; then
