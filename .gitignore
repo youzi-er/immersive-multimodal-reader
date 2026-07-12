@@ -16,6 +16,7 @@ coverage/
 
 # Speech voice cache (voice_design results)
 backend/cache/
+backend/storage/
 
 # Logs
 *.log
