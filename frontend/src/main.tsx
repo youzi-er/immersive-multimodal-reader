@@ -1200,16 +1200,16 @@ function ReaderPage({
     return typeof value === 'number' ? value : null;
   }
 
-  function mediaAssetKey(asset: MediaLibraryAsset) {
+  function mediaAssetPositionKey(asset: MediaLibraryAsset) {
     if (!asset.chapterId || !asset.range) {
       return null;
     }
 
-    return `${rangeKey(asset.chapterId, asset.range)}-${asset.mediaType}-${asset.id}`;
+    return `${rangeKey(asset.chapterId, asset.range)}-${asset.mediaType}`;
   }
 
   function imageFromAsset(asset: MediaLibraryAsset): RangeMedia<ParagraphImage> | null {
-    const key = mediaAssetKey(asset);
+    const key = mediaAssetPositionKey(asset);
     if (!key || asset.mediaType !== 'image' || !asset.chapterId || !asset.range) {
       return null;
     }
@@ -1249,7 +1249,7 @@ function ReaderPage({
   }
 
   function audioFromAsset(asset: MediaLibraryAsset): RangeMedia<ParagraphSpeech> | null {
-    const key = mediaAssetKey(asset);
+    const key = mediaAssetPositionKey(asset);
     if (!key || asset.mediaType !== 'audio' || !asset.chapterId || !asset.range) {
       return null;
     }
@@ -1305,19 +1305,19 @@ function ReaderPage({
             nextSceneImage = sceneImageFromAsset(asset);
           }
 
-          const key = mediaAssetKey(asset);
+          const key = mediaAssetPositionKey(asset);
           if (!key) {
             return;
           }
 
           const image = imageFromAsset(asset);
-          if (image) {
+          if (image && !nextImages[key]) {
             nextImages[key] = image;
             return;
           }
 
           const audio = audioFromAsset(asset);
-          if (audio) {
+          if (audio && !nextAudios[key]) {
             nextAudios[key] = audio;
           }
         });
