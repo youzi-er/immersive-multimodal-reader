@@ -281,6 +281,10 @@ const api = {
     ),
   speechDebug: (limit = 20) => requestJson<SpeechDebugInfo>(`/api/ai/speech-debug?limit=${limit}`),
   imageDebug: (limit = 20) => requestJson<ImageDebugInfo>(`/api/ai/image-debug?limit=${limit}`),
+  deleteMediaAsset: (id: string) =>
+    requestJson<{ ok: true; asset: MediaLibraryAsset }>(`/api/media/assets/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    }),
   regenerateSpeechVoices: () =>
     requestJson('/api/ai/speech-debug/regenerate-voices', {
       method: 'POST'
@@ -1205,7 +1209,7 @@ function ReaderPage({
       return null;
     }
 
-    return `${rangeKey(asset.chapterId, asset.range)}-${asset.mediaType}`;
+    return rangeKey(asset.chapterId, asset.range);
   }
 
   function imageFromAsset(asset: MediaLibraryAsset): RangeMedia<ParagraphImage> | null {
@@ -1667,6 +1671,40 @@ function ReaderPage({
     }
   }
 
+  function hideParagraphImage(key: string) {
+    setParagraphImages((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setNotice('插图已收起');
+    window.setTimeout(() => setNotice(''), 1600);
+  }
+
+  async function deleteParagraphImage(key: string, image: RangeMedia<ParagraphImage>) {
+    const confirmed = window.confirm('删除这张插图后，同一片段可以重新生成。确认删除？');
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      if (image.mediaAssetId) {
+        await api.deleteMediaAsset(image.mediaAssetId);
+      }
+
+      setParagraphImages((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setNotice('插图已删除');
+      window.setTimeout(() => setNotice(''), 1600);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '插图删除失败');
+      window.setTimeout(() => setNotice(''), 2400);
+    }
+  }
+
   async function askAssistant() {
     if (!question.trim() || !chapter) return;
     const currentQuestion = question.trim();
@@ -1850,13 +1888,37 @@ function ReaderPage({
       }
 
       nodes.push(
-        <img
+        <span
           key={`image-${injection.key}`}
-          className={`inline-selection-image${injection.image.fromLibrary ? ' library-media' : ''}`}
-          src={injection.image.imageUrl}
-          alt=""
-          title={injection.image.fromLibrary ? `Media library: ${injection.image.userId || 'unknown'}` : undefined}
-        />
+          className={`inline-image-frame${injection.image.fromLibrary ? ' library-media' : ''}`}
+        >
+          <span className="inline-image-actions">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                hideParagraphImage(injection.key);
+              }}
+            >
+              收起
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                void deleteParagraphImage(injection.key, injection.image);
+              }}
+            >
+              删除
+            </button>
+          </span>
+          <img
+            className="inline-selection-image"
+            src={injection.image.imageUrl}
+            alt=""
+            title={injection.image.fromLibrary ? `Media library: ${injection.image.userId || 'unknown'}` : undefined}
+          />
+        </span>
       );
       position = injection.offset;
     });

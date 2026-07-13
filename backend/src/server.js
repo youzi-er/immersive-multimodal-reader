@@ -419,7 +419,7 @@ app.post('/api/media/assets', optionalAuth, async (req, res) => {
   }
 });
 
-app.delete('/api/media/assets/:id', requireAuth, async (req, res) => {
+app.delete('/api/media/assets/:id', optionalAuth, async (req, res) => {
   try {
     const asset = await getMediaAsset(req.params.id);
 
@@ -428,7 +428,7 @@ app.delete('/api/media/assets/:id', requireAuth, async (req, res) => {
       return;
     }
 
-    if (asset.userId !== req.user.id) {
+    if (asset.userId !== 'anonymous' && asset.userId !== req.user?.id) {
       res.status(403).json({ error: 'You can only delete your own media asset' });
       return;
     }

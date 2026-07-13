@@ -1543,17 +1543,47 @@ button:disabled {
   border-left-color: #245159;
 }
 
-.inline-selection-image {
+.inline-image-frame {
   display: block;
   width: min(100%, 480px);
   margin: 10px auto 6px;
+  position: relative;
+}
+
+.inline-image-frame.library-media {
+  border: 2px dashed rgba(36, 81, 89, 0.58);
+  border-radius: 12px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.inline-selection-image {
+  display: block;
+  width: 100%;
   border-radius: 10px;
 }
 
-.inline-selection-image.library-media {
-  border: 2px dashed rgba(36, 81, 89, 0.58);
-  padding: 4px;
-  background: rgba(255, 255, 255, 0.68);
+.inline-image-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+}
+
+.inline-image-actions button {
+  border: 0;
+  border-radius: 7px;
+  background: rgba(24, 34, 49, 0.82);
+  color: #fff;
+  padding: 5px 8px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.inline-image-actions button:hover {
+  background: #245159;
 }
 
 .dialogue-wrap {
