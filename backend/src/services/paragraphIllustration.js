@@ -3,7 +3,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getParagraphContext } from '../data.js';
 import {
-  assertRequiredFields,
   callMessagesApiForJson,
   generateImageFromRequest,
   toImageGenerationBody
@@ -20,12 +19,9 @@ const PROMPTS_DIR = path.resolve(__dirname, '../prompts');
 const DEBUG_LOG_PATH = path.resolve(__dirname, '../../../debug-d022cd.log');
 
 const MAX_PROMPT_CHARS = 1400;
+const MAX_SCENE_PROMPT_CHARS = 600;
+const MAX_AVOID_CHARS = 100;
 const MAX_PHASE2_ATTEMPTS = 3;
-const MINIMAL_AVOID =
-  'bad anatomy, extra fingers, deformed hands, watermark, text, modern clothing, anime, cartoon, blurry';
-
-const IMAGE_REQUEST_REQUIRED = ['model', 'prompt', 'aspect_ratio', 'response_format'];
-const META_REQUIRED = ['component_type', 'scene_summary_cn', 'prompt_char_count'];
 const VALID_COMPONENT_TYPES = new Set([
   'single_character_keyframe',
   'emotional_closeup',
@@ -34,6 +30,7 @@ const VALID_COMPONENT_TYPES = new Set([
   'environment_establishing',
   'object_detail'
 ]);
+const VALID_ASPECT_RATIOS = new Set(['1:1', '16:9', '4:3', '3:2', '2:3', '3:4', '9:16', '21:9']);
 
 const DEFAULT_IMAGE_SETTINGS = {
   model: process.env.MINIMAX_IMAGE_MODEL || 'image-01',
@@ -62,83 +59,119 @@ function debugLog(location, message, data, hypothesisId, runId = 'image-trace') 
 }
 
 
-function compressPrompt(prompt, lockedStylePrompt, maxChars = MAX_PROMPT_CHARS) {
-  if (prompt.length < maxChars) return prompt;
+function requireText(value, field) {
+  if (!String(value || '').trim()) throw new Error(`阶段二规划缺少 ${field}`);
+}
 
-  const avoidMarker = '. Avoid:';
-  const avoidIdx = prompt.indexOf(avoidMarker);
-  let positive = avoidIdx >= 0 ? prompt.slice(0, avoidIdx + 1).trimEnd() : prompt;
-  let avoid = avoidIdx >= 0 ? prompt.slice(avoidIdx + avoidMarker.length).trim() : '';
+function fixedPromptLength(style, withExtraAvoid = true) {
+  const extraAvoidSuffix = withExtraAvoid ? ', .' : '.';
+  return `. ${style.global_style_prompt}. Avoid: ${style.global_negative_prompt}${extraAvoidSuffix}`.length;
+}
 
-  if (!positive.includes(lockedStylePrompt)) {
-    positive = `${positive.replace(/\s+$/, '')} ${lockedStylePrompt}`.trim();
+export function paragraphPromptLimitsForStyle(style) {
+  const available = MAX_PROMPT_CHARS - 1 - fixedPromptLength(style, true) - MAX_AVOID_CHARS;
+  return {
+    scene_prompt_en_max: Math.max(1, Math.min(MAX_SCENE_PROMPT_CHARS, available)),
+    avoid_en_max: MAX_AVOID_CHARS,
+    final_prompt_max: MAX_PROMPT_CHARS
+  };
+}
+
+export function validateParagraphPlan(plan, style) {
+  if (!plan || typeof plan !== 'object' || !plan._meta || typeof plan._meta !== 'object') {
+    throw new Error('阶段二规划必须是包含 _meta 的 JSON 对象');
+  }
+  requireText(plan.scene_prompt_en, 'scene_prompt_en');
+  if (typeof plan.avoid_en !== 'string') throw new Error('阶段二规划的 avoid_en 必须是字符串');
+  requireText(plan.aspect_ratio, 'aspect_ratio');
+  requireText(plan._meta.component_type, '_meta.component_type');
+  requireText(plan._meta.scene_summary_cn, '_meta.scene_summary_cn');
+
+  if (!VALID_COMPONENT_TYPES.has(plan._meta.component_type)) {
+    throw new Error(`未知 component_type：${plan._meta.component_type}`);
+  }
+  if (!VALID_ASPECT_RATIOS.has(plan.aspect_ratio)) {
+    throw new Error(`无效 aspect_ratio：${plan.aspect_ratio}`);
+  }
+  if (plan.scene_prompt_en.length > MAX_SCENE_PROMPT_CHARS) {
+    throw new Error(
+      `scene_prompt_en 长度 ${plan.scene_prompt_en.length}，硬限制 <= ${MAX_SCENE_PROMPT_CHARS}`
+    );
+  }
+  if (plan.avoid_en.length > MAX_AVOID_CHARS) {
+    throw new Error(`avoid_en 长度 ${plan.avoid_en.length}，目标 <= ${MAX_AVOID_CHARS}`);
+  }
+  if (
+    plan.scene_prompt_en.includes(style.global_style_prompt) ||
+    plan.scene_prompt_en.includes(style.global_negative_prompt) ||
+    plan.scene_prompt_en.includes('Avoid:')
+  ) {
+    throw new Error('scene_prompt_en 不得重复锁定风格、锁定负向词或 Avoid 段');
+  }
+  return plan;
+}
+
+export function buildParagraphImageRequest(plan, style) {
+  const scenePrompt = plan.scene_prompt_en.trim().replace(/[.,;:\s]+$/, '');
+  const extraAvoid = plan.avoid_en.trim().replace(/^[,\s]+|[,\s.]+$/g, '');
+  const prompt = `${scenePrompt}. ${style.global_style_prompt}. Avoid: ${style.global_negative_prompt}${
+    extraAvoid ? `, ${extraAvoid}` : ''
+  }.`;
+
+  if (prompt.length >= MAX_PROMPT_CHARS) {
+    throw new Error(`最终 prompt 长度 ${prompt.length}，目标 < ${MAX_PROMPT_CHARS}`);
+  }
+  if (!prompt.includes(style.global_style_prompt) || !prompt.includes(style.global_negative_prompt)) {
+    throw new Error('最终 prompt 未原样包含锁定风格或全局负向词');
   }
 
-  const build = (pos, av) => (av ? `${pos.replace(/\.\s*$/, '')}. Avoid: ${av}` : pos);
-
-  let candidate = build(positive, avoid);
-  if (candidate.length < maxChars) return candidate;
-
-  const avoidWords = (avoid || MINIMAL_AVOID).split(/,\s*/).filter(Boolean);
-  while (avoidWords.length > 4) {
-    avoidWords.pop();
-    candidate = build(positive, avoidWords.join(', '));
-    if (candidate.length < maxChars) return candidate;
-  }
-
-  candidate = build(positive, MINIMAL_AVOID);
-  if (candidate.length < maxChars) return candidate;
-
-  const lockedIdx = positive.lastIndexOf(lockedStylePrompt);
-  if (lockedIdx > 0) {
-    const scenePart = positive.slice(0, lockedIdx).trim();
-    const lockedPart = positive.slice(lockedIdx);
-    const words = scenePart.split(/\s+/);
-    while (words.length > 20) {
-      words.pop();
-      candidate = build(`${words.join(' ')} ${lockedPart}`.trim(), MINIMAL_AVOID);
-      if (candidate.length < maxChars) return candidate;
+  return {
+    ...DEFAULT_IMAGE_SETTINGS,
+    prompt,
+    aspect_ratio: plan.aspect_ratio,
+    _meta: {
+      component_type: plan._meta.component_type,
+      scene_summary_cn: plan._meta.scene_summary_cn,
+      prompt_char_count: prompt.length
     }
-  }
-
-  return candidate.slice(0, maxChars - 1);
+  };
 }
 
-function normalizePhase2Result(data, lockedStylePrompt) {
-  const normalized = { ...data };
-  if (normalized.prompt?.length >= MAX_PROMPT_CHARS) {
-    normalized.prompt = compressPrompt(normalized.prompt, lockedStylePrompt);
-  }
-  if (normalized._meta) {
-    normalized._meta = {
-      ...normalized._meta,
-      prompt_char_count: normalized.prompt.length
-    };
-  }
-  return normalized;
+function trimAtWordBoundary(value, maxChars) {
+  const text = String(value || '').trim();
+  if (text.length <= maxChars) return text;
+  const candidate = text.slice(0, maxChars + 1);
+  const lastSpace = candidate.lastIndexOf(' ');
+  return candidate.slice(0, lastSpace >= Math.floor(maxChars * 0.7) ? lastSpace : maxChars).trim();
 }
 
-function validatePhase2Output(data, lockedStylePrompt) {
-  assertRequiredFields(data, IMAGE_REQUEST_REQUIRED, '阶段二输出');
-  if (!data._meta || typeof data._meta !== 'object') {
-    throw new Error('阶段二输出缺少 _meta 对象');
-  }
-  assertRequiredFields(data._meta, META_REQUIRED, '阶段二输出 _meta');
+export function compactParagraphPlanToBudget(plan, style) {
+  const compacted = {
+    ...plan,
+    scene_prompt_en: trimAtWordBoundary(plan.scene_prompt_en, MAX_SCENE_PROMPT_CHARS),
+    avoid_en: trimAtWordBoundary(plan.avoid_en, MAX_AVOID_CHARS)
+  };
+  const avoidParts = compacted.avoid_en.split(/,\s*/).filter(Boolean);
 
-  if (data.prompt.length >= MAX_PROMPT_CHARS) {
-    throw new Error(`prompt 长度 ${data.prompt.length} 字符，超过限制 ${MAX_PROMPT_CHARS - 1}`);
-  }
-  if (data._meta.prompt_char_count >= MAX_PROMPT_CHARS) {
-    throw new Error(`_meta.prompt_char_count (${data._meta.prompt_char_count}) 必须 < ${MAX_PROMPT_CHARS}`);
-  }
-  if (!VALID_COMPONENT_TYPES.has(data._meta.component_type)) {
-    data._meta.component_type = 'environment_establishing';
-  }
-  if (!data.prompt.includes(lockedStylePrompt)) {
-    throw new Error('阶段二输出 prompt 未包含 locked_style_prompt 完整子串');
-  }
-  if (!data.prompt.includes('Avoid:')) {
-    throw new Error('阶段二输出 prompt 未包含 Avoid: 负向词段');
+  while (true) {
+    compacted.avoid_en = avoidParts.join(', ');
+    const availableSceneChars =
+      MAX_PROMPT_CHARS -
+      1 -
+      fixedPromptLength(style, avoidParts.length > 0) -
+      compacted.avoid_en.length;
+    if (availableSceneChars < 1) {
+      if (avoidParts.length > 0) {
+        avoidParts.pop();
+        continue;
+      }
+      throw new Error('锁定风格和全局负向词本身已超过最终 prompt 长度预算');
+    }
+
+    compacted.scene_prompt_en = trimAtWordBoundary(compacted.scene_prompt_en, availableSceneChars);
+    requireText(compacted.scene_prompt_en, 'scene_prompt_en');
+    buildParagraphImageRequest(compacted, style);
+    return compacted;
   }
 }
 
@@ -293,7 +326,7 @@ export async function getImageDebugInfo({ limit = 20 } = {}) {
   };
 }
 
-function buildRetryUserMessage(baseInput, attempt, lastPromptLength) {
+function buildRetryUserMessage(baseInput, attempt, lastError) {
   if (attempt === 1) {
     return JSON.stringify(baseInput, null, 2);
   }
@@ -301,7 +334,7 @@ function buildRetryUserMessage(baseInput, attempt, lastPromptLength) {
   return JSON.stringify(
     {
       ...baseInput,
-      _retry_instruction: `第 ${attempt} 次生成：上次 prompt 长度为 ${lastPromptLength} 字符，已超过限制。请重新输出完整生图请求体 JSON。prompt 必须严格小于 ${MAX_PROMPT_CHARS} 字符。输出前在脑中自检 3 遍字符数。优先压缩 Avoid 段和冗余修饰，保留 locked_style_prompt 原文与核心画面。`
+      _retry_instruction: `第 ${attempt} 次自动规划。上次未通过：${lastError}。请从原始输入重新输出完整规划 JSON；scene_prompt_en <= ${baseInput.prompt_limits.scene_prompt_en_max}，avoid_en <= ${baseInput.prompt_limits.avoid_en_max}，最终 prompt < ${baseInput.prompt_limits.final_prompt_max}。不要输出或复制锁定风格和全局负向词。`
     },
     null,
     2
@@ -310,19 +343,22 @@ function buildRetryUserMessage(baseInput, attempt, lastPromptLength) {
 
 async function runPhase2({ context, targetSegment, style }) {
   const system = await loadPrompt('phase2-system.md');
+  const promptLimits = paragraphPromptLimitsForStyle(style);
   const llmInput = {
     context: context.trim(),
     target_segment: targetSegment.trim(),
     locked_style_prompt: style.global_style_prompt,
     locked_negative_prompt: style.global_negative_prompt,
     default_image_settings: DEFAULT_IMAGE_SETTINGS,
+    allowed_aspect_ratios: [...VALID_ASPECT_RATIOS],
+    prompt_limits: promptLimits,
     style_profile_cn: style.style_profile_cn || null,
     usage_notes: style.usage_notes || null
   };
 
-  let lastPromptLength = 0;
+  let lastError = '';
   for (let attempt = 1; attempt <= MAX_PHASE2_ATTEMPTS; attempt += 1) {
-    const user = buildRetryUserMessage(llmInput, attempt, lastPromptLength);
+    const user = buildRetryUserMessage(llmInput, attempt, lastError);
     debugLog(
       'paragraphIllustration.js:runPhase2',
       'image phase2 prompt sent',
@@ -341,11 +377,14 @@ async function runPhase2({ context, targetSegment, style }) {
       { attempt, raw },
       'I2-recv'
     );
-    const result = normalizePhase2Result(raw, llmInput.locked_style_prompt);
-    lastPromptLength = result.prompt?.length ?? 0;
-
     try {
-      validatePhase2Output(result, llmInput.locked_style_prompt);
+      const plan = validateParagraphPlan(raw, style);
+      if (plan.scene_prompt_en.length > promptLimits.scene_prompt_en_max) {
+        throw new Error(
+          `scene_prompt_en 长度 ${plan.scene_prompt_en.length}，当前风格预算 <= ${promptLimits.scene_prompt_en_max}`
+        );
+      }
+      const result = buildParagraphImageRequest(plan, style);
       debugLog(
         'paragraphIllustration.js:runPhase2',
         'image phase2 normalized request',
@@ -358,24 +397,47 @@ async function runPhase2({ context, targetSegment, style }) {
         },
         'I2-normalized'
       );
-      return {
-        ...result,
-        _meta: {
-          ...result._meta,
-          prompt_char_count: result.prompt.length
-        },
-        book_id: bookMeta.id,
-        created_at: new Date().toISOString()
-      };
+      return result;
     } catch (error) {
+      lastError = error.message;
       debugLog(
         'paragraphIllustration.js:runPhase2',
         'image phase2 validation failed',
-        { attempt, error: error.message, promptLength: lastPromptLength },
+        {
+          attempt,
+          error: lastError,
+          scenePromptLength: raw?.scene_prompt_en?.length ?? 0,
+          avoidLength: raw?.avoid_en?.length ?? 0,
+          scenePromptTarget: promptLimits.scene_prompt_en_max,
+          avoidTarget: promptLimits.avoid_en_max,
+          finalPromptTarget: promptLimits.final_prompt_max
+        },
         'I2-error'
       );
       if (attempt === MAX_PHASE2_ATTEMPTS) {
-        throw new Error(`${MAX_PHASE2_ATTEMPTS} 次尝试后仍不满足要求：${error.message}`);
+        if (raw?.scene_prompt_en && typeof raw.avoid_en === 'string' && raw?._meta) {
+          try {
+            const compactedPlan = compactParagraphPlanToBudget(raw, style);
+            validateParagraphPlan(compactedPlan, style);
+            const result = buildParagraphImageRequest(compactedPlan, style);
+            debugLog(
+              'paragraphIllustration.js:runPhase2',
+              'image phase2 normalized request',
+              {
+                attempt: 'automatic-compaction',
+                componentType: result._meta.component_type,
+                sceneSummaryCn: result._meta.scene_summary_cn,
+                promptCharCount: result.prompt.length,
+                imageRequest: result
+              },
+              'I2-normalized'
+            );
+            return result;
+          } catch (compactionError) {
+            lastError = compactionError.message;
+          }
+        }
+        throw new Error(`${MAX_PHASE2_ATTEMPTS} 次自动规划后仍未通过校验：${lastError}`);
       }
     }
   }
