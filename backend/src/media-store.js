@@ -5,8 +5,11 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(__dirname, '..');
+const defaultMediaRoot = path.resolve(backendRoot, 'storage', 'media');
 
-export const mediaRoot = path.resolve(process.env.MEDIA_STORAGE_ROOT || path.resolve(backendRoot, 'storage', 'media'));
+export function getMediaRoot() {
+  return path.resolve(String(process.env.MEDIA_STORAGE_ROOT || '').trim() || defaultMediaRoot);
+}
 
 function monthPath(date = new Date()) {
   return [String(date.getFullYear()), String(date.getMonth() + 1).padStart(2, '0')];
@@ -38,7 +41,7 @@ export async function saveImageFromUrl(sourceUrl) {
   const contentType = response.headers.get('content-type') || '';
   const extension = extensionFromContentType(contentType, 'jpg');
   const [year, month] = monthPath();
-  const dir = path.resolve(mediaRoot, 'images', year, month);
+  const dir = path.resolve(getMediaRoot(), 'images', year, month);
   const filename = `${crypto.randomUUID()}.${extension}`;
   const filePath = path.resolve(dir, filename);
   const bytes = Buffer.from(await response.arrayBuffer());
@@ -62,7 +65,7 @@ export async function saveAudioDataUrl(dataUrl) {
   const contentType = match[1];
   const extension = extensionFromContentType(contentType, 'mp3');
   const [year, month] = monthPath();
-  const dir = path.resolve(mediaRoot, 'audio', year, month);
+  const dir = path.resolve(getMediaRoot(), 'audio', year, month);
   const filename = `${crypto.randomUUID()}.${extension}`;
   const filePath = path.resolve(dir, filename);
   const bytes = Buffer.from(match[2], 'base64');
@@ -82,7 +85,9 @@ export async function removeStoredMedia(filePath) {
   }
 
   const resolved = path.resolve(filePath);
-  if (!resolved.startsWith(mediaRoot)) {
+  const mediaRoot = getMediaRoot();
+  const relative = path.relative(mediaRoot, resolved);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
     return;
   }
 

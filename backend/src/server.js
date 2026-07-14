@@ -10,7 +10,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import { chapters, clues } from './data.js';
 import { createMediaAsset, deleteMediaAsset, getMediaAsset, listMediaAssets } from './db.js';
-import { mediaRoot, removeStoredMedia, saveAudioDataUrl, saveImageFromUrl } from './media-store.js';
+import { getMediaRoot, removeStoredMedia, saveAudioDataUrl, saveImageFromUrl } from './media-store.js';
 import {
   buildSherlockImagePrompt,
   chatWithMiniMax,
@@ -57,7 +57,7 @@ const clueGenerationPromises = new Map();
 
 app.use(cors());
 app.use(express.json());
-app.use('/media', express.static(mediaRoot));
+app.use('/media', express.static(getMediaRoot()));
 
 function publicUser(user) {
   return {

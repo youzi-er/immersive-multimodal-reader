@@ -1,6 +1,7 @@
 const MINIMAX_API_BASE = (process.env.MINIMAX_API_BASE || 'https://api.minimaxi.com').replace(/\/$/, '');
 const MAX_API_PROMPT_CHARS = 1500;
 const RETRYABLE_STATUS_CODES = new Set([1002]);
+const RETRYABLE_HTTP_STATUS_CODES = new Set([429, 500, 502, 503, 504, 529]);
 const VALID_IMAGE_MODELS = new Set(['image-01', 'image-01-live']);
 const VALID_ASPECT_RATIOS = new Set(['1:1', '16:9', '4:3', '3:2', '2:3', '3:4', '9:16', '21:9']);
 const VALID_RESPONSE_FORMATS = new Set(['url', 'base64']);
@@ -17,13 +18,17 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function isRetryableMiniMaxError(statusCode, httpStatus) {
+  return RETRYABLE_STATUS_CODES.has(statusCode) || RETRYABLE_HTTP_STATUS_CODES.has(httpStatus);
+}
+
 function parseMiniMaxError(data, httpStatus) {
   const statusCode = data?.base_resp?.status_code;
   const statusMsg = data?.base_resp?.status_msg || data?.error?.message || data?.message;
   const err = new Error(statusMsg || `MiniMax request failed: ${httpStatus}`);
   err.statusCode = statusCode;
   err.httpStatus = httpStatus;
-  err.retryable = RETRYABLE_STATUS_CODES.has(statusCode);
+  err.retryable = isRetryableMiniMaxError(statusCode, httpStatus);
   return err;
 }
 
@@ -121,7 +126,7 @@ function contentToText(content) {
 }
 
 export async function callMessagesApi({ system, user, temperature = 0.7, maxTokens = 1600 }) {
-  const data = await requestMiniMax('/anthropic/v1/messages', {
+  const data = await requestMiniMaxWithRetry('/anthropic/v1/messages', {
     model: process.env.MINIMAX_TEXT_MODEL || 'MiniMax-M3',
     max_tokens: maxTokens,
     temperature,

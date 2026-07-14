@@ -62,6 +62,7 @@ jobs:
           RELEASE="$HOME/immersive-release.tgz"
           WEB_DIR="/var/www/immersive-reader"
           MEDIA_DIR="$HOME/immersive-reader-media"
+          LEGACY_MEDIA_DIR="$HOME/immersive-multimodal-reader-db/backend/storage/media"
 
           rm -rf "$NEW_DIR"
           mkdir -p "$NEW_DIR"
@@ -86,9 +87,22 @@ jobs:
           ENVEOF
 
           mkdir -p "$MEDIA_DIR"
-          if [ -d "$APP_DIR/backend/storage/media" ] && [ -z "$(ls -A "$MEDIA_DIR" 2>/dev/null)" ]; then
-            cp -a "$APP_DIR/backend/storage/media/." "$MEDIA_DIR"/
-          fi
+          recover_media_tree() {
+            source_dir="$1"
+            if [ ! -d "$source_dir" ]; then
+              return
+            fi
+
+            source_count="$(find "$source_dir" -type f | wc -l)"
+            cp -an "$source_dir/." "$MEDIA_DIR"/
+            echo "Recovered media candidates from $source_dir: $source_count"
+          }
+
+          # Recover every historical location before PREV_DIR is rotated away.
+          # -n preserves any file that is already present in persistent storage.
+          recover_media_tree "$LEGACY_MEDIA_DIR"
+          recover_media_tree "$PREV_DIR/backend/storage/media"
+          recover_media_tree "$APP_DIR/backend/storage/media"
 
           mysql \
             -h "${{ secrets.MYSQL_HOST }}" \
@@ -155,6 +169,36 @@ jobs:
 
           verify_clue_api http://127.0.0.1:3001
           verify_clue_api http://127.0.0.1
+
+          verify_media_library() {
+            base_url="$1"
+            manifest="$(mktemp)"
+            curl -fsS "$base_url/api/media/assets?articleId=speckled-band" > "$manifest"
+            MEDIA_DIR="$MEDIA_DIR" node - "$manifest" <<'NODEEOF'
+          const fs = require('fs');
+          const path = require('path');
+          const payload = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (!Array.isArray(payload.assets)) {
+            throw new Error('Media library API did not return an assets array');
+          }
+
+          const missing = [];
+          for (const asset of payload.assets) {
+            if (!String(asset.url || '').startsWith('/media/')) continue;
+            const relativePath = decodeURIComponent(asset.url.slice('/media/'.length));
+            const filePath = path.resolve(process.env.MEDIA_DIR, relativePath);
+            if (!fs.existsSync(filePath)) missing.push(asset.url);
+          }
+
+          if (missing.length > 0) {
+            throw new Error(`Missing ${missing.length} persisted media files: ${missing.slice(0, 5).join(', ')}`);
+          }
+          console.log(`Verified ${payload.assets.length} media library records`);
+          NODEEOF
+            rm -f "$manifest"
+          }
+
+          verify_media_library http://127.0.0.1:3001
 
           rm -f "$RELEASE"
           EOF
