@@ -93,9 +93,21 @@ jobs:
               return
             fi
 
-            source_count="$(find "$source_dir" -type f | wc -l)"
-            cp -an "$source_dir/." "$MEDIA_DIR"/
-            echo "Recovered media candidates from $source_dir: $source_count"
+            copied_count=0
+            skipped_count=0
+            while IFS= read -r -d '' source_file; do
+              relative_path="${source_file#"$source_dir"/}"
+              target_file="$MEDIA_DIR/$relative_path"
+              if [ -e "$target_file" ]; then
+                skipped_count=$((skipped_count + 1))
+                continue
+              fi
+
+              mkdir -p "$(dirname "$target_file")"
+              cp -a "$source_file" "$target_file"
+              copied_count=$((copied_count + 1))
+            done < <(find "$source_dir" -type f -print0)
+            echo "Recovered media from $source_dir: copied=$copied_count skipped=$skipped_count"
           }
 
           # Recover every historical location before PREV_DIR is rotated away.
