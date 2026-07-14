@@ -1636,6 +1636,11 @@ button:disabled {
   text-decoration-color: rgba(210, 120, 40, 1);
 }
 
+.clue-segment.collected {
+  text-decoration-color: rgba(48, 112, 84, 0.92);
+  text-decoration-style: solid;
+}
+
 .voice-popover {
   position: absolute;
   left: 10px;
@@ -1741,6 +1746,10 @@ button:disabled {
 .context-tabs button.active {
   background: #243b43;
   color: white;
+}
+
+.context-tabs button.pulse {
+  animation: bagPulse 620ms ease;
 }
 
 .context-tabs button span {
@@ -2307,6 +2316,11 @@ button:disabled {
   padding: 14px;
 }
 
+.clue-card.active {
+  border-color: rgba(36, 81, 89, 0.42);
+  box-shadow: 0 0 0 2px rgba(36, 81, 89, 0.08);
+}
+
 .clue-card-header {
   display: flex;
   align-items: center;
@@ -2339,6 +2353,68 @@ button:disabled {
 .clue-card-header button:hover {
   background: #245159;
   color: white;
+}
+
+.clue-card-header button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.clue-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.clue-image-stage {
+  display: grid;
+  min-height: 184px;
+  margin: 12px 0 10px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid rgba(32, 45, 56, 0.08);
+  border-radius: 8px;
+  background: rgba(236, 235, 228, 0.72);
+}
+
+.clue-card-image {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  background: #ecebe4;
+}
+
+.clue-image-placeholder {
+  display: grid;
+  width: 100%;
+  min-height: 184px;
+  place-items: center;
+  padding: 18px;
+  color: #66717b;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.clue-image-placeholder.loading {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.64), rgba(255, 255, 255, 0.18));
+  background-size: 220% 100%;
+  animation: clueLoading 1.4s ease infinite;
+}
+
+.clue-image-placeholder.error {
+  color: #8f3838;
+}
+
+.profile-clue-card {
+  overflow: hidden;
+}
+
+.profile-clue-card > .clue-card-image,
+.profile-clue-card > .clue-image-placeholder {
+  min-height: 180px;
+  margin: -14px -14px 12px;
+  width: calc(100% + 28px);
 }
 
 .clue-card h3 {
@@ -2445,6 +2521,15 @@ button:disabled {
   }
   100% {
     transform: scale(1);
+  }
+}
+
+@keyframes clueLoading {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
   }
 }
 

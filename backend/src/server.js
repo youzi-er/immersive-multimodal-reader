@@ -24,6 +24,15 @@ import {
   regenerateBookStyle
 } from './services/paragraphIllustration.js';
 import {
+  CLUE_IMAGE_PLANNER_VERSION,
+  generatePreparedClueImage,
+  prepareClueImage
+} from './services/clueImage.js';
+import {
+  isClueImageAsset,
+  selectResolvedClueAssets as selectClueMediaAssets
+} from './services/clueMedia.js';
+import {
   generateParagraphSpeech,
   getSpeechDebugInfo,
   getSpeechVoicesStatus,
@@ -44,6 +53,7 @@ const users = [
 ];
 
 const sessions = new Map();
+const clueGenerationPromises = new Map();
 
 app.use(cors());
 app.use(express.json());
@@ -171,6 +181,124 @@ function imageAssetResponse(asset, extra = {}) {
   };
 }
 
+function clueImageAssetResponse(asset, currentUser, extra = {}) {
+  const metadata = asset.metadata || {};
+  return {
+    clueId: metadata.clueId || '',
+    occurrenceId: metadata.occurrenceId || '',
+    skipped: false,
+    imageUrl: asset.url,
+    imageMode: metadata.imageMode || '',
+    clueType: metadata.clueType || '',
+    subject: metadata.subject || '',
+    prompt: asset.prompt || '',
+    promptCharCount: metadata.promptCharCount || asset.prompt?.length || 0,
+    mediaAssetId: asset.id,
+    cacheHit: true,
+    userOverride: asset.userId === currentUser,
+    createdAt: asset.createdAt,
+    ...extra
+  };
+}
+
+function selectResolvedClueAssets(assets, currentUser, { fingerprint, clueId, occurrenceId } = {}) {
+  return selectClueMediaAssets(assets, currentUser, {
+    plannerVersion: CLUE_IMAGE_PLANNER_VERSION,
+    fingerprint,
+    clueId,
+    occurrenceId
+  });
+}
+
+async function findClueImageAsset({ articleId, clueId, occurrenceId, fingerprint, currentUser }) {
+  try {
+    const assets = await listMediaAssets({ articleId, mediaType: 'image' });
+    return selectResolvedClueAssets(assets, currentUser, { clueId, occurrenceId, fingerprint })[0] || null;
+  } catch (error) {
+    console.warn(`[clue-image] 媒体缓存不可用，将直接生成：${error.message}`);
+    return null;
+  }
+}
+
+async function generateAndPersistClueImage({ req, prepared, ownerId }) {
+  const result = await generatePreparedClueImage(prepared);
+  if (result.skipped) {
+    return {
+      clueId: prepared.clue.id,
+      occurrenceId: prepared.occurrence.id,
+      skipped: true,
+      reason: result.reason,
+      imageMode: result.imageMode,
+      clueType: result.clueType,
+      subject: result.subject,
+      cacheHit: false,
+      userOverride: ownerId !== 'shared'
+    };
+  }
+
+  const occurrence = prepared.occurrence;
+  const persisted = await persistGeneratedImage({
+    req,
+    sourceUrl: result.imageUrl,
+    prompt: result.prompt,
+    sourceText: occurrence.selectedText,
+    model: result.model,
+    userId: ownerId,
+    position: {
+      articleId: result.articleId,
+      chapterId: occurrence.chapterId,
+      paragraphIndex: occurrence.paragraphIndex,
+      range: {
+        startParagraphIndex: occurrence.paragraphIndex,
+        startOffset: occurrence.startOffset,
+        endParagraphIndex: occurrence.paragraphIndex,
+        endOffset: occurrence.endOffset
+      }
+    },
+    metadata: {
+      generationType: 'clue-image',
+      clueId: prepared.clue.id,
+      occurrenceId: occurrence.id,
+      clueType: result.clueType,
+      imageMode: result.imageMode,
+      subject: result.subject,
+      promptCharCount: result.promptCharCount,
+      traceId: result.traceId,
+      fingerprint: result.fingerprint,
+      plannerVersion: result.plannerVersion,
+      styleInitializedNow: result.styleInitializedNow,
+      plan: result.plan,
+      plannerInput: result.plannerInput,
+      planningAttempts: result.planningAttempts
+    }
+  });
+
+  if (!persisted.asset) {
+    return {
+      clueId: prepared.clue.id,
+      occurrenceId: occurrence.id,
+      skipped: false,
+      imageUrl: persisted.imageUrl || result.imageUrl,
+      imageMode: result.imageMode,
+      clueType: result.clueType,
+      subject: result.subject,
+      prompt: result.prompt,
+      promptCharCount: result.promptCharCount,
+      mediaAssetId: null,
+      cacheHit: false,
+      userOverride: ownerId !== 'shared',
+      mediaPersistenceError: persisted.mediaPersistenceError
+    };
+  }
+
+  return clueImageAssetResponse(persisted.asset, currentUserId(req), {
+    cacheHit: false,
+    userOverride: ownerId !== 'shared',
+    sourceImageUrl: result.imageUrl,
+    mediaPersistenceError: persisted.mediaPersistenceError
+  });
+}
+
 async function findSceneImageAsset({ articleId = 'speckled-band', chapterId, prompt }) {
   const assets = await listMediaAssets({ articleId, chapterId, mediaType: 'image' });
 
@@ -198,7 +326,16 @@ async function findParagraphImageAsset({ articleId = 'speckled-band', chapterId,
   );
 }
 
-async function persistGeneratedImage({ req, sourceUrl, prompt, sourceText, model, metadata = {} }) {
+async function persistGeneratedImage({
+  req,
+  sourceUrl,
+  prompt,
+  sourceText,
+  model,
+  metadata = {},
+  position = null,
+  userId = null
+}) {
   let saved = { url: sourceUrl, filePath: null };
   let localSaveError = null;
 
@@ -211,7 +348,7 @@ async function persistGeneratedImage({ req, sourceUrl, prompt, sourceText, model
   try {
     const asset = await createMediaAsset({
       id: crypto.randomUUID(),
-      ...normalizeMediaPosition(req.body),
+      ...(position || normalizeMediaPosition(req.body)),
       mediaType: 'image',
       url: saved.url,
       sourceUrl,
@@ -220,7 +357,7 @@ async function persistGeneratedImage({ req, sourceUrl, prompt, sourceText, model
       sourceText,
       provider: 'minimax',
       model,
-      userId: currentUserId(req),
+      userId: userId || currentUserId(req),
       metadata: {
         ...metadata,
         localSaveError: localSaveError?.message || null
@@ -368,7 +505,53 @@ app.get('/api/clues', (_req, res) => {
   res.json(clues);
 });
 
-app.get('/api/media/assets', async (req, res) => {
+app.get('/api/ai/clue-images', optionalAuth, async (req, res) => {
+  try {
+    const articleId = String(req.query.articleId || 'speckled-band');
+    const currentUser = currentUserId(req);
+    const occurrenceIds = new Set(
+      String(req.query.occurrenceIds || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+    );
+    if (occurrenceIds.size === 0) {
+      res.json({ images: [] });
+      return;
+    }
+    const requestedOccurrences = clues.flatMap((clue) =>
+      clue.occurrences
+        .filter((occurrence) => occurrenceIds.has(occurrence.id))
+        .map((occurrence) => ({ clueId: clue.id, occurrenceId: occurrence.id }))
+    );
+    const fingerprints = new Map(
+      await Promise.all(
+        requestedOccurrences.map(async (item) => {
+          const prepared = await prepareClueImage(item);
+          return [item.occurrenceId, prepared.fingerprint];
+        })
+      )
+    );
+    let assets = [];
+    let persistenceWarning = null;
+    try {
+      assets = await listMediaAssets({ articleId, mediaType: 'image' });
+    } catch (error) {
+      persistenceWarning = error.message || '媒体数据库不可用';
+    }
+    const images = selectResolvedClueAssets(assets, currentUser)
+      .filter((asset) => {
+        const occurrenceId = String(metadataValue(asset, 'occurrenceId') || '');
+        return fingerprints.get(occurrenceId) === metadataValue(asset, 'fingerprint');
+      })
+      .map((asset) => clueImageAssetResponse(asset, currentUser));
+    res.json({ images, persistenceAvailable: !persistenceWarning, warning: persistenceWarning });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to list clue images' });
+  }
+});
+
+app.get('/api/media/assets', optionalAuth, async (req, res) => {
   try {
     const { articleId, chapterId, mediaType, userId } = req.query;
     const assets = await listMediaAssets({
@@ -378,7 +561,7 @@ app.get('/api/media/assets', async (req, res) => {
       userId: userId ? String(userId) : undefined
     });
 
-    res.json({ assets });
+    res.json({ assets: assets.filter((asset) => !isClueImageAsset(asset)) });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Failed to list media assets' });
   }
@@ -627,6 +810,60 @@ app.post('/api/ai/paragraph-image', optionalAuth, async (req, res) => {
     res.json({ ...result, ...persisted });
   } catch (error) {
     res.status(500).json({ error: error.message || 'MiniMax paragraph image generation failed' });
+  }
+});
+
+app.post('/api/ai/clue-image', optionalAuth, async (req, res) => {
+  try {
+    const clueId = String(req.body.clueId || '').trim();
+    const occurrenceId = String(req.body.occurrenceId || '').trim();
+    const force = req.body.force === true;
+    if (!clueId || !occurrenceId) {
+      res.status(400).json({ error: 'clueId and occurrenceId are required' });
+      return;
+    }
+
+    const prepared = await prepareClueImage({ clueId, occurrenceId });
+    const currentUser = currentUserId(req);
+    if (!force) {
+      const cached = await findClueImageAsset({
+        articleId: 'speckled-band',
+        clueId,
+        occurrenceId,
+        fingerprint: prepared.fingerprint,
+        currentUser
+      });
+      if (cached) {
+        res.json(clueImageAssetResponse(cached, currentUser));
+        return;
+      }
+
+      let generationPromise = clueGenerationPromises.get(prepared.fingerprint);
+      if (!generationPromise) {
+        generationPromise = (async () => {
+          const shared = await findClueImageAsset({
+            articleId: 'speckled-band',
+            clueId,
+            occurrenceId,
+            fingerprint: prepared.fingerprint,
+            currentUser: 'shared'
+          });
+          return shared
+            ? clueImageAssetResponse(shared, currentUser)
+            : generateAndPersistClueImage({ req, prepared, ownerId: 'shared' });
+        })().finally(() => {
+          clueGenerationPromises.delete(prepared.fingerprint);
+        });
+        clueGenerationPromises.set(prepared.fingerprint, generationPromise);
+      }
+      res.json(await generationPromise);
+      return;
+    }
+
+    res.json(await generateAndPersistClueImage({ req, prepared, ownerId: currentUser }));
+  } catch (error) {
+    const status = /未知线索|出现位置/.test(error.message || '') ? 400 : 500;
+    res.status(status).json({ error: error.message || 'MiniMax clue image generation failed' });
   }
 });
 

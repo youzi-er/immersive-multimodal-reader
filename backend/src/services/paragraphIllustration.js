@@ -1,18 +1,22 @@
-import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { bookMeta, getBookText, getParagraphContext } from '../data.js';
+import { getParagraphContext } from '../data.js';
 import {
   assertRequiredFields,
   callMessagesApiForJson,
-  callMessagesApiForJsonWithRetry,
   generateImageFromRequest,
   toImageGenerationBody
 } from './minimax.js';
+import {
+  ensureBookStyle,
+  imageStyleDebugCache,
+  loadBookStyleFromDisk,
+  regenerateBookStyle as regenerateSharedBookStyle
+} from './bookImageStyle.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROMPTS_DIR = path.resolve(__dirname, '../prompts');
-const CACHE_DIR = path.resolve(__dirname, '../../cache');
 const DEBUG_LOG_PATH = path.resolve(__dirname, '../../../debug-d022cd.log');
 
 const MAX_PROMPT_CHARS = 1400;
@@ -20,17 +24,6 @@ const MAX_PHASE2_ATTEMPTS = 3;
 const MINIMAL_AVOID =
   'bad anatomy, extra fingers, deformed hands, watermark, text, modern clothing, anime, cartoon, blurry';
 
-const PHASE1_REQUIRED = ['global_style_prompt', 'global_negative_prompt', 'style_profile_cn', 'usage_notes'];
-const STYLE_PROFILE_KEYS = [
-  '世界观美术基调',
-  '时代与空间',
-  '画风',
-  '镜头语言',
-  '光影',
-  '色彩',
-  '材质细节',
-  '氛围关键词'
-];
 const IMAGE_REQUEST_REQUIRED = ['model', 'prompt', 'aspect_ratio', 'response_format'];
 const META_REQUIRED = ['component_type', 'scene_summary_cn', 'prompt_char_count'];
 const VALID_COMPONENT_TYPES = new Set([
@@ -51,15 +44,8 @@ const DEFAULT_IMAGE_SETTINGS = {
   aigc_watermark: false
 };
 
-let styleCache = null;
-let stylePromise = null;
-
 async function loadPrompt(name) {
   return readFile(path.join(PROMPTS_DIR, name), 'utf8');
-}
-
-function styleCachePath() {
-  return path.join(CACHE_DIR, `${bookMeta.id}-style.json`);
 }
 
 function debugLog(location, message, data, hypothesisId, runId = 'image-trace') {
@@ -75,95 +61,6 @@ function debugLog(location, message, data, hypothesisId, runId = 'image-trace') 
   appendFile(DEBUG_LOG_PATH, `${JSON.stringify(payload)}\n`).catch(() => {});
 }
 
-async function loadStyleCacheFromDisk() {
-  try {
-    const raw = await readFile(styleCachePath(), 'utf8');
-    return JSON.parse(raw);
-  } catch (error) {
-    if (error?.code === 'ENOENT') {
-      return null;
-    }
-    throw error;
-  }
-}
-
-async function saveStyleCacheToDisk(style) {
-  await mkdir(CACHE_DIR, { recursive: true });
-  await writeFile(styleCachePath(), JSON.stringify(style, null, 2), 'utf8');
-}
-
-function validatePhase1Output(data) {
-  assertRequiredFields(data, PHASE1_REQUIRED, '阶段一输出');
-  if (typeof data.style_profile_cn !== 'object' || data.style_profile_cn === null) {
-    throw new Error('阶段一输出 style_profile_cn 必须是对象');
-  }
-
-  const missingProfile = STYLE_PROFILE_KEYS.filter((key) => !data.style_profile_cn[key]?.trim?.());
-  if (missingProfile.length > 0) {
-    throw new Error(`style_profile_cn 缺少字段：${missingProfile.join(', ')}`);
-  }
-}
-
-async function buildBookStyle() {
-  const novelText = getBookText();
-  if (!novelText) {
-    throw new Error('小说全文未加载，无法初始化插图风格');
-  }
-
-  const system = await loadPrompt('phase1-system.md');
-  debugLog(
-    'paragraphIllustration.js:buildBookStyle',
-    'image phase1 prompt sent',
-    { systemPrompt: system, novelTextLength: novelText.length },
-    'I1-send'
-  );
-  const result = await callMessagesApiForJsonWithRetry({
-    system,
-    user: novelText,
-    maxTokens: 1600
-  });
-  debugLog(
-    'paragraphIllustration.js:buildBookStyle',
-    'image phase1 raw response',
-    { raw: result },
-    'I1-recv'
-  );
-  validatePhase1Output(result);
-
-  return {
-    ...result,
-    book_id: bookMeta.id,
-    created_at: new Date().toISOString(),
-    source_novel: 'speckled-band.txt'
-  };
-}
-
-async function ensureBookStyle() {
-  if (styleCache) {
-    return { style: styleCache, initializedNow: false };
-  }
-
-  const cached = await loadStyleCacheFromDisk();
-  if (cached) {
-    styleCache = cached;
-    return { style: cached, initializedNow: false };
-  }
-
-  if (!stylePromise) {
-    stylePromise = buildBookStyle()
-      .then(async (style) => {
-        styleCache = style;
-        await saveStyleCacheToDisk(style);
-        return style;
-      })
-      .finally(() => {
-        stylePromise = null;
-      });
-  }
-
-  const style = await stylePromise;
-  return { style, initializedNow: true };
-}
 
 function compressPrompt(prompt, lockedStylePrompt, maxChars = MAX_PROMPT_CHARS) {
   if (prompt.length < maxChars) return prompt;
@@ -321,7 +218,10 @@ async function readImageDebugEvents() {
 function summarizeImageRecord(events, index) {
   const start = events.find((event) => event.message === 'image generation started');
   const normalized = events.find((event) => event.message === 'image phase2 normalized request');
-  const response = events.find((event) => event.message === 'image response received');
+  const cluePrompt = events.find((event) => event.message === 'clue image prompt assembled');
+  const response = events.find(
+    (event) => event.message === 'image response received' || event.message === 'clue image response received'
+  );
 
   return {
     id: `${start?.timestamp ?? events[0]?.timestamp ?? Date.now()}-${index}`,
@@ -329,8 +229,11 @@ function summarizeImageRecord(events, index) {
     targetSegment: start?.data?.targetSegment ?? '',
     chapterId: start?.data?.chapterId ?? '',
     paragraphIndex: start?.data?.paragraphIndex ?? null,
-    componentType: normalized?.data?.componentType ?? '',
-    promptCharCount: normalized?.data?.promptCharCount ?? null,
+    generationType: start?.data?.generationType ?? 'paragraph-image',
+    clueId: start?.data?.clueId ?? '',
+    occurrenceId: start?.data?.occurrenceId ?? '',
+    componentType: normalized?.data?.componentType ?? cluePrompt?.data?.imageMode ?? '',
+    promptCharCount: normalized?.data?.promptCharCount ?? cluePrompt?.data?.finalPromptLength ?? null,
     traceId: response?.data?.traceId ?? null,
     events
   };
@@ -366,41 +269,13 @@ function groupImageDebugRecords(events, limit) {
     .reverse();
 }
 
-function buildImageStyleDebugCache(style) {
-  if (!style) {
-    return {
-      initialized: false,
-      bookId: bookMeta.id,
-      status: '未初始化',
-      style: null
-    };
-  }
-
-  return {
-    initialized: true,
-    bookId: style.book_id,
-    createdAt: style.created_at,
-    sourceNovel: style.source_novel,
-    status: '可生成',
-    style: {
-      global_style_prompt: style.global_style_prompt,
-      global_negative_prompt: style.global_negative_prompt,
-      style_profile_cn: style.style_profile_cn,
-      usage_notes: style.usage_notes
-    }
-  };
-}
-
 export async function regenerateBookStyle() {
-  const style = await buildBookStyle();
-  styleCache = style;
-  await saveStyleCacheToDisk(style);
-  return buildImageStyleDebugCache(style);
+  return regenerateSharedBookStyle();
 }
 
 export async function getImageDebugInfo({ limit = 20 } = {}) {
   const safeLimit = Math.min(50, Math.max(1, Number(limit) || 20));
-  const style = styleCache || (await loadStyleCacheFromDisk());
+  const style = await loadBookStyleFromDisk();
   const [phase1SystemPrompt, phase2SystemPrompt, events] = await Promise.all([
     loadPrompt('phase1-system.md'),
     loadPrompt('phase2-system.md'),
@@ -408,7 +283,7 @@ export async function getImageDebugInfo({ limit = 20 } = {}) {
   ]);
 
   return {
-    cache: buildImageStyleDebugCache(style),
+    cache: imageStyleDebugCache(style),
     prompts: {
       phase1System: phase1SystemPrompt,
       phase2System: phase2SystemPrompt

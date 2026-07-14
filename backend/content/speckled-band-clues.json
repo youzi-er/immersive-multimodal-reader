@@ -1,0 +1,1476 @@
+{
+  "version": 1,
+  "articleId": "speckled-band",
+  "sourceSha256": "d5c9ffe4338f60919c8812cf37078880697cdafc41a8d6995d755124b9b87b52",
+  "generatedAt": "2026-07-14T12:29:51.729Z",
+  "generator": {
+    "protocol": "visual-clue-index-v1",
+    "model": "MiniMax-M3",
+    "reviewProtocol": "visual-clue-review-v1",
+    "mergeProtocol": "same-type-label-v1"
+  },
+  "clues": [
+    {
+      "id": "clue-place-stoke-moran-surrey",
+      "label": "萨里郡斯托克莫兰",
+      "type": "地点",
+      "surfaceDescription": "可是，在所有这些变化多端的案例中，我却回忆不起有哪一例会比萨里郡斯托克莫兰的闻名的罗伊洛特家族①那一例更具有异乎寻常的特色了。",
+      "occurrences": [
+        {
+          "id": "occ-2a614c5bb5ab",
+          "globalParagraphIndex": 2,
+          "chapterId": "speckled-band-1",
+          "paragraphIndex": 2,
+          "selectedText": "萨里郡斯托克莫兰",
+          "startOffset": 217,
+          "endOffset": 225
+        }
+      ]
+    },
+    {
+      "id": "clue-person-holmes-fully-dressed-at-bedside",
+      "label": "福尔摩斯（穿着整齐）",
+      "type": "人物",
+      "surfaceDescription": "一天早上，我一觉醒来，发现歇洛克·福尔摩斯穿得整整齐齐，站在我的床边。",
+      "occurrences": [
+        {
+          "id": "occ-056b9e20815f",
+          "globalParagraphIndex": 4,
+          "chapterId": "speckled-band-1",
+          "paragraphIndex": 4,
+          "selectedText": "歇洛克·福尔摩斯穿得整整齐齐",
+          "startOffset": 30,
+          "endOffset": 44
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-mantelpiece-clock-quarter-past-seven",
+      "label": "壁炉架上的时钟",
+      "type": "物证",
+      "surfaceDescription": "一般来说，他是一个爱睡懒觉的人，而壁炉架上的时钟，才刚七点一刻，我有些诧异地朝他眨了眨眼睛，心里还有点不乐意，因为我自己的生活习惯是很有规律的。",
+      "occurrences": [
+        {
+          "id": "occ-b19c209dc8ca",
+          "globalParagraphIndex": 4,
+          "chapterId": "speckled-band-1",
+          "paragraphIndex": 4,
+          "selectedText": "壁炉架上的时钟",
+          "startOffset": 69,
+          "endOffset": 76
+        }
+      ]
+    },
+    {
+      "id": "clue-person-veil-black-clad-lady",
+      "label": "蒙面纱黑衣女子",
+      "type": "人物",
+      "surfaceDescription": "一位女士端坐窗前，她身穿黑色衣服，蒙着厚厚的面纱。",
+      "occurrences": [
+        {
+          "id": "occ-c92f7a16fe00",
+          "globalParagraphIndex": 9,
+          "chapterId": "speckled-band-1",
+          "paragraphIndex": 9,
+          "selectedText": "一位女士端坐窗前，她身穿黑色衣服，蒙着厚厚的面纱",
+          "startOffset": 124,
+          "endOffset": 148
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-return-ticket-stub-in-glove",
+      "label": "手套中的半截回程车票",
+      "type": "物证",
+      "surfaceDescription": "“不，我注意到你左手的手套里有一张回程车票的后半截。",
+      "occurrences": [
+        {
+          "id": "occ-a3e838115fb9",
+          "globalParagraphIndex": 16,
+          "chapterId": "speckled-band-1",
+          "paragraphIndex": 16,
+          "selectedText": "左手的手套里有一张回程车票的后半截",
+          "startOffset": 8,
+          "endOffset": 25
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-coat-left-arm-mud-splashes",
+      "label": "外套左臂泥迹",
+      "type": "物证",
+      "surfaceDescription": "“你外套的左臂上，至少有七处溅上了泥。",
+      "occurrences": [
+        {
+          "id": "occ-7b0419f37f27",
+          "globalParagraphIndex": 19,
+          "chapterId": "speckled-band-2",
+          "paragraphIndex": 1,
+          "selectedText": "你外套的左臂上，至少有七处溅上了泥",
+          "startOffset": 24,
+          "endOffset": 41
+        }
+      ]
+    },
+    {
+      "id": "clue-person-helen-stoner",
+      "label": "海伦·斯托纳",
+      "type": "人物",
+      "surfaceDescription": "“我的名字叫海伦·斯托纳，我和我的继父住在一起，他是位于萨里郡西部边界的斯托克莫兰的罗伊洛特家族——英国最古老的撒克逊家族之一——的最后的一个生存者。",
+      "occurrences": [
+        {
+          "id": "occ-ffaf418587ab",
+          "globalParagraphIndex": 25,
+          "chapterId": "speckled-band-2",
+          "paragraphIndex": 7,
+          "selectedText": "我的名字叫海伦·斯托纳",
+          "startOffset": 1,
+          "endOffset": 12
+        }
+      ]
+    },
+    {
+      "id": "clue-place-stoke-moran-manor",
+      "label": "斯托克莫兰古老邸宅",
+      "type": "地点",
+      "surfaceDescription": "除了几①亩土地和一座二百年的古老邱宅外，其它都已荡然无存，而那座邸宅也已典押得差不多了。",
+      "occurrences": [
+        {
+          "id": "occ-ac9ef972934d",
+          "globalParagraphIndex": 27,
+          "chapterId": "speckled-band-2",
+          "paragraphIndex": 9,
+          "selectedText": "一座二百年的古老邱宅",
+          "startOffset": 110,
+          "endOffset": 120
+        },
+        {
+          "id": "occ-dc8d7eb842d1",
+          "globalParagraphIndex": 125,
+          "chapterId": "speckled-band-7",
+          "paragraphIndex": 17,
+          "selectedText": "十分古老的邸宅的灰色山墙和高高的屋顶",
+          "startOffset": 47,
+          "endOffset": 65
+        }
+      ]
+    },
+    {
+      "id": "clue-person-dr-roylott",
+      "label": "罗伊洛特医生",
+      "type": "人物",
+      "surfaceDescription": "“罗伊洛特医生在印度时娶了我的母亲。",
+      "occurrences": [
+        {
+          "id": "occ-39cea596b054",
+          "globalParagraphIndex": 29,
+          "chapterId": "speckled-band-2",
+          "paragraphIndex": 11,
+          "selectedText": "罗伊洛特医生在印度时娶了我的母亲",
+          "startOffset": 1,
+          "endOffset": 17
+        },
+        {
+          "id": "occ-d729904a7cac",
+          "globalParagraphIndex": 103,
+          "chapterId": "speckled-band-6",
+          "paragraphIndex": 13,
+          "selectedText": "斯托克莫兰的格里姆斯比·罗伊洛特医生",
+          "startOffset": 3,
+          "endOffset": 21
+        },
+        {
+          "id": "occ-15f820ee25a4",
+          "globalParagraphIndex": 202,
+          "chapterId": "speckled-band-12",
+          "paragraphIndex": 4,
+          "selectedText": "格里姆斯比·罗伊洛特医生",
+          "startOffset": 80,
+          "endOffset": 92
+        },
+        {
+          "id": "occ-c2db693117f2",
+          "globalParagraphIndex": 248,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 14,
+          "selectedText": "格里姆斯比·罗伊洛特医生",
+          "startOffset": 64,
+          "endOffset": 76
+        }
+      ]
+    },
+    {
+      "id": "clue-person-julia-stoner",
+      "label": "朱莉娅·斯托纳",
+      "type": "人物",
+      "surfaceDescription": "我和我的姐姐朱莉娅是孪生姐妹，我母亲再婚的时候，我们年仅两岁。",
+      "occurrences": [
+        {
+          "id": "occ-5f7e989d0171",
+          "globalParagraphIndex": 29,
+          "chapterId": "speckled-band-2",
+          "paragraphIndex": 11,
+          "selectedText": "我和我的姐姐朱莉娅是孪生姐妹",
+          "startOffset": 46,
+          "endOffset": 60
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-indian-cheetah-and-baboon",
+      "label": "印度猎豹与狒狒",
+      "type": "物证",
+      "surfaceDescription": "目前，他有一只印度猎豹和一只狒狒，这两只动物就在他的土地上自由自在地跑来跑去，村里人就象害怕它们的主人一样害怕它们。",
+      "occurrences": [
+        {
+          "id": "occ-700e458f5216",
+          "globalParagraphIndex": 31,
+          "chapterId": "speckled-band-2",
+          "paragraphIndex": 13,
+          "selectedText": "一只印度猎豹和一只狒狒",
+          "startOffset": 185,
+          "endOffset": 196
+        }
+      ]
+    },
+    {
+      "id": "clue-place-manor-side-wing",
+      "label": "庄园耳房",
+      "type": "地点",
+      "surfaceDescription": "我已经说过，庄园的邸宅是极其古老的，只有一侧的耳房现在住着人。",
+      "occurrences": [
+        {
+          "id": "occ-c24d915f48a8",
+          "globalParagraphIndex": 37,
+          "chapterId": "speckled-band-3",
+          "paragraphIndex": 1,
+          "selectedText": "耳房",
+          "startOffset": 63,
+          "endOffset": 65
+        }
+      ]
+    },
+    {
+      "id": "clue-place-ground-floor-bedrooms",
+      "label": "一楼卧室",
+      "type": "地点",
+      "surfaceDescription": "这一侧的耳房的卧室在一楼，起居室位于房子的中间部位。",
+      "occurrences": [
+        {
+          "id": "occ-c6197705dd0e",
+          "globalParagraphIndex": 37,
+          "chapterId": "speckled-band-3",
+          "paragraphIndex": 1,
+          "selectedText": "卧室",
+          "startOffset": 78,
+          "endOffset": 80
+        }
+      ]
+    },
+    {
+      "id": "clue-place-shared-corridor",
+      "label": "共同过道",
+      "type": "地点",
+      "surfaceDescription": "这些房间彼此互不相通，但是房门都是朝向一条共同的过道开的。",
+      "occurrences": [
+        {
+          "id": "occ-75a1eb2ef50b",
+          "globalParagraphIndex": 37,
+          "chapterId": "speckled-band-3",
+          "paragraphIndex": 1,
+          "selectedText": "共同的过道",
+          "startOffset": 153,
+          "endOffset": 158
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-key-in-lock",
+      "label": "门锁与钥匙",
+      "type": "物证",
+      "surfaceDescription": "不一会儿，我就听到她的钥匙在门锁里转动的声音。",
+      "occurrences": [
+        {
+          "id": "occ-610955c901d7",
+          "globalParagraphIndex": 48,
+          "chapterId": "speckled-band-3",
+          "paragraphIndex": 12,
+          "selectedText": "钥匙在门锁里转动",
+          "startOffset": 49,
+          "endOffset": 57
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-indian-cheetah",
+      "label": "印度猎豹",
+      "type": "物证",
+      "surfaceDescription": "“我想我和你提到过，医生养了一只印度猎豹和一只狒狒。",
+      "occurrences": [
+        {
+          "id": "occ-06d01612a258",
+          "globalParagraphIndex": 52,
+          "chapterId": "speckled-band-3",
+          "paragraphIndex": 16,
+          "selectedText": "印度猎豹",
+          "startOffset": 16,
+          "endOffset": 20
+        },
+        {
+          "id": "occ-04d9d8e3a987",
+          "globalParagraphIndex": 173,
+          "chapterId": "speckled-band-10",
+          "paragraphIndex": 11,
+          "selectedText": "印度猎豹",
+          "startOffset": 14,
+          "endOffset": 18
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-baboon",
+      "label": "狒狒",
+      "type": "物证",
+      "surfaceDescription": "“我想我和你提到过，医生养了一只印度猎豹和一只狒狒。",
+      "occurrences": [
+        {
+          "id": "occ-3c9c8af1af73",
+          "globalParagraphIndex": 52,
+          "chapterId": "speckled-band-3",
+          "paragraphIndex": 16,
+          "selectedText": "狒狒",
+          "startOffset": 23,
+          "endOffset": 25
+        },
+        {
+          "id": "occ-659a9e0e5c12",
+          "globalParagraphIndex": 173,
+          "chapterId": "speckled-band-10",
+          "paragraphIndex": 11,
+          "selectedText": "狒狒",
+          "startOffset": 21,
+          "endOffset": 23
+        },
+        {
+          "id": "occ-c78174917fdc",
+          "globalParagraphIndex": 229,
+          "chapterId": "speckled-band-13",
+          "paragraphIndex": 13,
+          "selectedText": "状若丑陋畸形的孩子的东西",
+          "startOffset": 68,
+          "endOffset": 80
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-sisters-nightgown",
+      "label": "姐姐穿的睡衣",
+      "type": "物证",
+      "surfaceDescription": "“没有，她穿着睡衣。",
+      "occurrences": [
+        {
+          "id": "occ-492c6bd852ac",
+          "globalParagraphIndex": 58,
+          "chapterId": "speckled-band-4",
+          "paragraphIndex": 4,
+          "selectedText": "穿着睡衣",
+          "startOffset": 5,
+          "endOffset": 9
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-burnt-matchstick",
+      "label": "烧焦的火柴棍",
+      "type": "物证",
+      "surfaceDescription": "在她的右手中发现了一根烧焦了的火柴棍，左手里有个火柴盒。",
+      "occurrences": [
+        {
+          "id": "occ-761d3e18458a",
+          "globalParagraphIndex": 58,
+          "chapterId": "speckled-band-4",
+          "paragraphIndex": 4,
+          "selectedText": "右手中发现了一根烧焦了的火柴棍",
+          "startOffset": 13,
+          "endOffset": 28
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-matchbox",
+      "label": "火柴盒",
+      "type": "物证",
+      "surfaceDescription": "在她的右手中发现了一根烧焦了的火柴棍，左手里有个火柴盒。",
+      "occurrences": [
+        {
+          "id": "occ-72a8d08d426d",
+          "globalParagraphIndex": 58,
+          "chapterId": "speckled-band-4",
+          "paragraphIndex": 4,
+          "selectedText": "火柴盒",
+          "startOffset": 34,
+          "endOffset": 37
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-indoor-door-lock",
+      "label": "室内门锁",
+      "type": "物证",
+      "surfaceDescription": "我证明，房门总是由室内的门锁锁住的，窗子也是由带有宽铁杠的老式百叶窗护挡着，每天晚上都关得严严的。",
+      "occurrences": [
+        {
+          "id": "occ-aad4ed812a33",
+          "globalParagraphIndex": 60,
+          "chapterId": "speckled-band-4",
+          "paragraphIndex": 6,
+          "selectedText": "室内的门锁",
+          "startOffset": 63,
+          "endOffset": 68
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-shuttered-window-with-iron-bars",
+      "label": "带宽铁杠的老式百叶窗",
+      "type": "物证",
+      "surfaceDescription": "我证明，房门总是由室内的门锁锁住的，窗子也是由带有宽铁杠的老式百叶窗护挡着，每天晚上都关得严严的。",
+      "occurrences": [
+        {
+          "id": "occ-80b6b7336dca",
+          "globalParagraphIndex": 60,
+          "chapterId": "speckled-band-4",
+          "paragraphIndex": 6,
+          "selectedText": "带有宽铁杠的老式百叶窗",
+          "startOffset": 77,
+          "endOffset": 88
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-chimney-four-lock-bolts",
+      "label": "烟囱的四个大锁环闩",
+      "type": "物证",
+      "surfaceDescription": "烟囱倒是很宽阔，但也是用了四个大锁环闩上的。",
+      "occurrences": [
+        {
+          "id": "occ-411a1c254dbc",
+          "globalParagraphIndex": 60,
+          "chapterId": "speckled-band-4",
+          "paragraphIndex": 6,
+          "selectedText": "四个大锁环闩",
+          "startOffset": 151,
+          "endOffset": 157
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-spotted-headscarves",
+      "label": "带点子的头巾",
+      "type": "物证",
+      "surfaceDescription": "他们当中有那么多人头上戴着带点子的头巾，我不知道这是否可以说明她所使用的那个奇怪的形容词。",
+      "occurrences": [
+        {
+          "id": "occ-166f19019043",
+          "globalParagraphIndex": 68,
+          "chapterId": "speckled-band-4",
+          "paragraphIndex": 14,
+          "selectedText": "带点子的头巾",
+          "startOffset": 69,
+          "endOffset": 75
+        }
+      ]
+    },
+    {
+      "id": "clue-place-stoke-moran-west-wing",
+      "label": "斯托克莫兰西耳房",
+      "type": "地点",
+      "surfaceDescription": "两天前，这所房子西边的耳房开始进行修缮，我卧室的墙壁被钻了些洞，所以我不得不搬到我姐姐丧命的那房间里去住，睡在她睡过的那张床上。",
+      "occurrences": [
+        {
+          "id": "occ-784ab9eca7ac",
+          "globalParagraphIndex": 72,
+          "chapterId": "speckled-band-5",
+          "paragraphIndex": 0,
+          "selectedText": "这所房子西边的耳房",
+          "startOffset": 134,
+          "endOffset": 143
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-bedroom-wall-drill-holes",
+      "label": "卧室墙壁钻孔",
+      "type": "物证",
+      "surfaceDescription": "两天前，这所房子西边的耳房开始进行修缮，我卧室的墙壁被钻了些洞，所以我不得不搬到我姐姐丧命的那房间里去住，睡在她睡过的那张床上。",
+      "occurrences": [
+        {
+          "id": "occ-95fd774688ca",
+          "globalParagraphIndex": 72,
+          "chapterId": "speckled-band-5",
+          "paragraphIndex": 0,
+          "selectedText": "我卧室的墙壁被钻了些洞",
+          "startOffset": 150,
+          "endOffset": 161
+        }
+      ]
+    },
+    {
+      "id": "clue-place-sisters-death-room",
+      "label": "姐姐丧命的房间",
+      "type": "地点",
+      "surfaceDescription": "两天前，这所房子西边的耳房开始进行修缮，我卧室的墙壁被钻了些洞，所以我不得不搬到我姐姐丧命的那房间里去住，睡在她睡过的那张床上。",
+      "occurrences": [
+        {
+          "id": "occ-84389af7b897",
+          "globalParagraphIndex": 72,
+          "chapterId": "speckled-band-5",
+          "paragraphIndex": 0,
+          "selectedText": "我姐姐丧命的那房间",
+          "startOffset": 170,
+          "endOffset": 179
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-black-lace-cuff",
+      "label": "黑色花边袖口",
+      "type": "物证",
+      "surfaceDescription": "为了回答她的话，福尔摩斯拉起了遮住我们客人放在膝头上那只手的黑色花边袖口的褶边。",
+      "occurrences": [
+        {
+          "id": "occ-52e80618e8ce",
+          "globalParagraphIndex": 77,
+          "chapterId": "speckled-band-5",
+          "paragraphIndex": 5,
+          "selectedText": "黑色花边袖口的褶边",
+          "startOffset": 30,
+          "endOffset": 39
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-wrist-bruise-marks",
+      "label": "手腕乌青伤痕",
+      "type": "物证",
+      "surfaceDescription": "白皙的手腕上，印有五小块乌青的伤痕，那是四个手指和一个拇指的指痕。",
+      "occurrences": [
+        {
+          "id": "occ-f98dfc9640c5",
+          "globalParagraphIndex": 77,
+          "chapterId": "speckled-band-5",
+          "paragraphIndex": 5,
+          "selectedText": "白皙的手腕上，印有五小块乌青的伤痕",
+          "startOffset": 40,
+          "endOffset": 57
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-thick-black-veil",
+      "label": "黑色面纱",
+      "type": "物证",
+      "surfaceDescription": "“她把那厚厚的黑色面纱拉下来蒙在脸上，悄悄地走出了房间。",
+      "occurrences": [
+        {
+          "id": "occ-02e710ef02de",
+          "globalParagraphIndex": 88,
+          "chapterId": "speckled-band-5",
+          "paragraphIndex": 16,
+          "selectedText": "厚厚的黑色面纱",
+          "startOffset": 48,
+          "endOffset": 55
+        }
+      ]
+    },
+    {
+      "id": "clue-person-large-man-at-door",
+      "label": "彪形大汉",
+      "type": "人物",
+      "surfaceDescription": "一个彪形大汉堵在房门口。",
+      "occurrences": [
+        {
+          "id": "occ-9a3c35004d3d",
+          "globalParagraphIndex": 100,
+          "chapterId": "speckled-band-6",
+          "paragraphIndex": 10,
+          "selectedText": "一个彪形大汉",
+          "startOffset": 27,
+          "endOffset": 33
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-black-top-hat",
+      "label": "黑色大礼帽",
+      "type": "物证",
+      "surfaceDescription": "他头戴黑色大礼帽，身穿一件长礼服，脚上却穿着一双有绑腿的高统靴，手里还挥动着一根猎鞭。",
+      "occurrences": [
+        {
+          "id": "occ-175e7db790e6",
+          "globalParagraphIndex": 100,
+          "chapterId": "speckled-band-6",
+          "paragraphIndex": 10,
+          "selectedText": "黑色大礼帽",
+          "startOffset": 65,
+          "endOffset": 70
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-hessian-boots",
+      "label": "有绑腿的高统靴",
+      "type": "物证",
+      "surfaceDescription": "他头戴黑色大礼帽，身穿一件长礼服，脚上却穿着一双有绑腿的高统靴，手里还挥动着一根猎鞭。",
+      "occurrences": [
+        {
+          "id": "occ-688c7db2e978",
+          "globalParagraphIndex": 100,
+          "chapterId": "speckled-band-6",
+          "paragraphIndex": 10,
+          "selectedText": "一双有绑腿的高统靴",
+          "startOffset": 84,
+          "endOffset": 93
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-hunting-whip",
+      "label": "猎鞭",
+      "type": "物证",
+      "surfaceDescription": "他头戴黑色大礼帽，身穿一件长礼服，脚上却穿着一双有绑腿的高统靴，手里还挥动着一根猎鞭。",
+      "occurrences": [
+        {
+          "id": "occ-b51fb1d42aee",
+          "globalParagraphIndex": 100,
+          "chapterId": "speckled-band-6",
+          "paragraphIndex": 10,
+          "selectedText": "一根猎鞭",
+          "startOffset": 100,
+          "endOffset": 104
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-door-lintel",
+      "label": "房门上的横楣",
+      "type": "物证",
+      "surfaceDescription": "他长得如此高大，他的帽子实际上都擦到房门上的横楣了。",
+      "occurrences": [
+        {
+          "id": "occ-e4589eb83271",
+          "globalParagraphIndex": 100,
+          "chapterId": "speckled-band-6",
+          "paragraphIndex": 10,
+          "selectedText": "房门上的横楣",
+          "startOffset": 123,
+          "endOffset": 129
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-twisted-steel-fire-tongs",
+      "label": "钢火钳",
+      "type": "物证",
+      "surfaceDescription": "“他迅速地向前走了几步，抓起火钳，用他那双褐色的大手把它拗弯。",
+      "occurrences": [
+        {
+          "id": "occ-1e6666353f53",
+          "globalParagraphIndex": 116,
+          "chapterId": "speckled-band-7",
+          "paragraphIndex": 8,
+          "selectedText": "火钳",
+          "startOffset": 71,
+          "endOffset": 73
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-blue-paper-notes",
+      "label": "写着笔记和数字的蓝纸",
+      "type": "物证",
+      "surfaceDescription": "他手中拿着一张蓝纸，上面潦草地写着一些笔记和数字。",
+      "occurrences": [
+        {
+          "id": "occ-0639f61eee5c",
+          "globalParagraphIndex": 121,
+          "chapterId": "speckled-band-7",
+          "paragraphIndex": 13,
+          "selectedText": "蓝纸",
+          "startOffset": 25,
+          "endOffset": 27
+        }
+      ]
+    },
+    {
+      "id": "clue-person-miss-stonerson-identifying-gesture",
+      "label": "斯托纳小姐",
+      "type": "人物",
+      "surfaceDescription": "“我想，那位小姐就是斯托纳小姐，“福尔摩斯手遮着眼睛，仔细地瞧着说。",
+      "occurrences": [
+        {
+          "id": "occ-1bc3aad9ba43",
+          "globalParagraphIndex": 130,
+          "chapterId": "speckled-band-8",
+          "paragraphIndex": 4,
+          "selectedText": "那位小姐就是斯托纳小姐",
+          "startOffset": 4,
+          "endOffset": 15
+        },
+        {
+          "id": "occ-5e84df8f582a",
+          "globalParagraphIndex": 181,
+          "chapterId": "speckled-band-11",
+          "paragraphIndex": 1,
+          "selectedText": "斯托纳小姐",
+          "startOffset": 1,
+          "endOffset": 6
+        }
+      ]
+    },
+    {
+      "id": "clue-place-roylott-manor-exterior",
+      "label": "罗伊洛特医生邸宅外观",
+      "type": "地点",
+      "surfaceDescription": "这座邸宅是用灰色的石头砌的，石壁上布满了青苔，中央部分高高矗立，两侧是弧形的边房，象一对蟹钳似地向两边延伸。",
+      "occurrences": [
+        {
+          "id": "occ-fad18fee28ba",
+          "globalParagraphIndex": 139,
+          "chapterId": "speckled-band-8",
+          "paragraphIndex": 13,
+          "selectedText": "这座邸宅是用灰色的石头砌的，石壁上布满了青苔，中央部分高高矗立，两侧是弧形的边房，象一对蟹钳似地向两边延伸",
+          "startOffset": 0,
+          "endOffset": 53
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-ruined-side-wing",
+      "label": "残破坍塌的边房",
+      "type": "物证",
+      "surfaceDescription": "一侧的边房窗子都已经破碎，用木板堵着，房顶也有一部分坍陷了，完全是一副荒废残破的景象。",
+      "occurrences": [
+        {
+          "id": "occ-bac4b20cd680",
+          "globalParagraphIndex": 139,
+          "chapterId": "speckled-band-8",
+          "paragraphIndex": 13,
+          "selectedText": "一侧的边房窗子都已经破碎，用木板堵着，房顶也有一部分坍陷了",
+          "startOffset": 54,
+          "endOffset": 83
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-inhabited-wing-curtains-and-smoke",
+      "label": "窗帘低垂、烟囱冒烟的居所",
+      "type": "物证",
+      "surfaceDescription": "可是，右首那一排房子却比较新，窗子里窗帘低垂，烟囱上蓝烟袅袅，说明这里是这家人居住的地方。",
+      "occurrences": [
+        {
+          "id": "occ-5d9aea2e1fd4",
+          "globalParagraphIndex": 139,
+          "chapterId": "speckled-band-8",
+          "paragraphIndex": 13,
+          "selectedText": "窗子里窗帘低垂，烟囱上蓝烟袅袅",
+          "startOffset": 126,
+          "endOffset": 141
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-scaffolding-and-breached-gable-wall",
+      "label": "山墙旁的脚手架与凿通的石墙",
+      "type": "物证",
+      "surfaceDescription": "靠山墙竖着一些脚手架，墙的石头部分已经凿通，但是我们到达那里时却没见到有工人的迹象。",
+      "occurrences": [
+        {
+          "id": "occ-2272ec44ae36",
+          "globalParagraphIndex": 139,
+          "chapterId": "speckled-band-8",
+          "paragraphIndex": 13,
+          "selectedText": "靠山墙竖着一些脚手架，墙的石头部分已经凿通",
+          "startOffset": 156,
+          "endOffset": 177
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-shutter-bedroom-window",
+      "label": "百叶窗",
+      "type": "物证",
+      "surfaceDescription": "福尔摩斯十分仔细地检查开着的窗子，然后用尽各种方法想打开百叶窗，但就是打不开。",
+      "occurrences": [
+        {
+          "id": "occ-b2f6d3c6c4e3",
+          "globalParagraphIndex": 147,
+          "chapterId": "speckled-band-9",
+          "paragraphIndex": 3,
+          "selectedText": "百叶窗",
+          "startOffset": 41,
+          "endOffset": 44
+        },
+        {
+          "id": "occ-92f02aae7c0c",
+          "globalParagraphIndex": 233,
+          "chapterId": "speckled-band-13",
+          "paragraphIndex": 17,
+          "selectedText": "百叶窗",
+          "startOffset": 96,
+          "endOffset": 99
+        }
+      ]
+    },
+    {
+      "id": "clue-place-whitewashed-corridor",
+      "label": "刷得雪白的过道",
+      "type": "地点",
+      "surfaceDescription": "一道小小的侧门通向刷得雪白的过道，三间卧室的房门都朝向这个过道。",
+      "occurrences": [
+        {
+          "id": "occ-742673a4e62a",
+          "globalParagraphIndex": 148,
+          "chapterId": "speckled-band-9",
+          "paragraphIndex": 4,
+          "selectedText": "一道小小的侧门通向刷得雪白的过道",
+          "startOffset": 0,
+          "endOffset": 16
+        }
+      ]
+    },
+    {
+      "id": "clue-place-stonoer-bedroom-scene",
+      "label": "斯托纳小姐的寝室",
+      "type": "地点",
+      "surfaceDescription": "福尔摩斯不想检查第三个房间，所以我们马上就来到第二间，也就是斯托纳小姐现在用作寝室、她的姐姐不幸去世的那个房间。",
+      "occurrences": [
+        {
+          "id": "occ-9c4d00ca6b33",
+          "globalParagraphIndex": 148,
+          "chapterId": "speckled-band-9",
+          "paragraphIndex": 4,
+          "selectedText": "第二间，也就是斯托纳小姐现在用作寝室、她的姐姐不幸去世的那个房间",
+          "startOffset": 55,
+          "endOffset": 87
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-low-ceiling-open-fireplace",
+      "label": "低天花板与开口式壁炉",
+      "type": "物证",
+      "surfaceDescription": "这是一间简朴的小房间，按照乡村旧式邸宅的样式盖的，有低低的天花板和一个开口式的壁炉。",
+      "occurrences": [
+        {
+          "id": "occ-986252723f29",
+          "globalParagraphIndex": 148,
+          "chapterId": "speckled-band-9",
+          "paragraphIndex": 4,
+          "selectedText": "低低的天花板和一个开口式的壁炉",
+          "startOffset": 114,
+          "endOffset": 129
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-brown-cabinet-with-drawers",
+      "label": "带抽屉的褐色橱柜",
+      "type": "物证",
+      "surfaceDescription": "房间的一隅立着一只带抽屉的褐色橱柜，另一隅安置着一张窄窄的罩着白色床罩的床，窗子的左侧是一只梳妆台。",
+      "occurrences": [
+        {
+          "id": "occ-089c2f9406ac",
+          "globalParagraphIndex": 148,
+          "chapterId": "speckled-band-9",
+          "paragraphIndex": 4,
+          "selectedText": "一只带抽屉的褐色橱柜",
+          "startOffset": 137,
+          "endOffset": 147
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-worm-eaten-brown-oak-paneling",
+      "label": "蛀孔斑斑的棕色栎木嵌板",
+      "type": "物证",
+      "surfaceDescription": "这些家具加上两把柳条椅子就是这个房间的全部摆设了，只是正当中还有一块四方形的威尔顿地毯而已，房间四周的木板和墙上的嵌板是蛀孔斑斑的棕色栎木，十分陈旧，并且褪了色。",
+      "occurrences": [
+        {
+          "id": "occ-3be69efcc90b",
+          "globalParagraphIndex": 148,
+          "chapterId": "speckled-band-9",
+          "paragraphIndex": 4,
+          "selectedText": "蛀孔斑斑的棕色栎木",
+          "startOffset": 240,
+          "endOffset": 249
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-thick-bell-pull-rope",
+      "label": "粗粗的铃拉绳",
+      "type": "物证",
+      "surfaceDescription": "最后，他指着悬挂在床边的一根粗粗的铃拉绳问道，“这个铃通什么地方？",
+      "occurrences": [
+        {
+          "id": "occ-33f8b2433d28",
+          "globalParagraphIndex": 149,
+          "chapterId": "speckled-band-9",
+          "paragraphIndex": 5,
+          "selectedText": "悬挂在床边的一根粗粗的铃拉绳",
+          "startOffset": 6,
+          "endOffset": 20
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-small-ventilator-hole",
+      "label": "小小的通气孔",
+      "type": "物证",
+      "surfaceDescription": "这很有意思，现在你能看清，绳子刚好是系在小小的通气孔上面的钩子上。",
+      "occurrences": [
+        {
+          "id": "occ-182303c6f3c8",
+          "globalParagraphIndex": 158,
+          "chapterId": "speckled-band-9",
+          "paragraphIndex": 14,
+          "selectedText": "小小的通气孔",
+          "startOffset": 34,
+          "endOffset": 40
+        }
+      ]
+    },
+    {
+      "id": "clue-place-dr-roylotts-room",
+      "label": "罗伊洛特医生的房间",
+      "type": "地点",
+      "surfaceDescription": "格里姆斯比·罗伊洛特医生的房间比他继女的较为宽敞，但房间里的陈设也是那么简朴。",
+      "occurrences": [
+        {
+          "id": "occ-ab579f33fa8c",
+          "globalParagraphIndex": 165,
+          "chapterId": "speckled-band-10",
+          "paragraphIndex": 3,
+          "selectedText": "格里姆斯比·罗伊洛特医生的房间",
+          "startOffset": 0,
+          "endOffset": 15
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-large-iron-safe",
+      "label": "大铁保险柜",
+      "type": "物证",
+      "surfaceDescription": "一张行军床，一个摆满书籍的小木制书架，架上的书籍多数是技术性的，床边是一把扶手椅，靠墙有一把普通的木椅，一张圆桌和一只大铁保险柜，这些就是一眼就能看到的主要家具和杂物。",
+      "occurrences": [
+        {
+          "id": "occ-523ee23fce1e",
+          "globalParagraphIndex": 165,
+          "chapterId": "speckled-band-10",
+          "paragraphIndex": 3,
+          "selectedText": "一只大铁保险柜",
+          "startOffset": 96,
+          "endOffset": 103
+        },
+        {
+          "id": "occ-4e8c23f577ad",
+          "globalParagraphIndex": 248,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 14,
+          "selectedText": "柜门半开的铁保险柜",
+          "startOffset": 40,
+          "endOffset": 49
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-milk-saucer-on-safe",
+      "label": "盛奶的浅碟",
+      "type": "物证",
+      "surfaceDescription": "“他从保险柜上边拿起一个盛奶的浅碟。",
+      "occurrences": [
+        {
+          "id": "occ-dfd809131058",
+          "globalParagraphIndex": 172,
+          "chapterId": "speckled-band-10",
+          "paragraphIndex": 10,
+          "selectedText": "一个盛奶的浅碟",
+          "startOffset": 18,
+          "endOffset": 25
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-dog-whip-on-bedhead",
+      "label": "打狗鞭",
+      "type": "物证",
+      "surfaceDescription": "引其他注意的是挂在床头上的一根小打狗鞭子。",
+      "occurrences": [
+        {
+          "id": "occ-06057c7b0d81",
+          "globalParagraphIndex": 176,
+          "chapterId": "speckled-band-10",
+          "paragraphIndex": 14,
+          "selectedText": "挂在床头上的一根小打狗鞭子",
+          "startOffset": 7,
+          "endOffset": 20
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-dog-whip-coiled-with-knot",
+      "label": "打成结的鞭子",
+      "type": "物证",
+      "surfaceDescription": "不过，这根鞭子是卷着的，而且打成结，以使鞭绳盘成一个圈。",
+      "occurrences": [
+        {
+          "id": "occ-d3901405d73c",
+          "globalParagraphIndex": 176,
+          "chapterId": "speckled-band-10",
+          "paragraphIndex": 14,
+          "selectedText": "卷着的，而且打成结，以使鞭绳盘成一个圈",
+          "startOffset": 29,
+          "endOffset": 48
+        }
+      ]
+    },
+    {
+      "id": "clue-place-crown-inn",
+      "label": "克朗旅店",
+      "type": "地点",
+      "surfaceDescription": "“是的，那是克朗旅店。",
+      "occurrences": [
+        {
+          "id": "occ-ef34b23046ac",
+          "globalParagraphIndex": 188,
+          "chapterId": "speckled-band-11",
+          "paragraphIndex": 8,
+          "selectedText": "克朗旅店",
+          "startOffset": 6,
+          "endOffset": 10
+        },
+        {
+          "id": "occ-7b305d6f62d3",
+          "globalParagraphIndex": 202,
+          "chapterId": "speckled-band-12",
+          "paragraphIndex": 4,
+          "selectedText": "克朗旅店",
+          "startOffset": 17,
+          "endOffset": 21
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-window-latch",
+      "label": "窗户的搭扣",
+      "type": "物证",
+      "surfaceDescription": "然后，当你听到他夜里就寝后，你就必须打开你那扇窗户的百叶窗，解开窗户的搭扣，把灯摆在那儿作为给我们的信号，随后带上你可能需要的东西，悄悄地回到你过去住的房间。",
+      "occurrences": [
+        {
+          "id": "occ-a348deea0375",
+          "globalParagraphIndex": 191,
+          "chapterId": "speckled-band-11",
+          "paragraphIndex": 11,
+          "selectedText": "窗户的搭扣",
+          "startOffset": 58,
+          "endOffset": 63
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-signal-lamp",
+      "label": "作为信号的灯",
+      "type": "物证",
+      "surfaceDescription": "然后，当你听到他夜里就寝后，你就必须打开你那扇窗户的百叶窗，解开窗户的搭扣，把灯摆在那儿作为给我们的信号，随后带上你可能需要的东西，悄悄地回到你过去住的房间。",
+      "occurrences": [
+        {
+          "id": "occ-10f4274f3685",
+          "globalParagraphIndex": 191,
+          "chapterId": "speckled-band-11",
+          "paragraphIndex": 11,
+          "selectedText": "把灯摆在那儿",
+          "startOffset": 64,
+          "endOffset": 70
+        }
+      ]
+    },
+    {
+      "id": "clue-place-miss-stoners-bedroom",
+      "label": "斯托纳小姐的卧室",
+      "type": "地点",
+      "surfaceDescription": "“我们要在你的卧室里过夜，我们要调查打扰你的这种声音是怎么来的。",
+      "occurrences": [
+        {
+          "id": "occ-c173c3d0f631",
+          "globalParagraphIndex": 195,
+          "chapterId": "speckled-band-11",
+          "paragraphIndex": 15,
+          "selectedText": "你的卧室",
+          "startOffset": 5,
+          "endOffset": 9
+        },
+        {
+          "id": "occ-fdb05d87cf41",
+          "globalParagraphIndex": 233,
+          "chapterId": "speckled-band-13",
+          "paragraphIndex": 17,
+          "selectedText": "卧室",
+          "startOffset": 63,
+          "endOffset": 65
+        }
+      ]
+    },
+    {
+      "id": "clue-place-crown-inn-second-floor-room",
+      "label": "克朗旅店二楼",
+      "type": "地点",
+      "surfaceDescription": "房间在二层楼，我们可以从窗子俯瞰斯托克莫兰庄园林荫道旁的大门和住人的边房。",
+      "occurrences": [
+        {
+          "id": "occ-6fa0e5c76308",
+          "globalParagraphIndex": 202,
+          "chapterId": "speckled-band-12",
+          "paragraphIndex": 4,
+          "selectedText": "二层楼",
+          "startOffset": 37,
+          "endOffset": 40
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-manor-heavy-iron-gate",
+      "label": "庄园沉重的大铁门",
+      "type": "物证",
+      "surfaceDescription": "那男仆在打开沉重的大铁门时，稍稍费了点事，我们听到医生嘶哑的咆哮声，并且看到他由于激怒而对那男仆挥舞着拳头。",
+      "occurrences": [
+        {
+          "id": "occ-27264bf0f87b",
+          "globalParagraphIndex": 202,
+          "chapterId": "speckled-band-12",
+          "paragraphIndex": 4,
+          "selectedText": "沉重的大铁门",
+          "startOffset": 133,
+          "endOffset": 139
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-manor-lit-sitting-room",
+      "label": "庄园点亮的起居室",
+      "type": "物证",
+      "surfaceDescription": "过一会儿，我们看到树丛里突然照耀出一道灯光，原来这是有一间起居室点上了灯。",
+      "occurrences": [
+        {
+          "id": "occ-73f137fe7442",
+          "globalParagraphIndex": 202,
+          "chapterId": "speckled-band-12",
+          "paragraphIndex": 4,
+          "selectedText": "起居室点上了灯",
+          "startOffset": 217,
+          "endOffset": 224
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-bell-rope",
+      "label": "铃绳",
+      "type": "物证",
+      "surfaceDescription": "“除了那铃绳以外，我没有看到其它值得注意的东西。",
+      "occurrences": [
+        {
+          "id": "occ-9a88bc4b5404",
+          "globalParagraphIndex": 210,
+          "chapterId": "speckled-band-12",
+          "paragraphIndex": 12,
+          "selectedText": "铃绳",
+          "startOffset": 4,
+          "endOffset": 6
+        },
+        {
+          "id": "occ-8233d9c170d8",
+          "globalParagraphIndex": 217,
+          "chapterId": "speckled-band-13",
+          "paragraphIndex": 1,
+          "selectedText": "绳索",
+          "startOffset": 29,
+          "endOffset": 31
+        },
+        {
+          "id": "occ-131fb43f87a8",
+          "globalParagraphIndex": 241,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 7,
+          "selectedText": "铃绳",
+          "startOffset": 197,
+          "endOffset": 199
+        },
+        {
+          "id": "occ-5fa18ac7a813",
+          "globalParagraphIndex": 254,
+          "chapterId": "speckled-band-15",
+          "paragraphIndex": 2,
+          "selectedText": "铃绳",
+          "startOffset": 224,
+          "endOffset": 226
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-ventilator-opening",
+      "label": "通气孔",
+      "type": "物证",
+      "surfaceDescription": "“你也看到那通气孔了吧？",
+      "occurrences": [
+        {
+          "id": "occ-a2b1e27722d1",
+          "globalParagraphIndex": 211,
+          "chapterId": "speckled-band-12",
+          "paragraphIndex": 13,
+          "selectedText": "通气孔",
+          "startOffset": 6,
+          "endOffset": 9
+        },
+        {
+          "id": "occ-351be46b049c",
+          "globalParagraphIndex": 217,
+          "chapterId": "speckled-band-13",
+          "paragraphIndex": 1,
+          "selectedText": "通气孔",
+          "startOffset": 21,
+          "endOffset": 24
+        },
+        {
+          "id": "occ-6340c6cc4530",
+          "globalParagraphIndex": 254,
+          "chapterId": "speckled-band-15",
+          "paragraphIndex": 2,
+          "selectedText": "通气孔",
+          "startOffset": 212,
+          "endOffset": 215
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-floor-screws",
+      "label": "螺钉",
+      "type": "物证",
+      "surfaceDescription": "“它是用螺钉固定在地板上的。",
+      "occurrences": [
+        {
+          "id": "occ-2a01cb29af8e",
+          "globalParagraphIndex": 221,
+          "chapterId": "speckled-band-13",
+          "paragraphIndex": 5,
+          "selectedText": "螺钉",
+          "startOffset": 4,
+          "endOffset": 6
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-screwed-down-bed",
+      "label": "用螺钉固定在地板上的床",
+      "type": "物证",
+      "surfaceDescription": "“它是用螺钉固定在地板上的。",
+      "occurrences": [
+        {
+          "id": "occ-15ef6354bc50",
+          "globalParagraphIndex": 221,
+          "chapterId": "speckled-band-13",
+          "paragraphIndex": 5,
+          "selectedText": "固定在地板上",
+          "startOffset": 6,
+          "endOffset": 12
+        }
+      ]
+    },
+    {
+      "id": "clue-place-dilapidated-gable-wall",
+      "label": "年久失修的山墙",
+      "type": "地点",
+      "surfaceDescription": "由于山墙年久失修，到处是残墙断垣，我们轻而易举地进入了庭院。",
+      "occurrences": [
+        {
+          "id": "occ-cacb9b5ca81c",
+          "globalParagraphIndex": 229,
+          "chapterId": "speckled-band-13",
+          "paragraphIndex": 13,
+          "selectedText": "由于山墙年久失修",
+          "startOffset": 0,
+          "endOffset": 8
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-holmes-thin-rattan-cane",
+      "label": "细长藤鞭",
+      "type": "物证",
+      "surfaceDescription": "福尔摩斯带来了一根又细又长的藤鞭，把它放在身边的床上。",
+      "occurrences": [
+        {
+          "id": "occ-66f634608aed",
+          "globalParagraphIndex": 239,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 5,
+          "selectedText": "一根又细又长的藤鞭",
+          "startOffset": 7,
+          "endOffset": 16
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-red-turkish-slippers",
+      "label": "红色土耳其无跟拖鞋",
+      "type": "物证",
+      "surfaceDescription": "桌上旁边的那把木椅上，坐着格里姆斯比·罗伊洛特医生，他身上披着一件长长的灰色睡衣，睡衣下面露出一双赤裸的脚脖子，两脚套在红色土耳其无跟拖鞋里，膝盖上横搭着我们白天看到的那把短柄长鞭子。",
+      "occurrences": [
+        {
+          "id": "occ-21daf7f51b06",
+          "globalParagraphIndex": 248,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 14,
+          "selectedText": "红色土耳其无跟拖鞋",
+          "startOffset": 111,
+          "endOffset": 120
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-short-handled-long-whip",
+      "label": "短柄长鞭子",
+      "type": "物证",
+      "surfaceDescription": "桌上旁边的那把木椅上，坐着格里姆斯比·罗伊洛特医生，他身上披着一件长长的灰色睡衣，睡衣下面露出一双赤裸的脚脖子，两脚套在红色土耳其无跟拖鞋里，膝盖上横搭着我们白天看到的那把短柄长鞭子。",
+      "occurrences": [
+        {
+          "id": "occ-e65719305500",
+          "globalParagraphIndex": 248,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 14,
+          "selectedText": "那把短柄长鞭子",
+          "startOffset": 135,
+          "endOffset": 142
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-brown-spotted-yellow-band-snake",
+      "label": "带褐色斑点的黄带子（蛇）",
+      "type": "物证",
+      "surfaceDescription": "他的额头上绕着一条异样的、带有褐色斑点的黄带子，那条带子似乎紧紧地缠在他的头上，我们走进去的时候，他既没有作声，也没有动一动。",
+      "occurrences": [
+        {
+          "id": "occ-b610ce87eb79",
+          "globalParagraphIndex": 248,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 14,
+          "selectedText": "一条异样的、带有褐色斑点的黄带子",
+          "startOffset": 181,
+          "endOffset": 197
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-swamp-viper",
+      "label": "沼地蝰蛇",
+      "type": "物证",
+      "surfaceDescription": "只见他那条异样的头饰开始蠕动起来，从他的头发中间昂然钻出一条又粗又短、长着钻石型的头部和胀鼓鼓的脖子、令人恶心的毒蛇。",
+      "occurrences": [
+        {
+          "id": "occ-13aefee9aa50",
+          "globalParagraphIndex": 250,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 16,
+          "selectedText": "一条又粗又短、长着钻石型的头部和胀鼓鼓的脖子、令人恶心的毒蛇",
+          "startOffset": 36,
+          "endOffset": 66
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-dog-whip",
+      "label": "打狗鞭子",
+      "type": "物证",
+      "surfaceDescription": "说着话，他迅即从死者膝盖上取过打狗鞭子，将活结甩过去，套住那条爬虫的脖子，从它可怕地盘踞着的地方把它拉了起来，伸长了手臂提着它，扔到铁柜子里，随手将柜门关上。",
+      "occurrences": [
+        {
+          "id": "occ-3f5594cc69a1",
+          "globalParagraphIndex": 252,
+          "chapterId": "speckled-band-15",
+          "paragraphIndex": 0,
+          "selectedText": "打狗鞭子",
+          "startOffset": 15,
+          "endOffset": 19
+        }
+      ]
+    },
+    {
+      "id": "clue-person-dr-grimesby-roylott",
+      "label": "格里姆斯比·罗伊洛特医生",
+      "type": "人物",
+      "surfaceDescription": "这就是斯托克莫兰的格里姆斯比·罗伊洛特医生死亡的真实经过。",
+      "occurrences": [
+        {
+          "id": "occ-1ab13894d726",
+          "globalParagraphIndex": 253,
+          "chapterId": "speckled-band-15",
+          "paragraphIndex": 1,
+          "selectedText": "斯托克莫兰的格里姆斯比·罗伊洛特医生",
+          "startOffset": 3,
+          "endOffset": 21
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-iron-safe",
+      "label": "铁柜子",
+      "type": "物证",
+      "surfaceDescription": "见到保险柜，那一碟牛奶和鞭绳的活结就足以消除余下的任何怀疑了。",
+      "occurrences": [
+        {
+          "id": "occ-be8f1352a130",
+          "globalParagraphIndex": 255,
+          "chapterId": "speckled-band-15",
+          "paragraphIndex": 3,
+          "selectedText": "保险柜",
+          "startOffset": 58,
+          "endOffset": 61
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-saucer-of-milk",
+      "label": "一碟牛奶",
+      "type": "物证",
+      "surfaceDescription": "见到保险柜，那一碟牛奶和鞭绳的活结就足以消除余下的任何怀疑了。",
+      "occurrences": [
+        {
+          "id": "occ-778b5e1403df",
+          "globalParagraphIndex": 255,
+          "chapterId": "speckled-band-15",
+          "paragraphIndex": 3,
+          "selectedText": "一碟牛奶",
+          "startOffset": 63,
+          "endOffset": 67
+        }
+      ]
+    },
+    {
+      "id": "clue-evidence-whip-noose",
+      "label": "鞭绳活结",
+      "type": "物证",
+      "surfaceDescription": "见到保险柜，那一碟牛奶和鞭绳的活结就足以消除余下的任何怀疑了。",
+      "occurrences": [
+        {
+          "id": "occ-22bd37896fac",
+          "globalParagraphIndex": 255,
+          "chapterId": "speckled-band-15",
+          "paragraphIndex": 3,
+          "selectedText": "鞭绳的活结",
+          "startOffset": 68,
+          "endOffset": 73
+        }
+      ]
+    }
+  ]
+}
