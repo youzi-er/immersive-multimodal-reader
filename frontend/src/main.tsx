@@ -28,7 +28,7 @@ type TextSegment =
   | {
       type: 'clue';
       clueId: string;
-      occurrenceId: string;
+      occurrenceId?: string;
       startOffset: number;
       endOffset: number;
       text: string;
@@ -51,9 +51,9 @@ type Chapter = {
 type Clue = {
   id: string;
   label: string;
-  type: '物证' | '人物' | '地点';
-  surfaceDescription: string;
-  occurrences: Array<{
+  type: '物证' | '人物' | '地点' | string;
+  surfaceDescription?: string;
+  occurrences?: Array<{
     id: string;
     chapterId: string;
     paragraphIndex: number;
@@ -251,6 +251,18 @@ function clueImageKey(clueId: string, occurrenceId: string) {
   return `${clueId}:${occurrenceId}`;
 }
 
+function clueOccurrences(clue?: Clue | null) {
+  return Array.isArray(clue?.occurrences) ? clue.occurrences : [];
+}
+
+function resolveClueOccurrenceId(clue: Clue | undefined, occurrenceId?: string) {
+  const occurrences = clueOccurrences(clue);
+  if (occurrenceId && occurrences.some((item) => item.id === occurrenceId)) {
+    return occurrenceId;
+  }
+  return occurrences[0]?.id || '';
+}
+
 function loadCollectedClues(userId?: string | null): CollectedClueRecord[] {
   const scopedKey = clueCollectionKey(userId);
   const scoped = window.localStorage.getItem(scopedKey);
@@ -413,10 +425,8 @@ function App() {
         previous.flatMap((record) => {
           const clue = nextClues.find((item) => item.id === record.clueId);
           if (!clue) return [];
-          const occurrenceId = clue.occurrences.some((item) => item.id === record.occurrenceId)
-            ? record.occurrenceId
-            : clue.occurrences[0]?.id;
-          return occurrenceId ? [{ clueId: clue.id, occurrenceId }] : [];
+          const occurrenceId = resolveClueOccurrenceId(clue, record.occurrenceId);
+          return [{ clueId: clue.id, occurrenceId }];
         })
       );
     });
@@ -1955,9 +1965,10 @@ function ReaderPage({
     clueGenerationRunningRef.current = false;
   }
 
-  function collectClue(clueId: string, occurrenceId: string) {
+  function collectClue(clueId: string, requestedOccurrenceId?: string) {
     const clue = clues.find((item) => item.id === clueId);
     if (!clue) return;
+    const occurrenceId = resolveClueOccurrenceId(clue, requestedOccurrenceId);
 
     setCollectedClues((previous) => {
       const existing = previous.find((item) => item.clueId === clueId);
@@ -1979,7 +1990,7 @@ function ReaderPage({
     setBagPulse(true);
     window.setTimeout(() => setBagPulse(false), 620);
     const existingImage = clueImages[clueImageKey(clueId, occurrenceId)];
-    if (!existingImage?.imageUrl && !existingImage?.skipped && !existingImage?.loading) {
+    if (occurrenceId && !existingImage?.imageUrl && !existingImage?.skipped && !existingImage?.loading) {
       void generateQueuedClueImages({ clueId, occurrenceId, force: false });
     }
 
