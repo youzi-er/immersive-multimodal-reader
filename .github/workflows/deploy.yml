@@ -113,11 +113,10 @@ jobs:
 
           cd "$APP_DIR"
 
-          if pm2 describe immersive-reader > /dev/null; then
-            pm2 restart immersive-reader --update-env
-          else
-            pm2 start backend/src/server.js --name immersive-reader
-          fi
+          # Recreate the process so PM2 cannot retain an executable or cwd from
+          # the directory that was moved to the previous-release location.
+          pm2 delete immersive-reader > /dev/null 2>&1 || true
+          pm2 start "$APP_DIR/backend/src/server.js" --name immersive-reader --cwd "$APP_DIR"
 
           pm2 save
 
@@ -135,6 +134,27 @@ jobs:
           done
 
           curl -fsS http://127.0.0.1/api/health
+
+          verify_clue_api() {
+            base_url="$1"
+            curl -fsS "$base_url/api/clues" | node -e '
+              const fs = require("fs");
+              const clues = JSON.parse(fs.readFileSync(0, "utf8"));
+              if (!Array.isArray(clues) || !clues.some((clue) => Array.isArray(clue.occurrences) && clue.occurrences.length > 0)) {
+                throw new Error("Precise clue index is not active");
+              }
+            '
+            curl -fsS "$base_url/api/ai/clue-images?articleId=speckled-band&occurrenceIds=__deploy_smoke__" | node -e '
+              const fs = require("fs");
+              const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+              if (!Array.isArray(payload.images)) {
+                throw new Error("Clue image API is not active");
+              }
+            '
+          }
+
+          verify_clue_api http://127.0.0.1:3001
+          verify_clue_api http://127.0.0.1
 
           rm -f "$RELEASE"
           EOF

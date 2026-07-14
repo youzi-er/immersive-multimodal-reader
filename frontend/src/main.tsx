@@ -292,7 +292,16 @@ async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T
       ...options.headers
     }
   });
-  const data = await res.json();
+  const responseText = await res.text();
+  let data: any;
+  try {
+    data = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    const clueServiceHint = url.startsWith('/api/ai/clue-')
+      ? '线索生图服务未正确部署，请稍后重试'
+      : '服务器返回了无法识别的响应';
+    throw new Error(`${clueServiceHint}（HTTP ${res.status}）`);
+  }
 
   if (!res.ok) {
     throw new Error(data.error ?? '请求失败');
@@ -2007,6 +2016,11 @@ function ReaderPage({
   }
 
   function regenerateClue(clueId: string, occurrenceId: string) {
+    if (!occurrenceId) {
+      setNotice('线索服务版本未更新，请稍后刷新页面');
+      window.setTimeout(() => setNotice(''), 2200);
+      return;
+    }
     setActiveClueId(clueId);
     void generateQueuedClueImages({ clueId, occurrenceId, force: true });
   }
@@ -2601,7 +2615,7 @@ function ReaderPage({
                               <button
                                 type="button"
                                 onClick={() => regenerateClue(clue.id, record.occurrenceId)}
-                                disabled={image?.loading}
+                                disabled={image?.loading || !record.occurrenceId}
                               >
                                 {image?.loading ? '生成中' : '重新生成'}
                               </button>
@@ -2612,7 +2626,11 @@ function ReaderPage({
                           </div>
 
                           <div className="clue-image-stage">
-                            {image?.loading ? (
+                            {!record.occurrenceId ? (
+                              <div className="clue-image-placeholder error">
+                                线索服务版本未更新，请稍后刷新页面
+                              </div>
+                            ) : image?.loading ? (
                               <div className="clue-image-placeholder loading">正在规划画面...</div>
                             ) : image?.imageUrl ? (
                               <img className="clue-card-image" src={image.imageUrl} alt={clue.label} />
