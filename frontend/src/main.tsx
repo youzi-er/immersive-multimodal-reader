@@ -28,6 +28,9 @@ type TextSegment =
   | {
       type: 'clue';
       clueId: string;
+      occurrenceId: string;
+      startOffset: number;
+      endOffset: number;
       text: string;
     };
 
@@ -48,9 +51,40 @@ type Chapter = {
 type Clue = {
   id: string;
   label: string;
-  type: '线索' | '人物' | '地点';
-  description: string;
-  keywords?: string[];
+  type: '物证' | '人物' | '地点';
+  surfaceDescription: string;
+  occurrences: Array<{
+    id: string;
+    chapterId: string;
+    paragraphIndex: number;
+    selectedText: string;
+    startOffset: number;
+    endOffset: number;
+  }>;
+};
+
+type CollectedClueRecord = {
+  clueId: string;
+  occurrenceId: string;
+};
+
+type ClueImage = {
+  clueId: string;
+  occurrenceId: string;
+  skipped: boolean;
+  reason?: string;
+  imageUrl?: string;
+  imageMode?: string;
+  clueType?: string;
+  subject?: string;
+  prompt?: string;
+  promptCharCount?: number;
+  mediaAssetId?: string | null;
+  cacheHit: boolean;
+  userOverride: boolean;
+  createdAt?: string;
+  loading?: boolean;
+  error?: string;
 };
 
 type ChatMessage = {
@@ -209,6 +243,33 @@ const TOKEN_KEY = 'immersive-reader-token';
 const USER_KEY = 'immersive-reader-user';
 const COLLECTED_CLUES_KEY = 'immersive-reader-collected-clues';
 
+function clueCollectionKey(userId?: string | null) {
+  return `${COLLECTED_CLUES_KEY}:${userId || 'anonymous'}`;
+}
+
+function clueImageKey(clueId: string, occurrenceId: string) {
+  return `${clueId}:${occurrenceId}`;
+}
+
+function loadCollectedClues(userId?: string | null): CollectedClueRecord[] {
+  const scopedKey = clueCollectionKey(userId);
+  const scoped = window.localStorage.getItem(scopedKey);
+  const legacy = scoped ? null : window.localStorage.getItem(COLLECTED_CLUES_KEY);
+  try {
+    const parsed = JSON.parse(scoped || legacy || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) =>
+        typeof item === 'string'
+          ? { clueId: item, occurrenceId: '' }
+          : { clueId: String(item?.clueId || ''), occurrenceId: String(item?.occurrenceId || '') }
+      )
+      .filter((item) => item.clueId);
+  } catch {
+    return [];
+  }
+}
+
 async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = window.localStorage.getItem(TOKEN_KEY);
   const res = await fetch(url, {
@@ -265,6 +326,17 @@ const api = {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
+  clueImage: (payload: { clueId: string; occurrenceId: string; force?: boolean }) =>
+    requestJson<ClueImage>('/api/ai/clue-image', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  clueImages: (occurrenceIds: string[], articleId = 'speckled-band') =>
+    requestJson<{ images: ClueImage[] }>(
+      `/api/ai/clue-images?articleId=${encodeURIComponent(articleId)}&occurrenceIds=${encodeURIComponent(
+        occurrenceIds.join(',')
+      )}`
+    ),
   paragraphSpeech: async (payload: {
     chapterId: string;
     paragraphIndex: number;
@@ -317,10 +389,12 @@ function App() {
   });
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [clues, setClues] = useState<Clue[]>([]);
-  const [collectedClueIds, setCollectedClueIds] = useState<string[]>(() => {
-    const saved = window.localStorage.getItem(COLLECTED_CLUES_KEY);
-    return saved ? JSON.parse(saved) : [];
+  const [collectedClues, setCollectedClues] = useState<CollectedClueRecord[]>(() => {
+    const savedUser = window.localStorage.getItem(USER_KEY);
+    const savedUserId = savedUser ? JSON.parse(savedUser)?.id : null;
+    return loadCollectedClues(savedUserId);
   });
+  const [clueImages, setClueImages] = useState<Record<string, ClueImage>>({});
   const [chapterId, setChapterId] = useState('speckled-band-1');
   const [notice, setNotice] = useState('');
   const [question, setQuestion] = useState('');
@@ -333,17 +407,51 @@ function App() {
 
   useEffect(() => {
     api.chapters().then(setChapters);
-    api.clues().then(setClues);
+    api.clues().then((nextClues) => {
+      setClues(nextClues);
+      setCollectedClues((previous) =>
+        previous.flatMap((record) => {
+          const clue = nextClues.find((item) => item.id === record.clueId);
+          if (!clue) return [];
+          const occurrenceId = clue.occurrences.some((item) => item.id === record.occurrenceId)
+            ? record.occurrenceId
+            : clue.occurrences[0]?.id;
+          return occurrenceId ? [{ clueId: clue.id, occurrenceId }] : [];
+        })
+      );
+    });
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(COLLECTED_CLUES_KEY, JSON.stringify(collectedClueIds));
-  }, [collectedClueIds]);
+    window.localStorage.setItem(clueCollectionKey(user?.id), JSON.stringify(collectedClues));
+    window.localStorage.removeItem(COLLECTED_CLUES_KEY);
+  }, [collectedClues, user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .clueImages(collectedClues.map((record) => record.occurrenceId).filter(Boolean))
+      .then(({ images }) => {
+        if (cancelled) return;
+        setClueImages((previous) => ({
+          ...previous,
+          ...Object.fromEntries(images.map((image) => [clueImageKey(image.clueId, image.occurrenceId), image]))
+        }));
+      })
+      .catch(() => {
+        // 数据库未配置时，仍允许本次会话继续使用刚生成的远程图。
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, collectedClues]);
 
   function saveSession(token: string, nextUser: User) {
     window.localStorage.setItem(TOKEN_KEY, token);
     window.localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
     setUser(nextUser);
+    setCollectedClues(loadCollectedClues(nextUser.id));
+    setClueImages({});
     setPage('bookshelf');
   }
 
@@ -356,6 +464,8 @@ function App() {
     window.localStorage.removeItem(TOKEN_KEY);
     window.localStorage.removeItem(USER_KEY);
     setUser(null);
+    setCollectedClues([]);
+    setClueImages({});
     setPage('home');
   }
 
@@ -371,7 +481,7 @@ function App() {
           <BookshelfPage
             user={user}
             chapters={chapters}
-            collectedClueCount={collectedClueIds.length}
+            collectedClueCount={collectedClues.length}
             setChapterId={setChapterId}
             setPage={setPage}
           />
@@ -380,7 +490,13 @@ function App() {
         ))}
       {page === 'profile' &&
         (user ? (
-          <ProfilePage user={user} setPage={setPage} collectedClueIds={collectedClueIds} clues={clues} />
+          <ProfilePage
+            user={user}
+            setPage={setPage}
+            collectedClues={collectedClues}
+            clues={clues}
+            clueImages={clueImages}
+          />
         ) : (
           <AuthPage mode="login" saveSession={saveSession} setPage={setPage} />
         ))}
@@ -392,8 +508,10 @@ function App() {
             user={user}
             chapters={chapters}
             clues={clues}
-            collectedClueIds={collectedClueIds}
-            setCollectedClueIds={setCollectedClueIds}
+            collectedClueRecords={collectedClues}
+            setCollectedClues={setCollectedClues}
+            clueImages={clueImages}
+            setClueImages={setClueImages}
             chapterId={chapterId}
             setChapterId={setChapterId}
             notice={notice}
@@ -748,15 +866,20 @@ function AuthPage({
 function ProfilePage({
   user,
   setPage,
-  collectedClueIds,
-  clues
+  collectedClues,
+  clues,
+  clueImages
 }: {
   user: User | null;
   setPage: (page: Page) => void;
-  collectedClueIds: string[];
+  collectedClues: CollectedClueRecord[];
   clues: Clue[];
+  clueImages: Record<string, ClueImage>;
 }) {
-  const collectedClues = clues.filter((clue) => collectedClueIds.includes(clue.id));
+  const collectedEntries = collectedClues.flatMap((record) => {
+    const clue = clues.find((item) => item.id === record.clueId);
+    return clue ? [{ clue, record }] : [];
+  });
 
   if (!user) {
     return (
@@ -781,7 +904,7 @@ function ProfilePage({
 
       <div className="profile-stats">
         <article>
-          <span>{collectedClues.length}</span>
+          <span>{collectedEntries.length}</span>
           <p>已收集证物</p>
         </article>
         <article>
@@ -796,17 +919,25 @@ function ProfilePage({
 
       <div className="profile-card">
         <h2>我的证物袋</h2>
-        {collectedClues.length === 0 ? (
+        {collectedEntries.length === 0 ? (
           <p>还没有收集证物。进入书架中的作品，点击正文里的可疑细节即可加入证物袋。</p>
         ) : (
           <div className="profile-clues">
-            {collectedClues.map((clue) => (
-              <article key={clue.id} className="clue-card">
-                <span>{clue.type}</span>
-                <h3>{clue.label}</h3>
-                <p>{clue.description}</p>
-              </article>
-            ))}
+            {collectedEntries.map(({ clue, record }) => {
+              const image = clueImages[clueImageKey(clue.id, record.occurrenceId)];
+              return (
+                <article key={clue.id} className="clue-card profile-clue-card">
+                  {image?.imageUrl ? (
+                    <img className="clue-card-image" src={image.imageUrl} alt={clue.label} />
+                  ) : (
+                    <div className="clue-image-placeholder">尚未生成图像</div>
+                  )}
+                  <span>{clue.type}</span>
+                  <h3>{clue.label}</h3>
+                  <p>{clue.surfaceDescription}</p>
+                </article>
+              );
+            })}
           </div>
         )}
       </div>
@@ -1106,8 +1237,10 @@ function ReaderPage({
   user,
   chapters,
   clues,
-  collectedClueIds,
-  setCollectedClueIds,
+  collectedClueRecords,
+  setCollectedClues,
+  clueImages,
+  setClueImages,
   chapterId,
   setChapterId,
   notice,
@@ -1121,8 +1254,10 @@ function ReaderPage({
   user: User | null;
   chapters: Chapter[];
   clues: Clue[];
-  collectedClueIds: string[];
-  setCollectedClueIds: React.Dispatch<React.SetStateAction<string[]>>;
+  collectedClueRecords: CollectedClueRecord[];
+  setCollectedClues: React.Dispatch<React.SetStateAction<CollectedClueRecord[]>>;
+  clueImages: Record<string, ClueImage>;
+  setClueImages: React.Dispatch<React.SetStateAction<Record<string, ClueImage>>>;
   chapterId: string;
   setChapterId: (id: string) => void;
   notice: string;
@@ -1146,8 +1281,16 @@ function ReaderPage({
     chapterIndex >= 0 && chapterIndex < chapters.length - 1 ? chapters[chapterIndex + 1] : null;
 
   const collectedClues = useMemo(
-    () => clues.filter((clue) => collectedClueIds.includes(clue.id)),
-    [clues, collectedClueIds]
+    () =>
+      collectedClueRecords.flatMap((record) => {
+        const clue = clues.find((item) => item.id === record.clueId);
+        return clue ? [{ clue, record }] : [];
+      }),
+    [clues, collectedClueRecords]
+  );
+  const collectedClueIds = useMemo(
+    () => collectedClueRecords.map((record) => record.clueId),
+    [collectedClueRecords]
   );
   const chapterClues = useMemo(() => {
     if (!chapter) return [];
@@ -1173,6 +1316,13 @@ function ReaderPage({
   const [generatedSceneImage, setGeneratedSceneImage] = useState<GeneratedSceneImage | null>(null);
   const [sceneDiagram, setSceneDiagram] = useState<SceneDiagram>('layout');
   const [bagPulse, setBagPulse] = useState(false);
+  const [activeClueId, setActiveClueId] = useState<string | null>(null);
+  const clueGenerationRunningRef = useRef(false);
+  const queuedClueGenerationRef = useRef<{
+    clueId: string;
+    occurrenceId: string;
+    force: boolean;
+  } | null>(null);
   const [selectedParagraph, setSelectedParagraph] = useState<SelectedParagraph | null>(null);
   const [selectionLayout, setSelectionLayout] = useState<SelectionLayout | null>(null);
   const [draggingHandle, setDraggingHandle] = useState<'start' | 'end' | null>(null);
@@ -1214,7 +1364,13 @@ function ReaderPage({
 
   function imageFromAsset(asset: MediaLibraryAsset): RangeMedia<ParagraphImage> | null {
     const key = mediaAssetPositionKey(asset);
-    if (!key || asset.mediaType !== 'image' || !asset.chapterId || !asset.range) {
+    if (
+      !key ||
+      asset.mediaType !== 'image' ||
+      !asset.chapterId ||
+      !asset.range ||
+      asset.metadata?.generationType !== 'paragraph-image'
+    ) {
       return null;
     }
 
@@ -1742,22 +1898,90 @@ function ReaderPage({
     }
   }
 
-  function collectClue(clueId: string) {
+  async function generateQueuedClueImages(initial: {
+    clueId: string;
+    occurrenceId: string;
+    force: boolean;
+  }) {
+    if (clueGenerationRunningRef.current) {
+      queuedClueGenerationRef.current = initial;
+      return;
+    }
+
+    clueGenerationRunningRef.current = true;
+    let current: typeof initial | null = initial;
+    while (current) {
+      const request = current;
+      const key = clueImageKey(request.clueId, request.occurrenceId);
+      setClueImages((previous) => ({
+        ...previous,
+        [key]: {
+          ...(previous[key] || {
+            clueId: request.clueId,
+            occurrenceId: request.occurrenceId,
+            skipped: false,
+            cacheHit: false,
+            userOverride: request.force
+          }),
+          loading: true,
+          error: undefined
+        }
+      }));
+
+      try {
+        const result = await api.clueImage(request);
+        setClueImages((previous) => ({ ...previous, [key]: { ...result, loading: false } }));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '线索图生成失败';
+        setClueImages((previous) => ({
+          ...previous,
+          [key]: {
+            ...(previous[key] || {
+              clueId: request.clueId,
+              occurrenceId: request.occurrenceId,
+              skipped: false,
+              cacheHit: false,
+              userOverride: request.force
+            }),
+            loading: false,
+            error: message
+          }
+        }));
+      }
+
+      current = queuedClueGenerationRef.current;
+      queuedClueGenerationRef.current = null;
+    }
+    clueGenerationRunningRef.current = false;
+  }
+
+  function collectClue(clueId: string, occurrenceId: string) {
     const clue = clues.find((item) => item.id === clueId);
     if (!clue) return;
 
-    setCollectedClueIds((prev) => {
-      if (prev.includes(clueId)) {
-        setNotice(`“${clue.label}”已经在证物袋里`);
-        return prev;
+    setCollectedClues((previous) => {
+      const existing = previous.find((item) => item.clueId === clueId);
+      if (existing) {
+        setNotice(
+          existing.occurrenceId === occurrenceId
+            ? `已打开：“${clue.label}”`
+            : `已更新“${clue.label}”的阅读位置`
+        );
+        return previous.map((item) => (item.clueId === clueId ? { clueId, occurrenceId } : item));
       }
       setNotice(`已收入证物袋：“${clue.label}”`);
-      setContextTab('bag');
-      setContextOpen(true);
-      setBagPulse(true);
-      window.setTimeout(() => setBagPulse(false), 620);
-      return [...prev, clueId];
+      return [...previous, { clueId, occurrenceId }];
     });
+
+    setActiveClueId(clueId);
+    setContextTab('bag');
+    setContextOpen(true);
+    setBagPulse(true);
+    window.setTimeout(() => setBagPulse(false), 620);
+    const existingImage = clueImages[clueImageKey(clueId, occurrenceId)];
+    if (!existingImage?.imageUrl && !existingImage?.skipped && !existingImage?.loading) {
+      void generateQueuedClueImages({ clueId, occurrenceId, force: false });
+    }
 
     window.setTimeout(() => setNotice(''), 1800);
   }
@@ -1765,9 +1989,15 @@ function ReaderPage({
   function removeClue(clueId: string) {
     const clue = clues.find((item) => item.id === clueId);
 
-    setCollectedClueIds((prev) => prev.filter((id) => id !== clueId));
+    setCollectedClues((previous) => previous.filter((item) => item.clueId !== clueId));
+    setActiveClueId((current) => (current === clueId ? null : current));
     setNotice(clue ? `已从证物袋取出：“${clue.label}”` : '已从证物袋取出');
     window.setTimeout(() => setNotice(''), 1800);
+  }
+
+  function regenerateClue(clueId: string, occurrenceId: string) {
+    setActiveClueId(clueId);
+    void generateQueuedClueImages({ clueId, occurrenceId, force: true });
   }
 
   function renderSegmentSlice(segment: TextSegment, segmentIndex: number, text: string) {
@@ -1780,16 +2010,12 @@ function ReaderPage({
         return <span key={`${segmentIndex}-${text}`}>{text}</span>;
       }
 
-      if (collectedClueIds.includes(segment.clueId)) {
-        return <span key={segmentIndex}>{text}</span>;
-      }
-
       return (
         <button
           key={segmentIndex}
-          className="clue-segment"
-          onClick={() => collectClue(segment.clueId)}
-          title="点击收入证物袋"
+          className={collectedClueIds.includes(segment.clueId) ? 'clue-segment collected' : 'clue-segment'}
+          onClick={() => collectClue(segment.clueId, segment.occurrenceId)}
+          title={collectedClueIds.includes(segment.clueId) ? '打开证物袋' : '点击收入证物袋并生成图像'}
           type="button"
         >
           {text}
@@ -2201,7 +2427,7 @@ function ReaderPage({
           </button>          <button
             type="button"
             role="tab"
-            className={contextOpen && contextTab === 'bag' ? 'active' : ''}
+            className={`${contextOpen && contextTab === 'bag' ? 'active' : ''}${bagPulse ? ' pulse' : ''}`}
             aria-expanded={contextOpen && contextTab === 'bag'}
             onClick={() => toggleContextPanel('bag')}
           >
@@ -2351,18 +2577,47 @@ function ReaderPage({
                   <p className="empty-bag">还没有证物。阅读正文时点击可疑细节即可收入证物袋。</p>
                 ) : (
                   <div className="clue-board-list">
-                    {collectedClues.map((clue) => (
-                      <article key={clue.id} className="clue-card">
-                        <div className="clue-card-header">
-                          <span>{clue.type}</span>
-                          <button type="button" onClick={() => removeClue(clue.id)}>
-                            取出
-                          </button>
-                        </div>
-                        <h3>{clue.label}</h3>
-                        <p>{clue.description}</p>
-                      </article>
-                    ))}
+                    {collectedClues.map(({ clue, record }) => {
+                      const image = clueImages[clueImageKey(clue.id, record.occurrenceId)];
+                      return (
+                        <article
+                          key={clue.id}
+                          className={activeClueId === clue.id ? 'clue-card active' : 'clue-card'}
+                        >
+                          <div className="clue-card-header">
+                            <span>{clue.type}</span>
+                            <div className="clue-card-actions">
+                              <button
+                                type="button"
+                                onClick={() => regenerateClue(clue.id, record.occurrenceId)}
+                                disabled={image?.loading}
+                              >
+                                {image?.loading ? '生成中' : '重新生成'}
+                              </button>
+                              <button type="button" onClick={() => removeClue(clue.id)}>
+                                取出
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="clue-image-stage">
+                            {image?.loading ? (
+                              <div className="clue-image-placeholder loading">正在规划画面...</div>
+                            ) : image?.imageUrl ? (
+                              <img className="clue-card-image" src={image.imageUrl} alt={clue.label} />
+                            ) : image?.skipped ? (
+                              <div className="clue-image-placeholder">{image.reason || '这条线索不适合图像化'}</div>
+                            ) : image?.error ? (
+                              <div className="clue-image-placeholder error">{image.error}</div>
+                            ) : (
+                              <div className="clue-image-placeholder">等待生成</div>
+                            )}
+                          </div>
+                          <h3>{clue.label}</h3>
+                          <p>{clue.surfaceDescription}</p>
+                        </article>
+                      );
+                    })}
                   </div>
                 )}
               </section>
