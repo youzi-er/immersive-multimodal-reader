@@ -21,6 +21,10 @@ function extensionFromContentType(contentType, fallback) {
   if (contentType?.includes('webp')) return 'webp';
   if (contentType?.includes('jpeg') || contentType?.includes('jpg')) return 'jpg';
   if (contentType?.includes('mpeg') || contentType?.includes('mp3')) return 'mp3';
+  if (contentType?.includes('webm')) return 'webm';
+  if (contentType?.includes('ogg')) return 'ogg';
+  if (contentType?.includes('wav')) return 'wav';
+  if (contentType?.includes('mp4')) return 'm4a';
   return fallback;
 }
 

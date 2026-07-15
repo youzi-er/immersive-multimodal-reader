@@ -9,7 +9,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import { chapters, clues } from './data.js';
-import { createMediaAsset, deleteMediaAsset, getMediaAsset, listMediaAssets } from './db.js';
+import {
+  createMediaAsset,
+  createUser,
+  createVoiceRecording,
+  deleteMediaAsset,
+  deleteVoiceRecording,
+  ensureUser,
+  getMediaAsset,
+  getUserById,
+  getUserByUsername,
+  getVoiceRecording,
+  listMediaAssets,
+  listVoiceRecordings,
+  setVoiceRecordingLike,
+  updateVoiceRecordingVisibility
+} from './db.js';
 import { mediaRoot, removeStoredMedia, saveAudioDataUrl, saveImageFromUrl } from './media-store.js';
 import {
   buildSherlockImagePrompt,
@@ -44,9 +59,11 @@ const users = [
 ];
 
 const sessions = new Map();
+const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
+const tokenSecret = process.env.AUTH_TOKEN_SECRET || process.env.MINIMAX_API_KEY || 'local-development-secret';
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
 app.use('/media', express.static(mediaRoot));
 
 function publicUser(user) {
@@ -58,7 +75,7 @@ function publicUser(user) {
   };
 }
 
-function requireAuth(req, res, next) {
+function legacyRequireAuth(req, res, next) {
   const authHeader = req.headers.authorization ?? '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   const userId = sessions.get(token);
@@ -73,11 +90,104 @@ function requireAuth(req, res, next) {
   next();
 }
 
-function optionalAuth(req, _res, next) {
+function legacyOptionalAuth(req, _res, next) {
   const authHeader = req.headers.authorization ?? '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   const userId = sessions.get(token);
   const user = users.find((item) => item.id === userId);
+
+  if (user) {
+    req.user = user;
+  }
+
+  next();
+}
+
+function base64UrlEncode(value) {
+  return Buffer.from(value).toString('base64url');
+}
+
+function base64UrlJson(value) {
+  return base64UrlEncode(JSON.stringify(value));
+}
+
+function signTokenPayload(payload) {
+  return crypto.createHmac('sha256', tokenSecret).update(payload).digest('base64url');
+}
+
+function createAuthToken(user) {
+  const payload = base64UrlJson({
+    sub: user.id,
+    exp: Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS
+  });
+  return `${payload}.${signTokenPayload(payload)}`;
+}
+
+function verifyAuthToken(token) {
+  try {
+    if (!token || !token.includes('.')) {
+      return null;
+    }
+
+    const [payload, signature] = token.split('.');
+    const expectedSignature = signTokenPayload(payload);
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+      return null;
+    }
+
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!data.sub || !data.exp || data.exp < Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+
+    return String(data.sub);
+  } catch {
+    return null;
+  }
+}
+
+function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
+  const passwordHash = crypto.pbkdf2Sync(String(password), salt, 120000, 32, 'sha256').toString('hex');
+  return { passwordHash, passwordSalt: salt };
+}
+
+function passwordMatches(password, user) {
+  const { passwordHash } = hashPassword(password, user.passwordSalt);
+  return crypto.timingSafeEqual(Buffer.from(passwordHash), Buffer.from(user.passwordHash));
+}
+
+async function seedDemoUser() {
+  const { passwordHash, passwordSalt } = hashPassword('123456', 'demo-user-static-salt');
+  await ensureUser({
+    id: 'demo-user',
+    username: 'demo',
+    passwordHash,
+    passwordSalt,
+    displayName: 'Demo Reader',
+    bio: 'Immersive reading demo account'
+  });
+}
+
+async function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const userId = verifyAuthToken(token);
+  const user = userId ? await getUserById(userId) : null;
+
+  if (!user) {
+    res.status(401).json({ error: 'Please sign in first' });
+    return;
+  }
+
+  req.user = user;
+  next();
+}
+
+async function optionalAuth(req, _res, next) {
+  const authHeader = req.headers.authorization ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const userId = verifyAuthToken(token);
+  const user = userId ? await getUserById(userId) : null;
 
   if (user) {
     req.user = user;
@@ -287,6 +397,72 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'immersive-reader-backend' });
 });
 
+app.post('/api/auth/register', async (req, res, next) => {
+  try {
+    const { username, password, displayName } = req.body;
+    const safeUsername = String(username ?? '').trim();
+    const safePassword = String(password ?? '').trim();
+    const safeDisplayName = String(displayName ?? '').trim() || safeUsername;
+
+    if (safeUsername.length < 3) {
+      res.status(400).json({ error: 'Username must be at least 3 characters' });
+      return;
+    }
+
+    if (safePassword.length < 6) {
+      res.status(400).json({ error: 'Password must be at least 6 characters' });
+      return;
+    }
+
+    const existing = await getUserByUsername(safeUsername);
+    if (existing) {
+      res.status(409).json({ error: 'Username is already registered' });
+      return;
+    }
+
+    const { passwordHash, passwordSalt } = hashPassword(safePassword);
+    const user = await createUser({
+      id: crypto.randomUUID(),
+      username: safeUsername,
+      passwordHash,
+      passwordSalt,
+      displayName: safeDisplayName,
+      bio: 'New immersive reader'
+    });
+    const token = createAuthToken(user);
+
+    res.status(201).json({ token, user: publicUser(user) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/auth/login', async (req, res, next) => {
+  try {
+    await seedDemoUser();
+    const { username, password } = req.body;
+    const user = await getUserByUsername(String(username ?? '').trim());
+
+    if (!user || !passwordMatches(String(password ?? ''), user)) {
+      res.status(401).json({ error: 'Username or password is incorrect' });
+      return;
+    }
+
+    const token = createAuthToken(user);
+    res.json({ token, user: publicUser(user) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  res.json({ user: publicUser(req.user) });
+});
+
+app.post('/api/auth/logout', requireAuth, (_req, res) => {
+  res.json({ ok: true });
+});
+
 app.post('/api/auth/register', (req, res) => {
   const { username, password, displayName } = req.body;
   const safeUsername = String(username ?? '').trim();
@@ -438,6 +614,160 @@ app.delete('/api/media/assets/:id', optionalAuth, async (req, res) => {
     res.json({ ok: true, asset });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Failed to delete media asset' });
+  }
+});
+
+function normalizeVoiceRecordingQuery(query) {
+  return {
+    articleId: String(query.articleId || 'speckled-band'),
+    chapterId: String(query.chapterId || ''),
+    range: normalizeRange({
+      startParagraphIndex: query.startParagraphIndex,
+      startOffset: query.startOffset,
+      endParagraphIndex: query.endParagraphIndex,
+      endOffset: query.endOffset
+    })
+  };
+}
+
+app.get('/api/voice-recordings', requireAuth, async (req, res) => {
+  try {
+    const { articleId, chapterId, range } = normalizeVoiceRecordingQuery(req.query);
+    if (!chapterId || !range) {
+      res.status(400).json({ error: 'chapterId and range are required' });
+      return;
+    }
+
+    const recordings = await listVoiceRecordings({
+      articleId,
+      chapterId,
+      range,
+      currentUserId: req.user.id
+    });
+    const myRecording = recordings.find((recording) => recording.userId === req.user.id) || null;
+    const publicRecordings = recordings.filter((recording) => recording.visibility === 'public');
+
+    res.json({ myRecording, publicRecordings, recordings });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to list voice recordings' });
+  }
+});
+
+app.post('/api/voice-recordings', requireAuth, async (req, res) => {
+  try {
+    const { audioDataUrl, visibility = 'private', sourceText } = req.body;
+    const position = normalizeMediaPosition(req.body);
+    const safeVisibility = visibility === 'public' ? 'public' : 'private';
+    const safeSourceText = String(sourceText ?? '').trim();
+
+    if (!position.chapterId || !position.range || !Number.isInteger(position.paragraphIndex)) {
+      res.status(400).json({ error: 'chapterId, paragraphIndex and range are required' });
+      return;
+    }
+
+    if (!safeSourceText) {
+      res.status(400).json({ error: 'sourceText is required' });
+      return;
+    }
+
+    const saved = await saveAudioDataUrl(audioDataUrl);
+    const asset = await createMediaAsset({
+      id: crypto.randomUUID(),
+      articleId: position.articleId,
+      chapterId: null,
+      paragraphIndex: null,
+      range: null,
+      mediaType: 'audio',
+      url: saved.url,
+      sourceUrl: null,
+      filePath: saved.filePath,
+      prompt: safeSourceText,
+      sourceText: safeSourceText,
+      provider: 'user_recording',
+      model: null,
+      userId: req.user.id,
+      metadata: {
+        generationType: 'user-recording',
+        mimeType: String(audioDataUrl || '').match(/^data:([^;]+);/)?.[1] || null
+      }
+    });
+
+    const recording = await createVoiceRecording({
+      id: crypto.randomUUID(),
+      mediaAssetId: asset.id,
+      articleId: position.articleId,
+      chapterId: position.chapterId,
+      paragraphIndex: position.paragraphIndex,
+      range: position.range,
+      sourceText: safeSourceText,
+      userId: req.user.id,
+      visibility: safeVisibility
+    });
+
+    res.status(201).json({ recording });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to save voice recording' });
+  }
+});
+
+app.patch('/api/voice-recordings/:id', requireAuth, async (req, res) => {
+  try {
+    const visibility = req.body.visibility === 'public' ? 'public' : 'private';
+    const recording = await updateVoiceRecordingVisibility(req.params.id, req.user.id, visibility);
+    if (!recording) {
+      res.status(404).json({ error: 'Voice recording not found' });
+      return;
+    }
+
+    res.json({ recording });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to update voice recording' });
+  }
+});
+
+app.delete('/api/voice-recordings/:id', requireAuth, async (req, res) => {
+  try {
+    const recording = await deleteVoiceRecording(req.params.id, req.user.id);
+    if (!recording) {
+      res.status(404).json({ error: 'Voice recording not found' });
+      return;
+    }
+
+    const asset = await deleteMediaAsset(recording.mediaAssetId);
+    await removeStoredMedia(asset?.filePath);
+    res.json({ ok: true, recording });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to delete voice recording' });
+  }
+});
+
+app.post('/api/voice-recordings/:id/like', requireAuth, async (req, res) => {
+  try {
+    const recording = await getVoiceRecording(req.params.id, req.user.id);
+    if (!recording || (recording.visibility !== 'public' && recording.userId !== req.user.id)) {
+      res.status(404).json({ error: 'Voice recording not found' });
+      return;
+    }
+
+    const nextRecording = await setVoiceRecordingLike(req.params.id, req.user.id, true);
+    res.json({ recording: nextRecording });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to like voice recording' });
+  }
+});
+
+app.delete('/api/voice-recordings/:id/like', requireAuth, async (req, res) => {
+  try {
+    const recording = await getVoiceRecording(req.params.id, req.user.id);
+    if (!recording || (recording.visibility !== 'public' && recording.userId !== req.user.id)) {
+      res.status(404).json({ error: 'Voice recording not found' });
+      return;
+    }
+
+    const nextRecording = await setVoiceRecordingLike(req.params.id, req.user.id, false);
+    res.json({ recording: nextRecording });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to unlike voice recording' });
   }
 });
 
