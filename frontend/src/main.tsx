@@ -2154,7 +2154,7 @@ function ReaderPage({
     return (
       <article key={recording.id} className="voice-recording-row">
         <div>
-          <strong>{options.mine ? '我的配音' : recording.displayName || recording.username}</strong>
+          <strong>{options.mine || recording.userId === user?.id ? '我的配音' : recording.displayName || recording.username}</strong>
           <small>{recording.visibility === 'public' ? '公开' : '私密'}</small>
         </div>
         <div className="voice-recording-actions">
@@ -2195,7 +2195,7 @@ function ReaderPage({
 
     const key = rangeKey(selectedParagraph.chapterId, selectedParagraph.range);
     const group = voiceRecordingGroups[key] || { myRecording: null, publicRecordings: [] };
-    const squareRecordings = group.publicRecordings.filter((recording) => recording.id !== group.myRecording?.id);
+    const squareRecordings = group.publicRecordings;
     const loading = voiceLoadingKey === key;
 
     return (
