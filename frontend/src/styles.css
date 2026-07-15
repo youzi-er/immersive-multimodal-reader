@@ -1477,6 +1477,10 @@ button:disabled {
   z-index: 5;
 }
 
+.selection-toolbar {
+  flex-wrap: wrap;
+}
+
 .selection-toolbar button {
   border: 0;
   border-radius: 8px;
@@ -1496,6 +1500,91 @@ button:disabled {
 .selection-toolbar button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.selection-voice-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  width: min(360px, 88vw);
+  max-height: 360px;
+  overflow: auto;
+  transform: translateX(-50%);
+  border: 1px solid rgba(36, 81, 89, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 253, 248, 0.98);
+  box-shadow: 0 16px 42px rgba(17, 24, 39, 0.24);
+  padding: 10px;
+  color: #17202b;
+}
+
+.voice-panel-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.selection-toolbar .voice-panel-tabs button,
+.selection-toolbar .voice-recorder button,
+.selection-toolbar .voice-recording-actions button {
+  border: 1px solid rgba(36, 81, 89, 0.18);
+  background: #f5efe6;
+  color: #253044;
+  padding: 7px 9px;
+}
+
+.selection-toolbar .voice-panel-tabs button.active {
+  background: #245159;
+  color: #fff;
+}
+
+.voice-panel-section {
+  display: grid;
+  gap: 8px;
+}
+
+.voice-panel-empty {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.voice-recording-row {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(36, 81, 89, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 8px;
+}
+
+.voice-recording-row div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.voice-recording-row strong {
+  font-size: 13px;
+}
+
+.voice-recording-row small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.voice-recording-actions,
+.voice-recorder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.voice-recorder audio {
+  width: 100%;
+  height: 34px;
 }
 
 .inline-audio-play {

@@ -131,6 +131,29 @@ type ParagraphSpeech = {
   mediaPersistenceError?: string | null;
 };
 
+type VoiceRecording = {
+  id: string;
+  mediaAssetId: string;
+  articleId: string;
+  chapterId: string;
+  paragraphIndex: number;
+  range: TextRange;
+  sourceText: string;
+  userId: string;
+  username: string;
+  displayName: string;
+  visibility: 'private' | 'public';
+  audioUrl: string;
+  likeCount: number;
+  likedByMe: boolean;
+  createdAt: string;
+};
+
+type VoiceRecordingGroup = {
+  myRecording: VoiceRecording | null;
+  publicRecordings: VoiceRecording[];
+};
+
 type SpeechDebugEvent = {
   timestamp: number | null;
   runId: string;
@@ -372,6 +395,40 @@ const api = {
     requestJson<{ assets: MediaLibraryAsset[] }>(
       `/api/media/assets?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(chapterId)}`
     ),
+  voiceRecordings: (articleId: string, chapterId: string, range: TextRange) =>
+    requestJson<{ myRecording: VoiceRecording | null; publicRecordings: VoiceRecording[] }>(
+      `/api/voice-recordings?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(
+        chapterId
+      )}&startParagraphIndex=${range.startParagraphIndex}&startOffset=${range.startOffset}&endParagraphIndex=${
+        range.endParagraphIndex
+      }&endOffset=${range.endOffset}`
+    ),
+  createVoiceRecording: (payload: {
+    articleId: string;
+    chapterId: string;
+    paragraphIndex: number;
+    range: TextRange;
+    sourceText: string;
+    audioDataUrl: string;
+    visibility: 'private' | 'public';
+  }) =>
+    requestJson<{ recording: VoiceRecording }>('/api/voice-recordings', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  updateVoiceRecording: (id: string, visibility: 'private' | 'public') =>
+    requestJson<{ recording: VoiceRecording }>(`/api/voice-recordings/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ visibility })
+    }),
+  deleteVoiceRecording: (id: string) =>
+    requestJson<{ ok: true; recording: VoiceRecording }>(`/api/voice-recordings/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    }),
+  likeVoiceRecording: (id: string, liked: boolean) =>
+    requestJson<{ recording: VoiceRecording }>(`/api/voice-recordings/${encodeURIComponent(id)}/like`, {
+      method: liked ? 'POST' : 'DELETE'
+    }),
   speechDebug: (limit = 20) => requestJson<SpeechDebugInfo>(`/api/ai/speech-debug?limit=${limit}`),
   imageDebug: (limit = 20) => requestJson<ImageDebugInfo>(`/api/ai/image-debug?limit=${limit}`),
   deleteMediaAsset: (id: string) =>
@@ -1359,6 +1416,17 @@ function ReaderPage({
   const [paragraphAudios, setParagraphAudios] = useState<Record<string, RangeMedia<ParagraphSpeech>>>({});
   const [playingAudioKey, setPlayingAudioKey] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [voicePanelOpen, setVoicePanelOpen] = useState(false);
+  const [voicePanelTab, setVoicePanelTab] = useState<'mine' | 'square'>('mine');
+  const [voiceRecordingGroups, setVoiceRecordingGroups] = useState<Record<string, VoiceRecordingGroup>>({});
+  const [voiceLoadingKey, setVoiceLoadingKey] = useState<string | null>(null);
+  const [voiceSaving, setVoiceSaving] = useState(false);
+  const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'ready'>('idle');
+  const [recordingPreviewUrl, setRecordingPreviewUrl] = useState<string | null>(null);
+  const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
   const longPressTimer = useRef<number | null>(null);
   const sceneVariant =
     chapter?.id === 'speckled-band-2' ? 'manor' : chapter?.id === 'speckled-band-3' ? 'night' : 'baker';
@@ -1430,6 +1498,10 @@ function ReaderPage({
   function audioFromAsset(asset: MediaLibraryAsset): RangeMedia<ParagraphSpeech> | null {
     const key = mediaAssetPositionKey(asset);
     if (!key || asset.mediaType !== 'audio' || !asset.chapterId || !asset.range) {
+      return null;
+    }
+
+    if (asset.provider === 'user_recording' || asset.metadata?.generationType === 'user-recording') {
       return null;
     }
 
@@ -1570,6 +1642,218 @@ function ReaderPage({
     playParagraphAudio(key, audioUrl);
   }
 
+  function resetRecordingDraft() {
+    if (recordingPreviewUrl) {
+      URL.revokeObjectURL(recordingPreviewUrl);
+    }
+    setRecordingPreviewUrl(null);
+    setRecordingBlob(null);
+    setRecordingState('idle');
+    recordingChunksRef.current = [];
+  }
+
+  function stopRecordingStream() {
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    recordingStreamRef.current = null;
+  }
+
+  function blobToDataUrl(blob: Blob) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error || new Error('Failed to read recording'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function loadVoiceRecordingsForSelection(selection = selectedParagraph) {
+    if (!selection) {
+      return;
+    }
+
+    const key = rangeKey(selection.chapterId, selection.range);
+    setVoiceLoadingKey(key);
+
+    try {
+      const group = await api.voiceRecordings('speckled-band', selection.chapterId, selection.range);
+      setVoiceRecordingGroups((prev) => ({ ...prev, [key]: group }));
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Voice recordings failed to load');
+      window.setTimeout(() => setNotice(''), 2400);
+    } finally {
+      setVoiceLoadingKey(null);
+    }
+  }
+
+  async function startUserRecording() {
+    try {
+      resetRecordingDraft();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordingStreamRef.current = stream;
+      const recorderOptions =
+        typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? { mimeType: 'audio/webm;codecs=opus' }
+          : undefined;
+      const recorder = new MediaRecorder(stream, recorderOptions);
+      mediaRecorderRef.current = recorder;
+      recordingChunksRef.current = [];
+
+      recorder.addEventListener('dataavailable', (event) => {
+        if (event.data.size > 0) {
+          recordingChunksRef.current.push(event.data);
+        }
+      });
+
+      recorder.addEventListener('stop', () => {
+        const mimeType = recorder.mimeType || 'audio/webm';
+        const blob = new Blob(recordingChunksRef.current, { type: mimeType });
+        setRecordingBlob(blob);
+        setRecordingPreviewUrl(URL.createObjectURL(blob));
+        setRecordingState('ready');
+        stopRecordingStream();
+      });
+
+      recorder.start();
+      setRecordingState('recording');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Microphone permission failed');
+      window.setTimeout(() => setNotice(''), 2400);
+    }
+  }
+
+  function stopUserRecording() {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+  }
+
+  async function saveUserRecording(visibility: 'private' | 'public') {
+    if (!selectedParagraph || !recordingBlob || voiceSaving) {
+      return;
+    }
+
+    const targetSegment = selectedParagraph.draft.trim();
+    if (!targetSegment) {
+      setNotice('Selected text cannot be empty');
+      window.setTimeout(() => setNotice(''), 1800);
+      return;
+    }
+
+    const key = rangeKey(selectedParagraph.chapterId, selectedParagraph.range);
+    setVoiceSaving(true);
+
+    try {
+      const audioDataUrl = await blobToDataUrl(recordingBlob);
+      const { recording } = await api.createVoiceRecording({
+        articleId: 'speckled-band',
+        chapterId: selectedParagraph.chapterId,
+        paragraphIndex: selectedParagraph.paragraphIndex,
+        range: selectedParagraph.range,
+        sourceText: targetSegment,
+        audioDataUrl,
+        visibility
+      });
+      setVoiceRecordingGroups((prev) => {
+        const existing = prev[key] || { myRecording: null, publicRecordings: [] };
+        const publicRecordings = [
+          recording,
+          ...existing.publicRecordings.filter((item) => item.id !== recording.id && item.userId !== user?.id)
+        ].filter((item) => item.visibility === 'public');
+
+        return {
+          ...prev,
+          [key]: {
+            myRecording: recording,
+            publicRecordings
+          }
+        };
+      });
+      resetRecordingDraft();
+      setNotice(visibility === 'public' ? 'Recording saved publicly' : 'Private recording saved');
+      window.setTimeout(() => setNotice(''), 1800);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Recording save failed');
+      window.setTimeout(() => setNotice(''), 2600);
+    } finally {
+      setVoiceSaving(false);
+    }
+  }
+
+  async function updateMyRecordingVisibility(recording: VoiceRecording, visibility: 'private' | 'public') {
+    const key = rangeKey(recording.chapterId, recording.range);
+
+    try {
+      const { recording: updated } = await api.updateVoiceRecording(recording.id, visibility);
+      setVoiceRecordingGroups((prev) => {
+        const existing = prev[key] || { myRecording: null, publicRecordings: [] };
+        const publicRecordings = [
+          updated,
+          ...existing.publicRecordings.filter((item) => item.id !== updated.id)
+        ].filter((item) => item.visibility === 'public');
+
+        return {
+          ...prev,
+          [key]: {
+            myRecording: updated,
+            publicRecordings
+          }
+        };
+      });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Visibility update failed');
+      window.setTimeout(() => setNotice(''), 2400);
+    }
+  }
+
+  async function deleteMyRecording(recording: VoiceRecording) {
+    const confirmed = window.confirm('Delete this recording? You can record this text again afterward.');
+    if (!confirmed) {
+      return;
+    }
+
+    const key = rangeKey(recording.chapterId, recording.range);
+
+    try {
+      await api.deleteVoiceRecording(recording.id);
+      setVoiceRecordingGroups((prev) => {
+        const existing = prev[key] || { myRecording: null, publicRecordings: [] };
+        return {
+          ...prev,
+          [key]: {
+            myRecording: null,
+            publicRecordings: existing.publicRecordings.filter((item) => item.id !== recording.id)
+          }
+        };
+      });
+      setNotice('Recording deleted');
+      window.setTimeout(() => setNotice(''), 1800);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Recording delete failed');
+      window.setTimeout(() => setNotice(''), 2400);
+    }
+  }
+
+  async function toggleVoiceLike(recording: VoiceRecording) {
+    const key = rangeKey(recording.chapterId, recording.range);
+
+    try {
+      const { recording: updated } = await api.likeVoiceRecording(recording.id, !recording.likedByMe);
+      setVoiceRecordingGroups((prev) => {
+        const existing = prev[key] || { myRecording: null, publicRecordings: [] };
+        return {
+          ...prev,
+          [key]: {
+            myRecording: existing.myRecording?.id === updated.id ? updated : existing.myRecording,
+            publicRecordings: existing.publicRecordings.map((item) => (item.id === updated.id ? updated : item))
+          }
+        };
+      });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Like update failed');
+      window.setTimeout(() => setNotice(''), 2200);
+    }
+  }
+
   useEffect(() => {
     return () => {
       if (longPressTimer.current !== null) {
@@ -1580,8 +1864,12 @@ function ReaderPage({
         audio.pause();
         audio.removeAttribute('src');
       }
+      stopRecordingStream();
+      if (recordingPreviewUrl) {
+        URL.revokeObjectURL(recordingPreviewUrl);
+      }
     };
-  }, []);
+  }, [recordingPreviewUrl]);
 
   function paragraphKey(paragraphIndex: number) {
     return `${chapter.id}-${paragraphIndex}`;
@@ -1720,6 +2008,17 @@ function ReaderPage({
       window.removeEventListener('pointerdown', handlePointerDown, true);
     };
   }, [selectedParagraph]);
+
+  useEffect(() => {
+    if (!selectedParagraph) {
+      setVoicePanelOpen(false);
+      return;
+    }
+
+    if (voicePanelOpen) {
+      void loadVoiceRecordingsForSelection(selectedParagraph);
+    }
+  }, [selectedParagraph, voicePanelOpen]);
 
   function selectParagraph(paragraph: TextSegment[], paragraphIndex: number) {
     clearLongPressTimer();
@@ -2099,6 +2398,126 @@ function ReaderPage({
     );
   }
 
+  function renderVoiceRecordingRow(recording: VoiceRecording, options: { mine: boolean }) {
+    const audioKey = `voice-${recording.id}`;
+    const isPlaying = playingAudioKey === audioKey;
+
+    return (
+      <article key={recording.id} className="voice-recording-row">
+        <div>
+          <strong>{options.mine || recording.userId === user?.id ? '我的配音' : recording.displayName || recording.username}</strong>
+          <small>{recording.visibility === 'public' ? '公开' : '私密'}</small>
+        </div>
+        <div className="voice-recording-actions">
+          <button type="button" onClick={() => toggleParagraphAudio(audioKey, recording.audioUrl)}>
+            {isPlaying ? '暂停' : '播放'}
+          </button>
+          {options.mine ? (
+            <>
+              <button
+                type="button"
+                onClick={() =>
+                  void updateMyRecordingVisibility(
+                    recording,
+                    recording.visibility === 'public' ? 'private' : 'public'
+                  )
+                }
+              >
+                {recording.visibility === 'public' ? '设为私密' : '公开'}
+              </button>
+              <button type="button" onClick={() => void deleteMyRecording(recording)}>
+                删除
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => void toggleVoiceLike(recording)}>
+              {recording.likedByMe ? '已赞' : '点赞'} {recording.likeCount}
+            </button>
+          )}
+        </div>
+      </article>
+    );
+  }
+
+  function renderVoicePanel() {
+    if (!selectedParagraph) {
+      return null;
+    }
+
+    const key = rangeKey(selectedParagraph.chapterId, selectedParagraph.range);
+    const group = voiceRecordingGroups[key] || { myRecording: null, publicRecordings: [] };
+    const squareRecordings = group.publicRecordings;
+    const loading = voiceLoadingKey === key;
+
+    return (
+      <div
+        className="selection-voice-panel"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="voice-panel-tabs">
+          <button
+            type="button"
+            className={voicePanelTab === 'mine' ? 'active' : ''}
+            onClick={() => setVoicePanelTab('mine')}
+          >
+            我的配音
+          </button>
+          <button
+            type="button"
+            className={voicePanelTab === 'square' ? 'active' : ''}
+            onClick={() => setVoicePanelTab('square')}
+          >
+            配音广场
+          </button>
+        </div>
+
+        {loading ? (
+          <p className="voice-panel-empty">正在加载...</p>
+        ) : voicePanelTab === 'mine' ? (
+          <div className="voice-panel-section">
+            {group.myRecording && renderVoiceRecordingRow(group.myRecording, { mine: true })}
+
+            <div className="voice-recorder">
+              {recordingState === 'recording' ? (
+                <button type="button" onClick={stopUserRecording}>
+                  停止录音
+                </button>
+              ) : (
+                <button type="button" onClick={() => void startUserRecording()}>
+                  {group.myRecording ? '重录' : '开始录音'}
+                </button>
+              )}
+
+              {recordingPreviewUrl && (
+                <>
+                  <audio controls src={recordingPreviewUrl} />
+                  <button type="button" onClick={() => void saveUserRecording('private')} disabled={voiceSaving}>
+                    保存私密
+                  </button>
+                  <button type="button" onClick={() => void saveUserRecording('public')} disabled={voiceSaving}>
+                    保存公开
+                  </button>
+                  <button type="button" onClick={resetRecordingDraft}>
+                    丢弃
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="voice-panel-section">
+            {squareRecordings.length ? (
+              squareRecordings.map((recording) => renderVoiceRecordingRow(recording, { mine: false }))
+            ) : (
+              <p className="voice-panel-empty">这段文字还没有公开配音。</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderParagraphWithMedia(paragraph: TextSegment[], paragraphIndex: number) {
     type ParagraphInjection =
       | { kind: 'audio'; offset: number; key: string; audio: RangeMedia<ParagraphSpeech> }
@@ -2404,6 +2823,17 @@ function ReaderPage({
                   >
                     {speechGenerating ? '生成中...' : '生成配音'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVoicePanelOpen((open) => !open);
+                      setVoicePanelTab('mine');
+                    }}
+                    disabled={imageGenerating || speechGenerating}
+                  >
+                    更多配音
+                  </button>
+                  {voicePanelOpen && renderVoicePanel()}
                 </div>
               )}
             </div>
