@@ -247,8 +247,8 @@ function clueCollectionKey(userId?: string | null) {
   return `${COLLECTED_CLUES_KEY}:${userId || 'anonymous'}`;
 }
 
-function clueImageKey(clueId: string, occurrenceId: string) {
-  return `${clueId}:${occurrenceId}`;
+function clueImageKey(clueId: string) {
+  return clueId;
 }
 
 function clueOccurrences(clue?: Clue | null) {
@@ -454,7 +454,7 @@ function App() {
         if (cancelled) return;
         setClueImages((previous) => ({
           ...previous,
-          ...Object.fromEntries(images.map((image) => [clueImageKey(image.clueId, image.occurrenceId), image]))
+          ...Object.fromEntries(images.map((image) => [clueImageKey(image.clueId), image]))
         }));
       })
       .catch(() => {
@@ -943,7 +943,7 @@ function ProfilePage({
         ) : (
           <div className="profile-clues">
             {collectedEntries.map(({ clue, record }) => {
-              const image = clueImages[clueImageKey(clue.id, record.occurrenceId)];
+              const image = clueImages[clueImageKey(clue.id)];
               return (
                 <article key={clue.id} className="clue-card profile-clue-card">
                   {image?.imageUrl ? (
@@ -1931,7 +1931,7 @@ function ReaderPage({
     let current: typeof initial | null = initial;
     while (current) {
       const request = current;
-      const key = clueImageKey(request.clueId, request.occurrenceId);
+      const key = clueImageKey(request.clueId);
       setClueImages((previous) => ({
         ...previous,
         [key]: {
@@ -1998,7 +1998,7 @@ function ReaderPage({
     setContextOpen(true);
     setBagPulse(true);
     window.setTimeout(() => setBagPulse(false), 620);
-    const existingImage = clueImages[clueImageKey(clueId, occurrenceId)];
+    const existingImage = clueImages[clueImageKey(clueId)];
     if (occurrenceId && !existingImage?.imageUrl && !existingImage?.skipped && !existingImage?.loading) {
       void generateQueuedClueImages({ clueId, occurrenceId, force: false });
     }
@@ -2603,7 +2603,7 @@ function ReaderPage({
                 ) : (
                   <div className="clue-board-list">
                     {collectedClues.map(({ clue, record }) => {
-                      const image = clueImages[clueImageKey(clue.id, record.occurrenceId)];
+                      const image = clueImages[clueImageKey(clue.id)];
                       return (
                         <article
                           key={clue.id}
