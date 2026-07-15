@@ -1688,6 +1688,15 @@ function ReaderPage({
   async function startUserRecording() {
     try {
       resetRecordingDraft();
+      const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+      if (!window.isSecureContext && !isLocalhost) {
+        throw new Error('浏览器要求 HTTPS 才能使用麦克风录音');
+      }
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('当前浏览器或访问方式不支持麦克风录音');
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       recordingStreamRef.current = stream;
       const recorderOptions =
