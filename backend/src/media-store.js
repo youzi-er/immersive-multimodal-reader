@@ -57,7 +57,7 @@ export async function saveImageFromUrl(sourceUrl) {
 }
 
 export async function saveAudioDataUrl(dataUrl) {
-  const match = String(dataUrl || '').match(/^data:(audio\/[^;]+);base64,(.+)$/);
+  const match = String(dataUrl || '').match(/^data:((?:audio|video)\/[^;]+(?:;[^,]+)?);base64,(.+)$/);
 
   if (!match) {
     throw new Error('Audio result is not a valid data URL');

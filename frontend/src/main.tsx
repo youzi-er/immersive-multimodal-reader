@@ -1515,7 +1515,11 @@ function ReaderPage({
       resetRecordingDraft();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       recordingStreamRef.current = stream;
-      const recorder = new MediaRecorder(stream);
+      const recorderOptions =
+        typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? { mimeType: 'audio/webm;codecs=opus' }
+          : undefined;
+      const recorder = new MediaRecorder(stream, recorderOptions);
       mediaRecorderRef.current = recorder;
       recordingChunksRef.current = [];
 
