@@ -11,20 +11,25 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import { chapters, clues } from './data.js';
 import {
   createMediaAsset,
-  createUser,
   createVoiceRecording,
   deleteMediaAsset,
   deleteVoiceRecording,
-  ensureUser,
   getMediaAsset,
-  getUserById,
-  getUserByUsername,
   getVoiceRecording,
   listMediaAssets,
   listVoiceRecordings,
   setVoiceRecordingLike,
   updateVoiceRecordingVisibility
 } from './db.js';
+import {
+  createParagraphComment,
+  createUser,
+  deleteParagraphComment,
+  ensureUser,
+  getUserById,
+  getUserByUsername,
+  listParagraphComments
+} from './local-store.js';
 import { getMediaRoot, removeStoredMedia, saveAudioDataUrl, saveImageFromUrl } from './media-store.js';
 import {
   buildSherlockImagePrompt,
@@ -586,70 +591,6 @@ app.post('/api/auth/logout', requireAuth, (_req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/auth/register', (req, res) => {
-  const { username, password, displayName } = req.body;
-  const safeUsername = String(username ?? '').trim();
-  const safePassword = String(password ?? '').trim();
-  const safeDisplayName = String(displayName ?? '').trim() || safeUsername;
-
-  if (safeUsername.length < 3) {
-    res.status(400).json({ error: '用户名至少需要 3 个字符' });
-    return;
-  }
-
-  if (safePassword.length < 6) {
-    res.status(400).json({ error: '密码至少需要 6 位' });
-    return;
-  }
-
-  if (users.some((user) => user.username === safeUsername)) {
-    res.status(409).json({ error: '这个用户名已经被注册' });
-    return;
-  }
-
-  const user = {
-    id: crypto.randomUUID(),
-    username: safeUsername,
-    password: safePassword,
-    displayName: safeDisplayName,
-    bio: '新的探案读者。'
-  };
-  const token = crypto.randomUUID();
-
-  users.push(user);
-  sessions.set(token, user.id);
-
-  res.status(201).json({ token, user: publicUser(user) });
-});
-
-app.post('/api/auth/login', (req, res) => {
-  const { username, password } = req.body;
-  const user = users.find(
-    (item) => item.username === String(username ?? '').trim() && item.password === String(password ?? '')
-  );
-
-  if (!user) {
-    res.status(401).json({ error: '用户名或密码不正确' });
-    return;
-  }
-
-  const token = crypto.randomUUID();
-  sessions.set(token, user.id);
-
-  res.json({ token, user: publicUser(user) });
-});
-
-app.get('/api/auth/me', requireAuth, (req, res) => {
-  res.json({ user: publicUser(req.user) });
-});
-
-app.post('/api/auth/logout', requireAuth, (req, res) => {
-  const authHeader = req.headers.authorization ?? '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  sessions.delete(token);
-  res.json({ ok: true });
-});
-
 app.get('/api/chapters', (_req, res) => {
   res.json(chapters);
 });
@@ -665,6 +606,54 @@ app.get('/api/chapters/:id', (req, res) => {
 
 app.get('/api/clues', (_req, res) => {
   res.json(clues);
+});
+
+app.get('/api/paragraph-comments', async (req, res, next) => {
+  try {
+    const articleId = String(req.query.articleId || '').trim();
+    const chapterId = String(req.query.chapterId || '').trim();
+    if (!articleId || !chapterId) {
+      res.status(400).json({ error: 'articleId and chapterId are required' });
+      return;
+    }
+    res.json({ comments: await listParagraphComments({ articleId, chapterId }) });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/paragraph-comments', requireAuth, async (req, res, next) => {
+  try {
+    const articleId = String(req.body.articleId || '').trim();
+    const chapterId = String(req.body.chapterId || '').trim();
+    const paragraphIndex = Number(req.body.paragraphIndex);
+    const content = String(req.body.content || '').trim();
+    const chapter = chapters.find((item) => item.id === chapterId);
+    if (!articleId || !chapter || !Number.isInteger(paragraphIndex) || !chapter.paragraphs[paragraphIndex]) {
+      res.status(400).json({ error: 'Invalid paragraph position' });
+      return;
+    }
+    if (!content || content.length > 1000) {
+      res.status(400).json({ error: 'Comment must contain 1 to 1000 characters' });
+      return;
+    }
+    const comment = await createParagraphComment({
+      id: crypto.randomUUID(), articleId, chapterId, paragraphIndex,
+      userId: req.user.id, content
+    });
+    res.status(201).json({ comment });
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/paragraph-comments/:id', requireAuth, async (req, res, next) => {
+  try {
+    const deleted = await deleteParagraphComment(String(req.params.id), req.user.id);
+    if (!deleted) {
+      res.status(404).json({ error: 'Comment not found or you cannot delete it' });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get('/api/ai/clue-images', optionalAuth, async (req, res) => {

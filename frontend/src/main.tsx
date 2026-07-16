@@ -250,6 +250,18 @@ type MediaLibraryAsset = {
   createdAt: string;
 };
 
+type ParagraphComment = {
+  id: string;
+  articleId: string;
+  chapterId: string;
+  paragraphIndex: number;
+  userId: string;
+  username: string;
+  displayName: string;
+  content: string;
+  createdAt: string;
+};
+
 type SelectedParagraph = {
   chapterId: string;
   paragraphIndex: number;
@@ -336,6 +348,19 @@ async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T
 const api = {
   chapters: () => requestJson<Chapter[]>('/api/chapters'),
   clues: () => requestJson<Clue[]>('/api/clues'),
+  paragraphComments: (articleId: string, chapterId: string) =>
+    requestJson<{ comments: ParagraphComment[] }>(
+      `/api/paragraph-comments?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(chapterId)}`
+    ),
+  createParagraphComment: (payload: { articleId: string; chapterId: string; paragraphIndex: number; content: string }) =>
+    requestJson<{ comment: ParagraphComment }>('/api/paragraph-comments', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  deleteParagraphComment: (id: string) =>
+    requestJson<{ ok: true }>(`/api/paragraph-comments/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    }),
   chat: async (question: string, chapterId: string, collectedClueIds: string[]) => {
     const data = await requestJson<{ answer: string }>('/api/chat', {
       method: 'POST',
@@ -1421,6 +1446,13 @@ function ReaderPage({
   const [voiceRecordingGroups, setVoiceRecordingGroups] = useState<Record<string, VoiceRecordingGroup>>({});
   const [voiceLoadingKey, setVoiceLoadingKey] = useState<string | null>(null);
   const [voiceSaving, setVoiceSaving] = useState(false);
+  const [paragraphComments, setParagraphComments] = useState<ParagraphComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [activeCommentParagraph, setActiveCommentParagraph] = useState<number | null>(null);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [commentSaving, setCommentSaving] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+  const [commentError, setCommentError] = useState('');
   const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'ready'>('idle');
   const [recordingPreviewUrl, setRecordingPreviewUrl] = useState<string | null>(null);
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
@@ -1430,6 +1462,52 @@ function ReaderPage({
   const longPressTimer = useRef<number | null>(null);
   const sceneVariant =
     chapter?.id === 'speckled-band-2' ? 'manor' : chapter?.id === 'speckled-band-3' ? 'night' : 'baker';
+
+  useEffect(() => {
+    if (!chapter) return;
+    let cancelled = false;
+    setCommentsLoading(true);
+    setParagraphComments([]);
+    setActiveCommentParagraph(null);
+    api.paragraphComments('speckled-band', chapter.id)
+      .then(({ comments }) => { if (!cancelled) setParagraphComments(comments); })
+      .catch((error) => { if (!cancelled) setCommentError(error.message || '评论加载失败'); })
+      .finally(() => { if (!cancelled) setCommentsLoading(false); });
+    return () => { cancelled = true; };
+  }, [chapter?.id]);
+
+  async function submitParagraphComment(paragraphIndex: number) {
+    const content = commentDraft.trim();
+    if (!user) { setPage('login'); return; }
+    if (!content || !chapter) return;
+    setCommentSaving(true);
+    setCommentError('');
+    try {
+      const { comment } = await api.createParagraphComment({
+        articleId: 'speckled-band', chapterId: chapter.id, paragraphIndex, content
+      });
+      setParagraphComments((current) => [...current, comment]);
+      setCommentDraft('');
+    } catch (error) {
+      setCommentError(error instanceof Error ? error.message : '评论发布失败');
+    } finally {
+      setCommentSaving(false);
+    }
+  }
+
+  async function removeParagraphComment(comment: ParagraphComment) {
+    if (!window.confirm('确定删除这条评论吗？')) return;
+    setDeletingCommentId(comment.id);
+    setCommentError('');
+    try {
+      await api.deleteParagraphComment(comment.id);
+      setParagraphComments((current) => current.filter((item) => item.id !== comment.id));
+    } catch (error) {
+      setCommentError(error instanceof Error ? error.message : '评论删除失败');
+    } finally {
+      setDeletingCommentId(null);
+    }
+  }
 
   function metadataString(metadata: Record<string, unknown> | null, key: string) {
     const value = metadata?.[key];
@@ -2745,10 +2823,12 @@ function ReaderPage({
         >
           {chapter.paragraphs.map((paragraph, paragraphIndex) => {
             const key = paragraphKey(paragraphIndex);
+            const comments = paragraphComments.filter((comment) => comment.paragraphIndex === paragraphIndex);
+            const commentsOpen = activeCommentParagraph === paragraphIndex;
 
             return (
+              <div className="reader-paragraph-block" key={key}>
               <p
-                key={key}
                 className="reader-paragraph"
                 data-paragraph-index={paragraphIndex}
                 onContextMenu={(event) => handleParagraphContextMenu(event, paragraph, paragraphIndex)}
@@ -2760,6 +2840,73 @@ function ReaderPage({
               >
                 {renderParagraphWithMedia(paragraph, paragraphIndex)}
               </p>
+              <button
+                type="button"
+                className={commentsOpen ? 'paragraph-comment-trigger active' : 'paragraph-comment-trigger'}
+                onClick={() => {
+                  setActiveCommentParagraph(commentsOpen ? null : paragraphIndex);
+                  setCommentDraft('');
+                  setCommentError('');
+                }}
+                aria-expanded={commentsOpen}
+              >
+                评论{comments.length ? ` ${comments.length}` : ''}
+              </button>
+              {commentsOpen && (
+                <section className="paragraph-comments" aria-label={`第 ${paragraphIndex + 1} 段评论`}>
+                  {commentsLoading && <p className="comment-status">正在加载评论…</p>}
+                  {!commentsLoading && comments.length === 0 && (
+                    <p className="comment-status">还没有评论，来留下第一条想法吧。</p>
+                  )}
+                  {comments.map((comment) => (
+                    <article className="paragraph-comment" key={comment.id}>
+                      <div>
+                        <strong>{comment.displayName || comment.username}</strong>
+                        <span className="paragraph-comment-meta">
+                          <time dateTime={comment.createdAt}>{new Date(comment.createdAt).toLocaleString('zh-CN')}</time>
+                          {user?.id === comment.userId && (
+                            <button
+                              type="button"
+                              className="comment-delete"
+                              disabled={deletingCommentId === comment.id}
+                              onClick={() => removeParagraphComment(comment)}
+                            >
+                              {deletingCommentId === comment.id ? '删除中…' : '删除'}
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                      <p>{comment.content}</p>
+                    </article>
+                  ))}
+                  {user ? (
+                    <form
+                      className="paragraph-comment-form"
+                      onSubmit={(event) => { event.preventDefault(); submitParagraphComment(paragraphIndex); }}
+                    >
+                      <textarea
+                        value={commentDraft}
+                        onChange={(event) => setCommentDraft(event.target.value)}
+                        maxLength={1000}
+                        rows={3}
+                        placeholder="写下你对这一段的看法…"
+                      />
+                      <div>
+                        <span>{commentDraft.trim().length}/1000</span>
+                        <button type="submit" disabled={commentSaving || !commentDraft.trim()}>
+                          {commentSaving ? '发布中…' : '发布评论'}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <button type="button" className="comment-login" onClick={() => setPage('login')}>
+                      登录后参与评论
+                    </button>
+                  )}
+                  {commentError && <p className="comment-error">{commentError}</p>}
+                </section>
+              )}
+              </div>
             );
           })}
 

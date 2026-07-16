@@ -135,6 +135,22 @@ export async function ensureSchema() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  await getPool().execute(`
+    CREATE TABLE IF NOT EXISTS paragraph_comments (
+      id VARCHAR(64) PRIMARY KEY,
+      article_id VARCHAR(128) NOT NULL,
+      chapter_id VARCHAR(128) NOT NULL,
+      paragraph_index INT NOT NULL,
+      user_id VARCHAR(64) NOT NULL,
+      content VARCHAR(1000) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_paragraph_comments_position (article_id, chapter_id, paragraph_index, created_at),
+      INDEX idx_paragraph_comments_user (user_id, created_at),
+      CONSTRAINT fk_paragraph_comments_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   schemaReady = true;
 }
 
@@ -698,4 +714,40 @@ export async function setVoiceRecordingLike(id, userId, liked) {
   }
 
   return getVoiceRecording(id, userId);
+}
+
+function toCamelParagraphComment(row) {
+  return {
+    id: row.id, articleId: row.article_id, chapterId: row.chapter_id,
+    paragraphIndex: row.paragraph_index, userId: row.user_id,
+    username: row.username, displayName: row.display_name, content: row.content,
+    createdAt: row.created_at, updatedAt: row.updated_at
+  };
+}
+
+export async function listParagraphComments({ articleId, chapterId }) {
+  await ensureSchema();
+  const [rows] = await getPool().execute(
+    `SELECT pc.*, u.username, u.display_name FROM paragraph_comments pc
+     JOIN users u ON u.id = pc.user_id
+     WHERE pc.article_id = :articleId AND pc.chapter_id = :chapterId
+     ORDER BY pc.paragraph_index ASC, pc.created_at ASC`,
+    { articleId, chapterId }
+  );
+  return rows.map(toCamelParagraphComment);
+}
+
+export async function createParagraphComment(comment) {
+  await ensureSchema();
+  await getPool().execute(
+    `INSERT INTO paragraph_comments (id, article_id, chapter_id, paragraph_index, user_id, content)
+     VALUES (:id, :articleId, :chapterId, :paragraphIndex, :userId, :content)`,
+    comment
+  );
+  const [rows] = await getPool().execute(
+    `SELECT pc.*, u.username, u.display_name FROM paragraph_comments pc
+     JOIN users u ON u.id = pc.user_id WHERE pc.id = :id LIMIT 1`,
+    { id: comment.id }
+  );
+  return toCamelParagraphComment(rows[0]);
 }

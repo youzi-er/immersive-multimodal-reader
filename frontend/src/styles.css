@@ -1401,6 +1401,43 @@ button:disabled {
   transition: background 160ms ease, box-shadow 160ms ease;
 }
 
+.reader-paragraph-block { position: relative; margin-bottom: 18px; }
+.reader-paragraph-block > .reader-paragraph { margin-bottom: 0; }
+.paragraph-comment-trigger {
+  position: absolute; top: 3px; right: -30px; padding: 4px 7px;
+  border: 1px solid rgba(180, 138, 82, 0.35); border-radius: 999px;
+  background: rgba(255, 253, 248, 0.9); color: #8a6741; font-size: 12px;
+  line-height: 1.2; opacity: 0; transition: opacity 160ms ease, background 160ms ease;
+}
+.reader-paragraph-block:hover .paragraph-comment-trigger,
+.paragraph-comment-trigger.active,
+.paragraph-comment-trigger:focus-visible { opacity: 1; }
+.paragraph-comments {
+  margin: 12px 6px 4px; padding: 16px; border: 1px solid rgba(180, 138, 82, 0.22);
+  border-radius: 12px; background: rgba(180, 138, 82, 0.07);
+  font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.55;
+}
+.paragraph-comment { padding: 10px 0; border-bottom: 1px solid rgba(38, 49, 60, 0.1); }
+.paragraph-comment > div, .paragraph-comment-form > div {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.paragraph-comment time, .paragraph-comment-form span, .comment-status { color: #7b838a; font-size: 12px; }
+.paragraph-comment-meta { display: inline-flex; align-items: center; gap: 8px; }
+.comment-delete {
+  padding: 2px 5px; border: 0; background: transparent; color: #9b5148;
+  font-size: 12px; text-decoration: underline; text-underline-offset: 2px;
+}
+.comment-delete:hover { color: #c0362c; }
+.paragraph-comment p { margin: 5px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.paragraph-comment-form { margin-top: 14px; }
+.paragraph-comment-form textarea { width: 100%; resize: vertical; margin-bottom: 8px; }
+.paragraph-comment-form button, .comment-login { padding: 7px 12px; }
+.comment-error { margin: 8px 0 0; color: #a33b32; font-size: 13px; }
+.reader.theme-night .paragraph-comments { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); }
+@media (max-width: 760px) {
+  .paragraph-comment-trigger { position: static; margin: 5px 6px 0; opacity: 1; }
+}
+
 .book-page.selecting {
   user-select: none;
   -webkit-user-select: none;
