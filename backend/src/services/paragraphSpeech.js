@@ -10,6 +10,14 @@ import {
   designVoice,
   synthesizeSpeechFromBody
 } from './minimax.js';
+import {
+  applyMiniMaxRecipeToBody,
+  createMiniMaxGenerationSettings,
+  createMiniMaxSegmentRecipe,
+  getMiniMaxSpeechCapabilities,
+  validateMiniMaxGenerationSettings,
+  validateMiniMaxSegmentRecipe
+} from './minimaxSpeechRecipe.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROMPTS_DIR = path.resolve(__dirname, '../prompts');
@@ -358,6 +366,38 @@ async function ensureSpeechVoices() {
   return voicePromise;
 }
 
+function applyVoiceOverrides(voices, overrides = {}) {
+  if (!overrides || typeof overrides !== 'object' || Object.keys(overrides).length === 0) {
+    return voices;
+  }
+
+  const roleCodes = new Set((voices.角色音色列表 || []).map((role) => role.说话人代号));
+  for (const [speakerCode, override] of Object.entries(overrides)) {
+    if (!roleCodes.has(speakerCode)) {
+      throw new Error(`未知的角色声线覆盖：${speakerCode}`);
+    }
+    if (!override || typeof override.voiceId !== 'string' || !override.voiceId.trim()) {
+      throw new Error(`角色 ${speakerCode} 缺少有效 voiceId`);
+    }
+  }
+
+  return {
+    ...voices,
+    角色音色列表: voices.角色音色列表.map((role) => {
+      const override = overrides[role.说话人代号];
+      if (!override) {
+        return role;
+      }
+      return {
+        ...role,
+        voice_id: override.voiceId.trim(),
+        显示名称: override.characterName?.trim() || role.显示名称,
+        voiceSource: 'user-design'
+      };
+    })
+  };
+}
+
 function buildVoiceLookup(voices) {
   const roleMap = new Map();
   for (const role of voices.角色音色列表) {
@@ -379,7 +419,8 @@ function resolveSegmentVoice(segment, voices) {
       voiceId: role.voice_id,
       displayName: role.显示名称,
       defaultParams: role.默认声音参数 || { speed: 1.0, vol: 1.0, pitch: 0 },
-      resolvePath: 'roleMap'
+      resolvePath: 'roleMap',
+      isUserOverride: role.voiceSource === 'user-design'
     };
     return resolved;
   }
@@ -390,7 +431,8 @@ function resolveSegmentVoice(segment, voices) {
       voiceId: template.voice_id,
       displayName: template.标签,
       defaultParams: template.默认声音参数 || { speed: 1.0, vol: 1.0, pitch: 0 },
-      resolvePath: 'templateMap'
+      resolvePath: 'templateMap',
+      isUserOverride: false
     };
     return resolved;
   }
@@ -400,7 +442,8 @@ function resolveSegmentVoice(segment, voices) {
     voiceId: narrator?.voice_id || defaultVoiceId(),
     displayName: '旁白',
     defaultParams: narrator?.默认声音参数 || { speed: 1.0, vol: 1.0, pitch: 0 },
-    resolvePath: 'narratorFallback'
+    resolvePath: 'narratorFallback',
+    isUserOverride: narrator?.voiceSource === 'user-design'
   };
   return resolved;
 }
@@ -790,49 +833,64 @@ function mergePronunciationTones(...toneLists) {
   return [...merged.values()];
 }
 
-function buildTtsBody(segment, voices) {
+function generationSettingsForVoices(voices, overrides = {}) {
+  const atmosphere = voices.氛围配置?.默认合成设置 || {};
+  const audio = atmosphere.audio_setting || {};
+  return validateMiniMaxGenerationSettings({
+    model: overrides.model || atmosphere.model || process.env.MINIMAX_TTS_MODEL || 'speech-2.8-hd',
+    stream: overrides.stream ?? atmosphere.stream ?? false,
+    streamOptions: overrides.streamOptions,
+    languageBoost: overrides.languageBoost || atmosphere.language_boost || 'Chinese',
+    audioSetting: overrides.audioSetting || {
+      sampleRate: audio.sample_rate ?? 32000,
+      bitrate: audio.bitrate ?? 128000,
+      format: audio.format || 'mp3',
+      channel: audio.channel ?? 1
+    },
+    subtitle: overrides.subtitle || {
+      enabled: atmosphere.subtitle_enable ?? true,
+      type: atmosphere.subtitle_type || 'word'
+    },
+    outputFormat: overrides.outputFormat || atmosphere.output_format || 'hex',
+    aigcWatermark: overrides.aigcWatermark ?? atmosphere.aigc_watermark ?? false
+  });
+}
+
+function defaultRecipeForSegment(segment, voices, generationSettings) {
   const { voiceId, defaultParams } = resolveSegmentVoice(segment, voices);
   const hints = segment.演绎提示 || {};
-  const atmosphere = voices.氛围配置?.默认合成设置 || {};
   const baseSpeed = defaultParams.speed ?? 1;
   const basePitch = defaultParams.pitch ?? 0;
   const baseVol = defaultParams.vol ?? 1;
-
-  let text = segment.配音文本.trim();
-  const model = atmosphere.model || process.env.MINIMAX_TTS_MODEL || 'speech-2.8-hd';
-  text = applyEmphasisMarkers(text, hints);
-  text = applyVocalTags(text, ensureLowVoiceVocalTags(hints, segment), hints);
-  text = applyPauseMarkers(text, hints.停顿, hints);
-  const emotion = mapEmotion(hints.情绪, model, hints, segment);
-
-  const body = {
-    model,
-    text,
-    stream: atmosphere.stream ?? false,
-    language_boost: atmosphere.language_boost || 'Chinese',
-    voice_setting: {
-      voice_id: voiceId,
+  const emotion = mapEmotion(hints.情绪, generationSettings.model, hints, segment);
+  return createMiniMaxSegmentRecipe({
+    voiceSource: { mode: 'default', voiceId },
+    voiceSetting: {
       speed: mapSpeed(hints.语速, baseSpeed, hints, segment),
-      vol: mapVolume(baseVol, hints, segment, emotion),
-      pitch: mapPitch(basePitch, hints, segment)
+      volume: mapVolume(baseVol, hints, segment, emotion),
+      pitch: mapPitch(basePitch, hints, segment),
+      emotion
     },
-    audio_setting: atmosphere.audio_setting || {
-      sample_rate: 32000,
-      bitrate: 128000,
-      format: 'mp3',
-      channel: 1
-    },
-    subtitle_enable: atmosphere.subtitle_enable ?? false,
-    output_format: atmosphere.output_format || 'hex',
-    aigc_watermark: atmosphere.aigc_watermark ?? false
-  };
+    pronunciation: Array.isArray(segment.追加发音) ? segment.追加发音 : []
+  });
+}
 
-  if (emotion) {
-    body.voice_setting.emotion = emotion;
-  }
+function buildTtsBody(segment, voices, generationSettings) {
+  const { voiceId } = resolveSegmentVoice(segment, voices);
+  const recipe = validateMiniMaxSegmentRecipe(
+    segment.MiniMax配方 || defaultRecipeForSegment(segment, voices, generationSettings),
+    segment.配音文本
+  );
+  const body = applyMiniMaxRecipeToBody({
+    body: { text: segment.配音文本.trim() },
+    recipeInput: recipe,
+    generationSettingsInput: generationSettings,
+    defaultVoiceId: voiceId
+  });
 
   const pronunciationTone = mergePronunciationTones(
     voices.发音字典?.tone || [],
+    recipe.pronunciation,
     segment.追加发音 || [],
     FIXED_PRONUNCIATION_TONES
   );
@@ -862,6 +920,87 @@ function buildVoiceSummary(voices) {
       voiceId: template.voice_id
     }))
   };
+}
+
+function editableScriptSnapshot(script, voices, generationSettings) {
+  return script.片段列表.map((segment) => ({
+    segmentId: segment.片段编号,
+    speakerCode: segment.说话人代号 || null,
+    templateCode: segment.模板代号 || null,
+    text: segment.配音文本,
+    director: segment.导演判断,
+    performance: segment.演绎提示,
+    pronunciation: Array.isArray(segment.追加发音) ? segment.追加发音 : [],
+    recipe: validateMiniMaxSegmentRecipe(
+      segment.MiniMax配方 || defaultRecipeForSegment(segment, voices, generationSettings),
+      segment.配音文本
+    )
+  }));
+}
+
+function scriptFromEditableSnapshot(segments) {
+  if (!Array.isArray(segments)) {
+    throw new Error('配音计划 segments 必须是数组');
+  }
+  return {
+    产物类型: '配音剧本',
+    片段列表: segments.map((segment, index) => ({
+      片段编号: String(segment.segmentId || `s${String(index + 1).padStart(3, '0')}`),
+      说话人代号: segment.speakerCode ? String(segment.speakerCode) : null,
+      模板代号: segment.templateCode ? String(segment.templateCode) : null,
+      配音文本: String(segment.text || '').trim(),
+      导演判断:
+        segment.director && typeof segment.director === 'object'
+          ? segment.director
+          : { 场景压力: '未标注', 表演意图: '按上下文自然表达', 避免: '避免夸张' },
+      演绎提示: segment.performance,
+      追加发音: Array.isArray(segment.pronunciation) ? segment.pronunciation : [],
+      MiniMax配方: segment.recipe && typeof segment.recipe === 'object' ? segment.recipe : null
+    }))
+  };
+}
+
+function validateEditableScript(script, targetSegment, voices) {
+  validatePhase3aOutput(script);
+  const { roleMap, templateMap } = buildVoiceLookup(voices);
+  const seenIds = new Set();
+
+  for (const segment of script.片段列表) {
+    if (seenIds.has(segment.片段编号)) {
+      throw new Error(`配音片段编号重复：${segment.片段编号}`);
+    }
+    seenIds.add(segment.片段编号);
+
+    if (!targetSegment.includes(segment.配音文本)) {
+      throw new Error(`配音文本不属于当前标准段落：${segment.片段编号}`);
+    }
+    if (segment.说话人代号 && !roleMap.has(segment.说话人代号)) {
+      throw new Error(`配音片段使用了未知角色：${segment.说话人代号}`);
+    }
+    if (segment.模板代号 && !templateMap.has(segment.模板代号)) {
+      throw new Error(`配音片段使用了未知模板：${segment.模板代号}`);
+    }
+
+    if (segment.MiniMax配方) {
+      segment.MiniMax配方 = validateMiniMaxSegmentRecipe(segment.MiniMax配方, segment.配音文本);
+    } else {
+      const hints = segment.演绎提示;
+      const intensity = Number(hints.强度);
+      if (!Number.isFinite(intensity) || intensity < 1 || intensity > 5) {
+        throw new Error(`片段 ${segment.片段编号} 的强度必须在 1-5 之间`);
+      }
+      for (const key of ['语速', '情绪', '停顿', '节奏']) {
+        if (typeof hints[key] !== 'string' || hints[key].length > 80) {
+          throw new Error(`片段 ${segment.片段编号} 的${key}无效`);
+        }
+      }
+      for (const word of hints.重读词) {
+        if (!segment.配音文本.includes(String(word))) {
+          throw new Error(`片段 ${segment.片段编号} 的重读词不在原文中：${word}`);
+        }
+      }
+    }
+  }
 }
 
 function redactDebugValue(key, value) {
@@ -1203,6 +1342,35 @@ function renumberScriptSegments(segments) {
   }));
 }
 
+export function selectTargetBoundSegments(segments, targetSegment, textFromSegment = (segment) => segment.text) {
+  const normalizeBoundaryText = (value) =>
+    String(value || '')
+      .replace(/[\s“”‘’「」『』"']/g, '')
+      .trim();
+  const target = normalizeBoundaryText(targetSegment);
+  const candidates = (Array.isArray(segments) ? segments : [])
+    .map((segment, sourceOrder) => ({
+      segment,
+      sourceOrder,
+      text: normalizeBoundaryText(textFromSegment(segment))
+    }))
+    .filter((candidate) => candidate.text && target.includes(candidate.text))
+    .sort((left, right) => {
+      const positionDifference = target.indexOf(left.text) - target.indexOf(right.text);
+      return positionDifference || left.sourceOrder - right.sourceOrder;
+    });
+
+  const selected = [];
+  let cursor = 0;
+  for (const candidate of candidates) {
+    const position = target.indexOf(candidate.text, cursor);
+    if (position < 0) continue;
+    selected.push(candidate.segment);
+    cursor = position + candidate.text.length;
+  }
+  return selected;
+}
+
 function refinePhase3aScript(script, context, targetSegment, voices) {
   const speakerMap = buildAttributionSpeakerMap(voices);
   const refined = [];
@@ -1215,7 +1383,13 @@ function refinePhase3aScript(script, context, targetSegment, voices) {
     }
   }
 
-  const renumbered = renumberScriptSegments(stripNarratorSegments(refined));
+  const dialogueOnly = stripNarratorSegments(refined);
+  const targetBound = selectTargetBoundSegments(
+    dialogueOnly,
+    targetSegment,
+    (segment) => segment.配音文本
+  );
+  const renumbered = renumberScriptSegments(targetBound);
 
   return {
     ...script,
@@ -1284,6 +1458,10 @@ async function runPhase3a({ context, targetSegment, voices }) {
     try {
       validatePhase3aOutput(raw);
       const refined = refinePhase3aScript(raw, context, targetSegment, voices);
+      const targetHasQuotedDialogue = /[“「『"][^”」』"]+[”」』"]/.test(targetSegment);
+      if (targetHasQuotedDialogue && refined.片段列表.length === 0) {
+        throw new Error('模型没有返回属于目标段落的角色对白');
+      }
 
       // #region agent log
       debugLog(
@@ -1342,7 +1520,7 @@ async function runWithConcurrency(items, limit, worker) {
   return results;
 }
 
-async function synthesizeScriptSegments(script, voices) {
+async function synthesizeScriptSegments(script, voices, generationSettings) {
   const segments = stripNarratorSegments(script.片段列表);
 
   if (segments.length === 0) {
@@ -1350,7 +1528,7 @@ async function synthesizeScriptSegments(script, voices) {
   }
 
   return runWithConcurrency(segments, TTS_CONCURRENCY, async (segment) => {
-    const body = buildTtsBody(segment, voices);
+    let body = buildTtsBody(segment, voices, generationSettings);
     const voice = resolveSegmentVoice(segment, voices);
 
     // #region agent log
@@ -1367,7 +1545,43 @@ async function synthesizeScriptSegments(script, voices) {
     );
     // #endregion
 
-    const result = await synthesizeSpeechFromBody(body);
+    let result;
+    try {
+      result = await synthesizeSpeechFromBody(body);
+    } catch (error) {
+      const message = String(error?.message || '');
+      const inaccessibleVoice = /(?:don't have access to|no access to|invalid|not exist|not found).*voice_id|voice_id.*(?:access|invalid|not exist|not found)/i.test(message);
+      const usesPlatformRoleVoice = segment.MiniMax配方?.voiceSource?.mode !== 'voiceId'
+        && segment.MiniMax配方?.voiceSource?.mode !== 'blend'
+        && !voice.isUserOverride;
+
+      if (!inaccessibleVoice || !usesPlatformRoleVoice || !body.voice_setting?.voice_id) {
+        throw error;
+      }
+
+      const fallbackVoiceId = defaultVoiceId();
+      if (!fallbackVoiceId || fallbackVoiceId === body.voice_setting.voice_id) {
+        throw error;
+      }
+
+      body = {
+        ...body,
+        voice_setting: { ...body.voice_setting, voice_id: fallbackVoiceId }
+      };
+      delete body.timbre_weights;
+      debugLog(
+        'paragraphSpeech.js:synthesizeScriptSegments',
+        'platform role voice unavailable; retrying with configured system voice',
+        {
+          segmentId: segment.片段编号,
+          unavailableVoiceId: voice.voiceId,
+          fallbackVoiceId,
+          providerStatusCode: error?.providerStatusCode
+        },
+        'T-voice-fallback'
+      );
+      result = await synthesizeSpeechFromBody(body);
+    }
 
     // #region agent log
     debugLog(
@@ -1392,6 +1606,7 @@ async function synthesizeScriptSegments(script, voices) {
       templateCode: segment.模板代号,
       displayName: voice.displayName,
       text: segment.配音文本,
+      ttsRequest: body,
       audioHex: result.audioHex,
       durationMs: result.durationMs,
       traceId: result.traceId
@@ -1447,7 +1662,7 @@ export async function regenerateSpeechVoices() {
   return { initialized: true, ...buildVoiceSummary(voices) };
 }
 
-export async function generateParagraphSpeech({ chapterId, paragraphIndex, targetSegment }) {
+function paragraphSpeechContext({ chapterId, paragraphIndex, targetSegment, requireFullParagraph = false }) {
   const paragraphContext = getParagraphContext({ chapterId, paragraphIndex, contextChars: 1000 });
   if (!paragraphContext) {
     throw new Error('未找到目标段落');
@@ -1457,6 +1672,125 @@ export async function generateParagraphSpeech({ chapterId, paragraphIndex, targe
   if (!safeTarget) {
     throw new Error('目标段落不能为空');
   }
+
+  if (requireFullParagraph && safeTarget !== paragraphContext.originalTarget.trim()) {
+    throw new Error('配音必须绑定当前标准段落的完整原文');
+  }
+
+  return { paragraphContext, safeTarget };
+}
+
+export async function planParagraphSpeech({ chapterId, paragraphIndex, targetSegment }) {
+  const { paragraphContext, safeTarget } = paragraphSpeechContext({
+    chapterId,
+    paragraphIndex,
+    targetSegment,
+    requireFullParagraph: true
+  });
+
+  const { voices, initializedNow } = await ensureSpeechVoices();
+  const script = await runPhase3a({
+    context: paragraphContext.context,
+    targetSegment: safeTarget,
+    voices
+  });
+  const generationSettings = generationSettingsForVoices(voices);
+
+  return {
+    segments: editableScriptSnapshot(script, voices, generationSettings),
+    roles: buildVoiceSummary(voices).roles,
+    templates: buildVoiceSummary(voices).templates,
+    capabilities: getMiniMaxSpeechCapabilities(),
+    generationSettings,
+    voicesInitializedNow: initializedNow,
+    context: {
+      chapterId: paragraphContext.chapterId,
+      chapterTitle: paragraphContext.chapterTitle,
+      paragraphIndex: paragraphContext.paragraphIndex,
+      originalTarget: paragraphContext.originalTarget
+    }
+  };
+}
+
+async function synthesizePreparedScript({
+  paragraphContext,
+  safeTarget,
+  script,
+  voices,
+  initializedNow,
+  generationSettings
+}) {
+  const settings = generationSettingsForVoices(voices, generationSettings);
+  if (settings.stream || settings.outputFormat !== 'hex' || settings.audioSetting.format !== 'mp3') {
+    throw new Error('正式段落配音必须使用非流式 MP3/HEX 输出');
+  }
+  const synthesized = await synthesizeScriptSegments(script, voices, settings);
+  const combinedHex = concatMp3Hex(synthesized.map((item) => item.audioHex));
+  const durationMs = sumDurationMs(synthesized.map((item) => item.durationMs));
+  const traceIds = synthesized.map((item) => item.traceId).filter(Boolean);
+
+  return {
+    audioUrl: hexToAudioDataUrl(combinedHex, 'mp3'),
+    durationMs: durationMs || null,
+    segmentCount: synthesized.length,
+    script: synthesized.map((item) => ({
+      segmentId: item.segmentId,
+      speakerCode: item.speakerCode,
+      templateCode: item.templateCode,
+      displayName: item.displayName,
+      text: item.text,
+      durationMs: item.durationMs
+    })),
+    planSegments: editableScriptSnapshot(script, voices, settings),
+    generationSettings: settings,
+    ttsRequests: synthesized.map((item) => item.ttsRequest),
+    voicesInitializedNow: initializedNow,
+    traceId: traceIds[0] ?? null,
+    context: {
+      chapterId: paragraphContext.chapterId,
+      chapterTitle: paragraphContext.chapterTitle,
+      paragraphIndex: paragraphContext.paragraphIndex,
+      originalTarget: paragraphContext.originalTarget
+    },
+    sourceText: safeTarget
+  };
+}
+
+export async function synthesizePlannedParagraphSpeech({
+  chapterId,
+  paragraphIndex,
+  targetSegment,
+  segments,
+  voiceOverrides = {},
+  generationSettings = {}
+}) {
+  const { paragraphContext, safeTarget } = paragraphSpeechContext({
+    chapterId,
+    paragraphIndex,
+    targetSegment,
+    requireFullParagraph: true
+  });
+  const { voices: baseVoices, initializedNow } = await ensureSpeechVoices();
+  const voices = applyVoiceOverrides(baseVoices, voiceOverrides);
+  const script = scriptFromEditableSnapshot(segments);
+  validateEditableScript(script, safeTarget, voices);
+
+  return synthesizePreparedScript({
+    paragraphContext,
+    safeTarget,
+    script,
+    voices,
+    initializedNow,
+    generationSettings
+  });
+}
+
+export async function generateParagraphSpeech({ chapterId, paragraphIndex, targetSegment }) {
+  const { paragraphContext, safeTarget } = paragraphSpeechContext({
+    chapterId,
+    paragraphIndex,
+    targetSegment
+  });
 
   // #region agent log
   debugLog(
@@ -1480,30 +1814,12 @@ export async function generateParagraphSpeech({ chapterId, paragraphIndex, targe
     voices
   });
 
-  const synthesized = await synthesizeScriptSegments(script, voices);
-  const combinedHex = concatMp3Hex(synthesized.map((item) => item.audioHex));
-  const durationMs = sumDurationMs(synthesized.map((item) => item.durationMs));
-  const traceIds = synthesized.map((item) => item.traceId).filter(Boolean);
-
-  return {
-    audioUrl: hexToAudioDataUrl(combinedHex, 'mp3'),
-    durationMs: durationMs || null,
-    segmentCount: synthesized.length,
-    script: synthesized.map((item) => ({
-      segmentId: item.segmentId,
-      speakerCode: item.speakerCode,
-      templateCode: item.templateCode,
-      displayName: item.displayName,
-      text: item.text,
-      durationMs: item.durationMs
-    })),
-    voicesInitializedNow: initializedNow,
-    traceId: traceIds[0] ?? null,
-    context: {
-      chapterId: paragraphContext.chapterId,
-      chapterTitle: paragraphContext.chapterTitle,
-      paragraphIndex: paragraphContext.paragraphIndex,
-      originalTarget: paragraphContext.originalTarget
-    }
-  };
+  return synthesizePreparedScript({
+    paragraphContext,
+    safeTarget,
+    script,
+    voices,
+    initializedNow,
+    generationSettings: generationSettingsForVoices(voices)
+  });
 }

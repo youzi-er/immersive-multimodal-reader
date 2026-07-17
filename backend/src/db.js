@@ -751,3 +751,12 @@ export async function createParagraphComment(comment) {
   );
   return toCamelParagraphComment(rows[0]);
 }
+
+export async function deleteParagraphComment(id, userId) {
+  await ensureSchema();
+  const [result] = await getPool().execute(
+    `DELETE FROM paragraph_comments WHERE id = :id AND user_id = :userId`,
+    { id, userId }
+  );
+  return Number(result.affectedRows) > 0;
+}

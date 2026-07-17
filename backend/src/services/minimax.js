@@ -26,7 +26,8 @@ function parseMiniMaxError(data, httpStatus) {
   const statusCode = data?.base_resp?.status_code;
   const statusMsg = data?.base_resp?.status_msg || data?.error?.message || data?.message;
   const err = new Error(statusMsg || `MiniMax request failed: ${httpStatus}`);
-  err.statusCode = statusCode;
+  err.providerStatusCode = statusCode;
+  err.statusCode = Number.isInteger(httpStatus) && httpStatus >= 400 && httpStatus <= 599 ? httpStatus : 502;
   err.httpStatus = httpStatus;
   err.retryable = isRetryableMiniMaxError(statusCode, httpStatus);
   return err;
@@ -269,8 +270,12 @@ function normalizeTtsBody(body) {
   }
 
   const voiceId = body.voice_setting?.voice_id;
-  if (!voiceId?.trim()) {
-    throw new Error('TTS 请求体缺少 voice_setting.voice_id');
+  const timbreWeights = Array.isArray(body.timbre_weights) ? body.timbre_weights : [];
+  if (!voiceId?.trim() && timbreWeights.length === 0) {
+    throw new Error('TTS 请求体必须提供 voice_setting.voice_id 或 timbre_weights');
+  }
+  if (voiceId?.trim() && timbreWeights.length > 0) {
+    throw new Error('voice_setting.voice_id 与 timbre_weights 不能同时使用');
   }
 
   if (!body.text?.trim()) {

@@ -154,6 +154,178 @@ type VoiceRecordingGroup = {
   publicRecordings: VoiceRecording[];
 };
 
+type DubbingStatus = 'private' | 'public' | 'withdrawn' | 'moderated' | 'deleted';
+type DubbingKind = 'ai' | 'human';
+
+type ContentUnit = {
+  id: string;
+  kind: 'paragraph-dialogue';
+  articleId: string;
+  chapterId: string;
+  chapterTitle: string;
+  paragraphIndex: number;
+  sourceText: string;
+  sourceHash: string;
+  hasDialogue: boolean;
+  range: TextRange;
+};
+
+type DubbingPerformance = {
+  语速: string;
+  情绪: string;
+  强度: number;
+  停顿: string;
+  节奏: string;
+  重读词: string[];
+  语气词标签: { 前: string[]; 后: string[]; 句内: unknown[] };
+};
+
+type MiniMaxRange = { min: number; max: number; step: number; default: number };
+type MiniMaxAnnotation =
+  | { id: string; type: 'pause'; offset: number; durationSeconds: number }
+  | { id: string; type: 'vocal'; offset: number; value: string };
+
+type MiniMaxSegmentRecipe = {
+  schemaVersion: 1;
+  provider: 'minimax';
+  annotations: MiniMaxAnnotation[];
+  pronunciation: string[];
+  voiceSource: {
+    mode: 'default' | 'voiceId' | 'blend';
+    voiceId: string;
+    timbreWeights: Array<{ voiceId: string; weight: number }>;
+  };
+  voiceSetting: {
+    speed: number;
+    volume: number;
+    pitch: number;
+    emotion: string;
+    latexRead: boolean;
+    englishNormalization: boolean;
+  };
+  voiceModify: {
+    pitch: number;
+    intensity: number;
+    timbre: number;
+    soundEffects: string;
+  };
+};
+
+type MiniMaxGenerationSettings = {
+  schemaVersion: 1;
+  provider: 'minimax';
+  model: string;
+  stream: boolean;
+  streamOptions: { excludeAggregatedAudio: boolean };
+  languageBoost: string;
+  audioSetting: { sampleRate: number; bitrate: number; format: string; channel: number };
+  subtitle: { enabled: boolean; type: string };
+  outputFormat: string;
+  aigcWatermark: boolean;
+};
+
+type MiniMaxCapabilities = {
+  provider: 'minimax';
+  schemaVersion: 1;
+  models: string[];
+  emotions: Array<{ value: string; label: string }>;
+  vocalTags: Array<{ value: string; label: string }>;
+  vocalTagModels: string[];
+  soundEffects: Array<{ value: string; label: string }>;
+  languages: string[];
+  ranges: {
+    speed: MiniMaxRange;
+    volume: MiniMaxRange;
+    pitch: MiniMaxRange;
+    pause: MiniMaxRange;
+    effect: MiniMaxRange;
+    weight: MiniMaxRange;
+  };
+  audio: { sampleRates: number[]; bitrates: number[]; formats: string[]; channels: number[] };
+  subtitleTypes: string[];
+  outputFormats: string[];
+  maxTimbreWeights: number;
+};
+
+type DubbingPlanSegment = {
+  segmentId: string;
+  speakerCode: string | null;
+  templateCode: string | null;
+  text: string;
+  director: Record<string, unknown>;
+  performance: DubbingPerformance;
+  pronunciation: string[];
+  recipe?: MiniMaxSegmentRecipe;
+};
+
+type DubbingPlan = {
+  segments: DubbingPlanSegment[];
+  roles: Array<{ code: string; label: string; tier: string }>;
+  templates: Array<{ code: string; label: string }>;
+  capabilities: MiniMaxCapabilities;
+  generationSettings: MiniMaxGenerationSettings;
+  voicesInitializedNow: boolean;
+};
+
+type VoiceDesignVersion = {
+  id: string;
+  designId: string;
+  articleId: string;
+  characterCode: string;
+  characterName: string;
+  ownerUserId: string;
+  versionNumber: number;
+  prompt: string;
+  previewText: string;
+  previewAudioUrl: string | null;
+  createdAt: string;
+};
+
+type DubbingVersion = {
+  id: string;
+  projectId: string;
+  versionNumber: number;
+  ownerUserId: string;
+  username: string;
+  displayName: string;
+  unitId: string;
+  articleId: string;
+  chapterId: string;
+  paragraphIndex: number;
+  kind: DubbingKind;
+  status: DubbingStatus;
+  audioUrl: string;
+  mediaAssetId: string | null;
+  sourceText: string;
+  sourceHash: string;
+  durationMs: number | null;
+  promptSnapshot: {
+    voiceDesigns?: Record<string, {
+      versionId: string;
+      characterName: string;
+      prompt: string;
+      previewText: string;
+      versionNumber: number;
+    }>;
+    performanceSegments?: DubbingPlanSegment[];
+    generationSettings?: MiniMaxGenerationSettings;
+    ttsRequests?: Array<Record<string, unknown>>;
+  } | null;
+  segments: DubbingPlanSegment[];
+  likeCount: number;
+  adoptionCount: number;
+  likedByMe: boolean;
+  adoptedByMe: boolean;
+  ownedByMe: boolean;
+  createdAt: string;
+  withdrawnAt: string | null;
+};
+
+type DubbingUnitBundle = {
+  unit: ContentUnit;
+  versions: DubbingVersion[];
+};
+
 type SpeechDebugEvent = {
   timestamp: number | null;
   runId: string;
@@ -416,6 +588,78 @@ const api = {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
+  dubbingUnitAtPosition: (articleId: string, chapterId: string, paragraphIndex: number) =>
+    requestJson<DubbingUnitBundle>(
+      `/api/dubbing/unit-at-position?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(
+        chapterId
+      )}&paragraphIndex=${paragraphIndex}`
+    ),
+  adoptedDubbingVersions: (articleId: string, chapterId: string) =>
+    requestJson<{ versions: DubbingVersion[] }>(
+      `/api/dubbing/adoptions?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(chapterId)}`
+    ),
+  planAiDubbing: (unitId: string) =>
+    requestJson<{ unit: ContentUnit; plan: DubbingPlan }>(
+      `/api/dubbing/units/${encodeURIComponent(unitId)}/ai-plan`,
+      { method: 'POST' }
+    ),
+  createVoiceDesign: (payload: {
+    articleId: string;
+    characterCode: string;
+    characterName: string;
+    prompt: string;
+    previewText: string;
+  }) =>
+    requestJson<{ version: VoiceDesignVersion }>('/api/dubbing/voice-designs', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  createAiDubbingVersion: (
+    unitId: string,
+    payload: {
+      segments: DubbingPlanSegment[];
+      voiceDesignVersionIdsBySpeaker: Record<string, string>;
+      generationSettings: MiniMaxGenerationSettings;
+      visibility: 'private' | 'public';
+    }
+  ) =>
+    requestJson<{ unit: ContentUnit; version: DubbingVersion }>(
+      `/api/dubbing/units/${encodeURIComponent(unitId)}/ai-versions`,
+      { method: 'POST', body: JSON.stringify(payload) }
+    ),
+  createHumanDubbingVersion: (
+    unitId: string,
+    payload: { audioDataUrl: string; visibility: 'private' | 'public' }
+  ) =>
+    requestJson<{ unit: ContentUnit; version: DubbingVersion }>(
+      `/api/dubbing/units/${encodeURIComponent(unitId)}/human-versions`,
+      { method: 'POST', body: JSON.stringify(payload) }
+    ),
+  setDubbingStatus: (versionId: string, status: 'public' | 'withdrawn' | 'deleted') =>
+    requestJson<{ version: DubbingVersion }>(
+      `/api/dubbing/versions/${encodeURIComponent(versionId)}/status`,
+      { method: 'PATCH', body: JSON.stringify({ status }) }
+    ),
+  likeDubbingVersion: (versionId: string, liked: boolean) =>
+    requestJson<{ version: DubbingVersion }>(
+      `/api/dubbing/versions/${encodeURIComponent(versionId)}/like`,
+      { method: liked ? 'POST' : 'DELETE' }
+    ),
+  adoptDubbingVersion: (unitId: string, versionId: string) =>
+    requestJson<{ version: DubbingVersion }>(
+      `/api/dubbing/units/${encodeURIComponent(unitId)}/adoption`,
+      { method: 'PUT', body: JSON.stringify({ versionId }) }
+    ),
+  cancelDubbingAdoption: (unitId: string) =>
+    requestJson<{ ok: true; removed: boolean }>(
+      `/api/dubbing/units/${encodeURIComponent(unitId)}/adoption`,
+      { method: 'DELETE' }
+    ),
+  reportDubbingVersion: (versionId: string, reason: string) =>
+    requestJson<{ report: { status: 'open' } }>(
+      `/api/dubbing/versions/${encodeURIComponent(versionId)}/reports`,
+      { method: 'POST', body: JSON.stringify({ reason }) }
+    ),
   mediaAssets: (articleId: string, chapterId: string) =>
     requestJson<{ assets: MediaLibraryAsset[] }>(
       `/api/media/assets?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(chapterId)}`
@@ -921,7 +1165,7 @@ function AuthPage({
         <p className="eyebrow">{isLogin ? 'Welcome back' : 'Create account'}</p>
         <h1>{isLogin ? '登录账号' : '注册账号'}</h1>
         <p className="form-tip">
-          目前是原型账号系统，数据暂存在后端内存里；正式部署前再接数据库。
+          账号与社区数据保存在 MySQL；本地与部署环境使用各自配置的数据库。
         </p>
 
         {!isLogin && (
@@ -1429,7 +1673,6 @@ function ReaderPage({
   const [draggingHandle, setDraggingHandle] = useState<'start' | 'end' | null>(null);
   const bookPageRef = useRef<HTMLElement | null>(null);
   const [paragraphImageLoadingKey, setParagraphImageLoadingKey] = useState<string | null>(null);
-  const [paragraphSpeechLoadingKey, setParagraphSpeechLoadingKey] = useState<string | null>(null);
   const [paragraphImages, setParagraphImages] = useState<Record<string, RangeMedia<ParagraphImage>>>({});
   const toggleContextPanel = useCallback(
     (tab: ContextTab) => {
@@ -1439,13 +1682,27 @@ function ReaderPage({
     [contextTab]
   );
   const [paragraphAudios, setParagraphAudios] = useState<Record<string, RangeMedia<ParagraphSpeech>>>({});
+  const [platformParagraphAudios, setPlatformParagraphAudios] = useState<
+    Record<string, RangeMedia<ParagraphSpeech>>
+  >({});
   const [playingAudioKey, setPlayingAudioKey] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [voicePanelOpen, setVoicePanelOpen] = useState(false);
-  const [voicePanelTab, setVoicePanelTab] = useState<'mine' | 'square'>('mine');
-  const [voiceRecordingGroups, setVoiceRecordingGroups] = useState<Record<string, VoiceRecordingGroup>>({});
+  const [voicePanelTab, setVoicePanelTab] = useState<'all' | 'ai' | 'human' | 'mine'>('all');
+  const [dubbingBundles, setDubbingBundles] = useState<Record<string, DubbingUnitBundle>>({});
   const [voiceLoadingKey, setVoiceLoadingKey] = useState<string | null>(null);
   const [voiceSaving, setVoiceSaving] = useState(false);
+  const [aiComposerOpen, setAiComposerOpen] = useState(false);
+  const [aiPlan, setAiPlan] = useState<DubbingPlan | null>(null);
+  const [aiPlanning, setAiPlanning] = useState(false);
+  const [selectedVoiceSpeaker, setSelectedVoiceSpeaker] = useState('');
+  const [voicePrompt, setVoicePrompt] = useState('');
+  const [voicePreviewText, setVoicePreviewText] = useState('');
+  const [voiceDesignsBySpeaker, setVoiceDesignsBySpeaker] = useState<Record<string, VoiceDesignVersion>>({});
+  const [voiceDesignSaving, setVoiceDesignSaving] = useState(false);
+  const [annotationCursorBySegment, setAnnotationCursorBySegment] = useState<Record<string, number>>({});
+  const [pauseSecondsBySegment, setPauseSecondsBySegment] = useState<Record<string, number>>({});
+  const [vocalTagBySegment, setVocalTagBySegment] = useState<Record<string, string>>({});
   const [paragraphComments, setParagraphComments] = useState<ParagraphComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [activeCommentParagraph, setActiveCommentParagraph] = useState<number | null>(null);
@@ -1474,7 +1731,7 @@ function ReaderPage({
       .catch((error) => { if (!cancelled) setCommentError(error.message || '评论加载失败'); })
       .finally(() => { if (!cancelled) setCommentsLoading(false); });
     return () => { cancelled = true; };
-  }, [chapter?.id]);
+  }, [chapter?.id, user?.id]);
 
   async function submitParagraphComment(paragraphIndex: number) {
     const content = commentDraft.trim();
@@ -1603,6 +1860,36 @@ function ReaderPage({
     };
   }
 
+  function audioFromDubbingVersion(version: DubbingVersion): RangeMedia<ParagraphSpeech> {
+    const range: TextRange = {
+      startParagraphIndex: version.paragraphIndex,
+      startOffset: 0,
+      endParagraphIndex: version.paragraphIndex,
+      endOffset: version.sourceText.length
+    };
+    return {
+      chapterId: version.chapterId,
+      range,
+      audioUrl: version.audioUrl,
+      durationMs: version.durationMs,
+      segmentCount: version.segments.length,
+      script: version.segments.map((segment) => ({
+        segmentId: segment.segmentId,
+        speakerCode: segment.speakerCode,
+        templateCode: segment.templateCode,
+        displayName: segment.speakerCode || segment.templateCode || '角色',
+        text: segment.text,
+        durationMs: null
+      })),
+      voicesInitializedNow: false,
+      traceId: null,
+      mediaAssetId: version.mediaAssetId,
+      userId: version.ownerUserId,
+      fromLibrary: true,
+      createdAt: version.createdAt
+    };
+  }
+
   useEffect(() => {
     setSceneGenerated(false);
     setGeneratedSceneImage(null);
@@ -1618,9 +1905,11 @@ function ReaderPage({
 
     let cancelled = false;
 
-    api
-      .mediaAssets('speckled-band', chapter.id)
-      .then(({ assets }) => {
+    Promise.all([
+      api.mediaAssets('speckled-band', chapter.id),
+      api.adoptedDubbingVersions('speckled-band', chapter.id)
+    ])
+      .then(([{ assets }, { versions: adoptedVersions }]) => {
         if (cancelled) {
           return;
         }
@@ -1651,8 +1940,15 @@ function ReaderPage({
           }
         });
 
+        const resolvedAudios = { ...nextAudios };
+        adoptedVersions.forEach((version) => {
+          const audio = audioFromDubbingVersion(version);
+          resolvedAudios[rangeKey(audio.chapterId, audio.range)] = audio;
+        });
+
         setParagraphImages(nextImages);
-        setParagraphAudios(nextAudios);
+        setPlatformParagraphAudios(nextAudios);
+        setParagraphAudios(resolvedAudios);
         if (nextSceneImage) {
           setGeneratedSceneImage(nextSceneImage);
           setSceneGenerated(true);
@@ -1661,6 +1957,7 @@ function ReaderPage({
       .catch(() => {
         if (!cancelled) {
           setParagraphImages({});
+          setPlatformParagraphAudios({});
           setParagraphAudios({});
         }
       });
@@ -1668,7 +1965,7 @@ function ReaderPage({
     return () => {
       cancelled = true;
     };
-  }, [chapter?.id]);
+  }, [chapter?.id, user?.id]);
 
   function stopParagraphAudio() {
     const audio = audioRef.current;
@@ -1744,27 +2041,314 @@ function ReaderPage({
     });
   }
 
-  async function loadVoiceRecordingsForSelection(selection = selectedParagraph) {
+  function dubbingBundleKey(selection: Pick<SelectedParagraph, 'chapterId' | 'paragraphIndex'>) {
+    return `${selection.chapterId}-${selection.paragraphIndex}`;
+  }
+
+  async function loadDubbingBundle(selection = selectedParagraph) {
     if (!selection) {
-      return;
+      return null;
     }
 
-    const key = rangeKey(selection.chapterId, selection.range);
+    const key = dubbingBundleKey(selection);
     setVoiceLoadingKey(key);
 
     try {
-      const group = await api.voiceRecordings('speckled-band', selection.chapterId, selection.range);
-      setVoiceRecordingGroups((prev) => ({ ...prev, [key]: group }));
+      const bundle = await api.dubbingUnitAtPosition(
+        'speckled-band',
+        selection.chapterId,
+        selection.paragraphIndex
+      );
+      setDubbingBundles((prev) => ({ ...prev, [key]: bundle }));
+      setSelectedParagraph((current) =>
+        current && current.chapterId === bundle.unit.chapterId && current.paragraphIndex === bundle.unit.paragraphIndex
+          ? { ...current, draft: bundle.unit.sourceText, range: bundle.unit.range }
+          : current
+      );
+      return bundle;
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Voice recordings failed to load');
+      setNotice(error instanceof Error ? error.message : '配音版本加载失败');
       window.setTimeout(() => setNotice(''), 2400);
+      return null;
     } finally {
       setVoiceLoadingKey(null);
     }
   }
 
-  async function startUserRecording() {
+  async function startAiDubbingCreation() {
+    if (!user) {
+      setPage('login');
+      return;
+    }
+    if (!selectedParagraph || aiPlanning) {
+      return;
+    }
+
+    setAiPlanning(true);
+    setAiComposerOpen(true);
+    setVoicePanelOpen(true);
     try {
+      const bundle =
+        dubbingBundles[dubbingBundleKey(selectedParagraph)] || (await loadDubbingBundle(selectedParagraph));
+      if (!bundle) return;
+      if (!bundle.unit.hasDialogue) {
+        throw new Error('这个段落没有角色对白，不需要创建配音');
+      }
+      const { plan } = await api.planAiDubbing(bundle.unit.id);
+      if (!plan.segments.length) {
+        throw new Error('没有从这个段落识别出可配音的角色对白');
+      }
+      const firstSpeaker = plan.segments.find((segment) => segment.speakerCode)?.speakerCode || '';
+      setAiPlan(plan);
+      setAnnotationCursorBySegment(Object.fromEntries(plan.segments.map((segment) => {
+        const punctuationOffset = Math.max(segment.text.indexOf('，'), segment.text.indexOf(','));
+        const offset = punctuationOffset >= 0 ? punctuationOffset + 1 : Math.min(1, segment.text.length);
+        return [segment.segmentId, offset];
+      })));
+      setPauseSecondsBySegment(Object.fromEntries(plan.segments.map((segment) => [
+        segment.segmentId,
+        plan.capabilities.ranges.pause.default
+      ])));
+      setVocalTagBySegment(Object.fromEntries(plan.segments.map((segment) => [
+        segment.segmentId,
+        plan.capabilities.vocalTags[0]?.value || 'breath'
+      ])));
+      setSelectedVoiceSpeaker(firstSpeaker);
+      setVoicePreviewText(
+        plan.segments.find((segment) => segment.speakerCode === firstSpeaker)?.text || plan.segments[0].text
+      );
+      setVoicePrompt('');
+      setVoiceDesignsBySpeaker({});
+      setVoicePanelTab('mine');
+    } catch (error) {
+      setAiComposerOpen(false);
+      setNotice(error instanceof Error ? error.message : 'AI 配音规划失败');
+      window.setTimeout(() => setNotice(''), 2800);
+    } finally {
+      setAiPlanning(false);
+    }
+  }
+
+  function updateAiPlanSegment(
+    segmentId: string,
+    key: 'speakerCode' | keyof DubbingPerformance,
+    value: string | number | string[]
+  ) {
+    setAiPlan((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        segments: current.segments.map((segment) => {
+          if (segment.segmentId !== segmentId) return segment;
+          if (key === 'speakerCode') {
+            return { ...segment, speakerCode: String(value), templateCode: null };
+          }
+          return {
+            ...segment,
+            performance: { ...segment.performance, [key]: value }
+          };
+        })
+      };
+    });
+  }
+
+  function updateAiSegmentRecipe(
+    segmentId: string,
+    updater: (recipe: MiniMaxSegmentRecipe) => MiniMaxSegmentRecipe
+  ) {
+    setAiPlan((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        segments: current.segments.map((segment) =>
+          segment.segmentId === segmentId && segment.recipe
+            ? { ...segment, recipe: updater(segment.recipe) }
+            : segment
+        )
+      };
+    });
+  }
+
+  function updateRecipeSection<Section extends 'voiceSetting' | 'voiceModify' | 'voiceSource'>(
+    segmentId: string,
+    section: Section,
+    patch: Partial<MiniMaxSegmentRecipe[Section]>
+  ) {
+    updateAiSegmentRecipe(segmentId, (recipe) => ({
+      ...recipe,
+      [section]: { ...recipe[section], ...patch }
+    }));
+  }
+
+  function updateGenerationSettings(
+    updater: (settings: MiniMaxGenerationSettings) => MiniMaxGenerationSettings
+  ) {
+    setAiPlan((current) => current ? { ...current, generationSettings: updater(current.generationSettings) } : current);
+  }
+
+  function setRecipeVoiceSourceMode(segmentId: string, mode: MiniMaxSegmentRecipe['voiceSource']['mode']) {
+    updateAiSegmentRecipe(segmentId, (recipe) => ({
+      ...recipe,
+      voiceSource: {
+        ...recipe.voiceSource,
+        mode,
+        timbreWeights: mode === 'blend' && recipe.voiceSource.timbreWeights.length < 2
+          ? [{ voiceId: '', weight: 50 }, { voiceId: '', weight: 50 }]
+          : recipe.voiceSource.timbreWeights
+      }
+    }));
+  }
+
+  function updateTimbreWeight(
+    segmentId: string,
+    index: number,
+    patch: Partial<{ voiceId: string; weight: number }>
+  ) {
+    updateAiSegmentRecipe(segmentId, (recipe) => ({
+      ...recipe,
+      voiceSource: {
+        ...recipe.voiceSource,
+        timbreWeights: recipe.voiceSource.timbreWeights.map((item, itemIndex) =>
+          itemIndex === index ? { ...item, ...patch } : item
+        )
+      }
+    }));
+  }
+
+  function addTimbreWeight(segmentId: string) {
+    if (!aiPlan) return;
+    updateAiSegmentRecipe(segmentId, (recipe) => ({
+      ...recipe,
+      voiceSource: {
+        ...recipe.voiceSource,
+        timbreWeights: recipe.voiceSource.timbreWeights.length >= aiPlan.capabilities.maxTimbreWeights
+          ? recipe.voiceSource.timbreWeights
+          : [...recipe.voiceSource.timbreWeights, { voiceId: '', weight: 50 }]
+      }
+    }));
+  }
+
+  function removeTimbreWeight(segmentId: string, index: number) {
+    updateAiSegmentRecipe(segmentId, (recipe) => ({
+      ...recipe,
+      voiceSource: {
+        ...recipe.voiceSource,
+        timbreWeights: recipe.voiceSource.timbreWeights.filter((_, itemIndex) => itemIndex !== index)
+      }
+    }));
+  }
+
+  function addSegmentAnnotation(segment: DubbingPlanSegment, type: MiniMaxAnnotation['type']) {
+    if (!aiPlan || !segment.recipe) return;
+    const offset = annotationCursorBySegment[segment.segmentId];
+    if (!Number.isInteger(offset)) {
+      setNotice('请先点击台词中的一个字，标记会插入在该字之后');
+      return;
+    }
+    if (type === 'pause' && (offset <= 0 || offset >= segment.text.length)) {
+      setNotice('停顿必须插入在两个可发音文字之间');
+      return;
+    }
+    if (type === 'pause' && segment.recipe.annotations.some((item) => item.type === 'pause' && item.offset === offset)) {
+      setNotice('这个位置已经有停顿标记');
+      return;
+    }
+    const id = typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `annotation-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const annotation: MiniMaxAnnotation = type === 'pause'
+      ? {
+          id,
+          type,
+          offset,
+          durationSeconds: pauseSecondsBySegment[segment.segmentId] ?? aiPlan.capabilities.ranges.pause.default
+        }
+      : {
+          id,
+          type,
+          offset,
+          value: vocalTagBySegment[segment.segmentId] || aiPlan.capabilities.vocalTags[0]?.value || 'breath'
+        };
+    updateAiSegmentRecipe(segment.segmentId, (recipe) => ({
+      ...recipe,
+      annotations: [...recipe.annotations, annotation].sort((left, right) => left.offset - right.offset)
+    }));
+  }
+
+  function removeSegmentAnnotation(segmentId: string, annotationId: string) {
+    updateAiSegmentRecipe(segmentId, (recipe) => ({
+      ...recipe,
+      annotations: recipe.annotations.filter((item) => item.id !== annotationId)
+    }));
+  }
+
+  async function saveCharacterVoiceDesign() {
+    if (!aiPlan || !selectedVoiceSpeaker || voiceDesignSaving) return;
+    const prompt = voicePrompt.trim();
+    const previewText = voicePreviewText.trim();
+    if (prompt.length < 5 || previewText.length < 5) {
+      setNotice('请填写至少 5 个字的音色提示词和试听文本');
+      window.setTimeout(() => setNotice(''), 2200);
+      return;
+    }
+    const role = aiPlan.roles.find((item) => item.code === selectedVoiceSpeaker);
+    setVoiceDesignSaving(true);
+    try {
+      const { version } = await api.createVoiceDesign({
+        articleId: 'speckled-band',
+        characterCode: selectedVoiceSpeaker,
+        characterName: role?.label || selectedVoiceSpeaker,
+        prompt,
+        previewText
+      });
+      setVoiceDesignsBySpeaker((current) => ({ ...current, [selectedVoiceSpeaker]: version }));
+      setNotice(`${version.characterName}声线 V${version.versionNumber} 已保存`);
+      window.setTimeout(() => setNotice(''), 1800);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '角色声线生成失败');
+      window.setTimeout(() => setNotice(''), 2600);
+    } finally {
+      setVoiceDesignSaving(false);
+    }
+  }
+
+  async function saveAiDubbingVersion(visibility: 'private' | 'public') {
+    if (!selectedParagraph || !aiPlan || voiceSaving) return;
+    const bundle = dubbingBundles[dubbingBundleKey(selectedParagraph)];
+    if (!bundle) return;
+    setVoiceSaving(true);
+    try {
+      const voiceDesignVersionIdsBySpeaker = Object.fromEntries(
+        Object.entries(voiceDesignsBySpeaker).map(([speakerCode, version]) => [speakerCode, version.id])
+      );
+      await api.createAiDubbingVersion(bundle.unit.id, {
+        segments: aiPlan.segments,
+        voiceDesignVersionIdsBySpeaker,
+        generationSettings: aiPlan.generationSettings,
+        visibility
+      });
+      await loadDubbingBundle(selectedParagraph);
+      setAiComposerOpen(false);
+      setAiPlan(null);
+      setNotice(visibility === 'public' ? 'AI 配音新版本已公开' : 'AI 配音已私密保存');
+      window.setTimeout(() => setNotice(''), 1800);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'AI 配音生成失败');
+      window.setTimeout(() => setNotice(''), 3000);
+    } finally {
+      setVoiceSaving(false);
+    }
+  }
+
+  async function startUserRecording() {
+    if (!user) {
+      setPage('login');
+      return;
+    }
+    try {
+      if (selectedParagraph) {
+        await loadDubbingBundle(selectedParagraph);
+      }
       resetRecordingDraft();
       const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
       if (!window.isSecureContext && !isLocalhost) {
@@ -1818,125 +2402,121 @@ function ReaderPage({
     if (!selectedParagraph || !recordingBlob || voiceSaving) {
       return;
     }
-
-    const targetSegment = selectedParagraph.draft.trim();
-    if (!targetSegment) {
-      setNotice('Selected text cannot be empty');
-      window.setTimeout(() => setNotice(''), 1800);
+    if (!user) {
+      setPage('login');
       return;
     }
-
-    const key = rangeKey(selectedParagraph.chapterId, selectedParagraph.range);
     setVoiceSaving(true);
 
     try {
+      const bundle =
+        dubbingBundles[dubbingBundleKey(selectedParagraph)] || (await loadDubbingBundle(selectedParagraph));
+      if (!bundle) return;
       const audioDataUrl = await blobToDataUrl(recordingBlob);
-      const { recording } = await api.createVoiceRecording({
-        articleId: 'speckled-band',
-        chapterId: selectedParagraph.chapterId,
-        paragraphIndex: selectedParagraph.paragraphIndex,
-        range: selectedParagraph.range,
-        sourceText: targetSegment,
-        audioDataUrl,
-        visibility
-      });
-      setVoiceRecordingGroups((prev) => {
-        const existing = prev[key] || { myRecording: null, publicRecordings: [] };
-        const publicRecordings = [
-          recording,
-          ...existing.publicRecordings.filter((item) => item.id !== recording.id && item.userId !== user?.id)
-        ].filter((item) => item.visibility === 'public');
-
-        return {
-          ...prev,
-          [key]: {
-            myRecording: recording,
-            publicRecordings
-          }
-        };
-      });
+      await api.createHumanDubbingVersion(bundle.unit.id, { audioDataUrl, visibility });
+      await loadDubbingBundle(selectedParagraph);
       resetRecordingDraft();
-      setNotice(visibility === 'public' ? 'Recording saved publicly' : 'Private recording saved');
+      setNotice(visibility === 'public' ? '真人配音新版本已公开' : '真人配音已私密保存');
       window.setTimeout(() => setNotice(''), 1800);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Recording save failed');
+      setNotice(error instanceof Error ? error.message : '真人配音保存失败');
       window.setTimeout(() => setNotice(''), 2600);
     } finally {
       setVoiceSaving(false);
     }
   }
 
-  async function updateMyRecordingVisibility(recording: VoiceRecording, visibility: 'private' | 'public') {
-    const key = rangeKey(recording.chapterId, recording.range);
-
+  async function updateDubbingStatus(version: DubbingVersion, status: 'public' | 'withdrawn' | 'deleted') {
     try {
-      const { recording: updated } = await api.updateVoiceRecording(recording.id, visibility);
-      setVoiceRecordingGroups((prev) => {
-        const existing = prev[key] || { myRecording: null, publicRecordings: [] };
-        const publicRecordings = [
-          updated,
-          ...existing.publicRecordings.filter((item) => item.id !== updated.id)
-        ].filter((item) => item.visibility === 'public');
-
-        return {
-          ...prev,
-          [key]: {
-            myRecording: updated,
-            publicRecordings
-          }
-        };
-      });
+      await api.setDubbingStatus(version.id, status);
+      if (selectedParagraph) await loadDubbingBundle(selectedParagraph);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Visibility update failed');
+      setNotice(error instanceof Error ? error.message : '配音状态更新失败');
       window.setTimeout(() => setNotice(''), 2400);
     }
   }
 
-  async function deleteMyRecording(recording: VoiceRecording) {
-    const confirmed = window.confirm('Delete this recording? You can record this text again afterward.');
+  async function deleteDubbingVersion(version: DubbingVersion) {
+    const confirmed = window.confirm(
+      version.status === 'public'
+        ? '公开版本将被撤回，新用户无法再查看或采用。已有采用者仍可继续播放。'
+        : '确定删除这个私密版本吗？'
+    );
     if (!confirmed) {
       return;
     }
+    await updateDubbingStatus(version, version.status === 'public' ? 'withdrawn' : 'deleted');
+  }
 
-    const key = rangeKey(recording.chapterId, recording.range);
-
+  async function toggleDubbingLike(version: DubbingVersion) {
+    if (!user) {
+      setPage('login');
+      return;
+    }
     try {
-      await api.deleteVoiceRecording(recording.id);
-      setVoiceRecordingGroups((prev) => {
-        const existing = prev[key] || { myRecording: null, publicRecordings: [] };
-        return {
-          ...prev,
-          [key]: {
-            myRecording: null,
-            publicRecordings: existing.publicRecordings.filter((item) => item.id !== recording.id)
-          }
-        };
-      });
-      setNotice('Recording deleted');
-      window.setTimeout(() => setNotice(''), 1800);
+      await api.likeDubbingVersion(version.id, !version.likedByMe);
+      if (selectedParagraph) await loadDubbingBundle(selectedParagraph);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Recording delete failed');
-      window.setTimeout(() => setNotice(''), 2400);
+      setNotice(error instanceof Error ? error.message : '点赞更新失败');
+      window.setTimeout(() => setNotice(''), 2200);
     }
   }
 
-  async function toggleVoiceLike(recording: VoiceRecording) {
-    const key = rangeKey(recording.chapterId, recording.range);
-
+  async function adoptDubbingVersion(version: DubbingVersion, unit: ContentUnit) {
+    if (!user) {
+      setPage('login');
+      return;
+    }
     try {
-      const { recording: updated } = await api.likeVoiceRecording(recording.id, !recording.likedByMe);
-      setVoiceRecordingGroups((prev) => {
-        const existing = prev[key] || { myRecording: null, publicRecordings: [] };
-        return {
-          ...prev,
-          [key]: {
-            myRecording: existing.myRecording?.id === updated.id ? updated : existing.myRecording,
-            publicRecordings: existing.publicRecordings.map((item) => (item.id === updated.id ? updated : item))
-          }
-        };
-      });
+      await api.adoptDubbingVersion(unit.id, version.id);
+      await loadDubbingBundle(selectedParagraph);
+      const audio = audioFromDubbingVersion({ ...version, adoptedByMe: true });
+      setParagraphAudios((current) => ({
+        ...current,
+        [rangeKey(audio.chapterId, audio.range)]: audio
+      }));
+      setNotice('已用于我的阅读');
+      window.setTimeout(() => setNotice(''), 1600);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Like update failed');
+      setNotice(error instanceof Error ? error.message : '采用配音失败');
+      window.setTimeout(() => setNotice(''), 2200);
+    }
+  }
+
+  async function cancelDubbingAdoption(unit: ContentUnit) {
+    if (!user) return;
+    try {
+      await api.cancelDubbingAdoption(unit.id);
+      await loadDubbingBundle(selectedParagraph);
+      const key = rangeKey(unit.chapterId, unit.range);
+      setParagraphAudios((current) => {
+        const next = { ...current };
+        const platformAudio = platformParagraphAudios[key];
+        if (platformAudio) next[key] = platformAudio;
+        else delete next[key];
+        return next;
+      });
+      setNotice('已恢复平台默认配音');
+      window.setTimeout(() => setNotice(''), 1600);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '取消采用失败');
+      window.setTimeout(() => setNotice(''), 2200);
+    }
+  }
+
+  async function reportDubbingVersion(version: DubbingVersion) {
+    if (!user) {
+      setPage('login');
+      return;
+    }
+    const reason = window.prompt('请简要说明举报原因（3-500 字）')?.trim() || '';
+    if (!reason) return;
+    try {
+      await api.reportDubbingVersion(version.id, reason);
+      setNotice('举报已提交，等待平台处理');
+      window.setTimeout(() => setNotice(''), 1800);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '举报提交失败');
       window.setTimeout(() => setNotice(''), 2200);
     }
   }
@@ -2103,9 +2683,9 @@ function ReaderPage({
     }
 
     if (voicePanelOpen) {
-      void loadVoiceRecordingsForSelection(selectedParagraph);
+      void loadDubbingBundle(selectedParagraph);
     }
-  }, [selectedParagraph, voicePanelOpen]);
+  }, [selectedParagraph?.chapterId, selectedParagraph?.paragraphIndex, voicePanelOpen]);
 
   function selectParagraph(paragraph: TextSegment[], paragraphIndex: number) {
     clearLongPressTimer();
@@ -2146,43 +2726,7 @@ function ReaderPage({
   }
 
   async function generateParagraphSpeech() {
-    if (!selectedParagraph || paragraphSpeechLoadingKey) return;
-
-    const targetSegment = selectedParagraph.draft.trim();
-    if (!targetSegment) {
-      setNotice('目标段落不能为空');
-      window.setTimeout(() => setNotice(''), 1800);
-      return;
-    }
-
-    const key = rangeKey(selectedParagraph.chapterId, selectedParagraph.range);
-    const savedRange = selectedParagraph.range;
-    const savedChapterId = selectedParagraph.chapterId;
-    const savedParagraphIndex = selectedParagraph.paragraphIndex;
-
-    setParagraphSpeechLoadingKey(key);
-    setNotice('正在生成段落配音，首次使用会先初始化全书音色，可能较慢');
-    try {
-      const result = await api.paragraphSpeech({
-        chapterId: savedChapterId,
-        paragraphIndex: savedParagraphIndex,
-        targetSegment,
-        range: savedRange
-      });
-      setParagraphAudios((prev) => ({
-        ...prev,
-        [key]: { ...result, chapterId: savedChapterId, range: savedRange, fromLibrary: false }
-      }));
-      setSelectedParagraph(null);
-      setNotice('段落配音已生成');
-      window.setTimeout(() => setNotice(''), 1800);
-      playParagraphAudio(key, result.audioUrl);
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : '段落配音生成失败');
-      window.setTimeout(() => setNotice(''), 2600);
-    } finally {
-      setParagraphSpeechLoadingKey(null);
-    }
+    await startAiDubbingCreation();
   }
 
   async function generateParagraphImage() {
@@ -2485,44 +3029,531 @@ function ReaderPage({
     );
   }
 
-  function renderVoiceRecordingRow(recording: VoiceRecording, options: { mine: boolean }) {
-    const audioKey = `voice-${recording.id}`;
+  function renderDubbingVersionCard(version: DubbingVersion, unit: ContentUnit) {
+    const audioKey = `dubbing-${version.id}`;
     const isPlaying = playingAudioKey === audioKey;
+    const isMine = version.ownerUserId === user?.id;
+    const kindLabel = version.kind === 'ai' ? 'AI 配音' : '真人演绎';
+    const statusLabels: Record<DubbingStatus, string> = {
+      private: '私密',
+      public: '公开',
+      withdrawn: '已停止公开',
+      moderated: '已下架',
+      deleted: '已删除'
+    };
 
     return (
-      <article key={recording.id} className="voice-recording-row">
-        <div>
-          <strong>{options.mine || recording.userId === user?.id ? '我的配音' : recording.displayName || recording.username}</strong>
-          <small>{recording.visibility === 'public' ? '公开' : '私密'}</small>
+      <article key={version.id} className={`voice-recording-row dubbing-version-card${version.adoptedByMe ? ' adopted' : ''}`}>
+        <div className="dubbing-version-summary">
+          <strong>{isMine ? '我的配音' : version.displayName || version.username}</strong>
+          <small>
+            {kindLabel} · V{version.versionNumber} · {statusLabels[version.status]}
+          </small>
+          <span>点赞 {version.likeCount} · 采用 {version.adoptionCount}</span>
         </div>
         <div className="voice-recording-actions">
-          <button type="button" onClick={() => toggleParagraphAudio(audioKey, recording.audioUrl)}>
+          <button type="button" onClick={() => toggleParagraphAudio(audioKey, version.audioUrl)}>
             {isPlaying ? '暂停' : '播放'}
           </button>
-          {options.mine ? (
-            <>
-              <button
-                type="button"
-                onClick={() =>
-                  void updateMyRecordingVisibility(
-                    recording,
-                    recording.visibility === 'public' ? 'private' : 'public'
-                  )
-                }
-              >
-                {recording.visibility === 'public' ? '设为私密' : '公开'}
-              </button>
-              <button type="button" onClick={() => void deleteMyRecording(recording)}>
-                删除
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={() => void toggleVoiceLike(recording)}>
-              {recording.likedByMe ? '已赞' : '点赞'} {recording.likeCount}
+          {version.adoptedByMe ? (
+            <button type="button" onClick={() => void cancelDubbingAdoption(unit)}>
+              取消采用
             </button>
+          ) : version.status === 'public' ? (
+            <button type="button" onClick={() => void adoptDubbingVersion(version, unit)}>
+              用于我的阅读
+            </button>
+          ) : null}
+          {!isMine && version.status === 'public' && (
+            <>
+              <button type="button" onClick={() => void toggleDubbingLike(version)}>
+                {version.likedByMe ? '已赞' : '点赞'}
+              </button>
+              <button type="button" onClick={() => void reportDubbingVersion(version)}>举报</button>
+            </>
           )}
+          {isMine ? (
+            <>
+              {version.status === 'private' && (
+                <button type="button" onClick={() => void updateDubbingStatus(version, 'public')}>公开</button>
+              )}
+              {(version.status === 'private' || version.status === 'public') && (
+                <button type="button" onClick={() => void deleteDubbingVersion(version)}>
+                  {version.status === 'public' ? '撤回' : '删除'}
+                </button>
+              )}
+            </>
+          ) : null}
         </div>
+        {version.kind === 'ai' && version.promptSnapshot && (
+          <details className="dubbing-prompt-details">
+            <summary>展开设计</summary>
+            {Object.entries(version.promptSnapshot.voiceDesigns || {}).map(([speakerCode, design]) => (
+              <div key={speakerCode} className="dubbing-prompt-block">
+                <strong>{design.characterName}声线 V{design.versionNumber}</strong>
+                <p>{design.prompt}</p>
+                <small>试听文本：{design.previewText}</small>
+              </div>
+            ))}
+            {(version.promptSnapshot.performanceSegments || []).map((segment) => {
+              const recipe = segment.recipe;
+              return (
+                <div key={segment.segmentId} className="dubbing-prompt-block">
+                  <strong>{segment.text}</strong>
+                  {recipe ? (
+                    <>
+                      <p>
+                        MiniMax：{recipe.voiceSetting.emotion || '自动情绪'} · 语速 {recipe.voiceSetting.speed} ·
+                        音量 {recipe.voiceSetting.volume} · 音调 {recipe.voiceSetting.pitch}
+                      </p>
+                      <p>
+                        标记 {recipe.annotations.length} 个 · 效果器（音高 {recipe.voiceModify.pitch} / 力度{' '}
+                        {recipe.voiceModify.intensity} / 音色 {recipe.voiceModify.timbre}）
+                      </p>
+                    </>
+                  ) : (
+                    <p>
+                      {segment.performance.情绪} · {segment.performance.语速} · 强度 {segment.performance.强度} ·{' '}
+                      {segment.performance.节奏} · {segment.performance.停顿}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+            {(version.promptSnapshot.generationSettings || version.promptSnapshot.ttsRequests) && (
+              <details className="raw-minimax-recipe">
+                <summary>查看完整 MiniMax 参数</summary>
+                <pre>{JSON.stringify({
+                  generationSettings: version.promptSnapshot.generationSettings,
+                  requests: version.promptSnapshot.ttsRequests
+                }, null, 2)}</pre>
+              </details>
+            )}
+          </details>
+        )}
       </article>
+    );
+  }
+
+  function renderAnnotatedSegmentText(segment: DubbingPlanSegment) {
+    if (!segment.recipe || !aiPlan) return <p>{segment.text}</p>;
+    const units: Array<{ char: string; start: number; end: number }> = [];
+    let utf16Offset = 0;
+    for (const char of segment.text) {
+      units.push({ char, start: utf16Offset, end: utf16Offset + char.length });
+      utf16Offset += char.length;
+    }
+    const annotationsAt = (offset: number) => segment.recipe?.annotations.filter((item) => item.offset === offset) || [];
+    const renderAnnotations = (offset: number) => annotationsAt(offset).map((annotation) => {
+      const label = annotation.type === 'pause'
+        ? `停顿 ${annotation.durationSeconds}s`
+        : aiPlan.capabilities.vocalTags.find((item) => item.value === annotation.value)?.label || annotation.value;
+      return (
+        <button
+          key={annotation.id}
+          type="button"
+          className={`speech-annotation-chip ${annotation.type}`}
+          title="点击删除标记"
+          onClick={() => removeSegmentAnnotation(segment.segmentId, annotation.id)}
+        >
+          {label}<span aria-hidden="true">×</span>
+        </button>
+      );
+    });
+
+    return (
+      <div className="annotated-script" aria-label="可插入 MiniMax 台词标记的原文">
+        {renderAnnotations(0)}
+        {units.map((unit) => (
+          <React.Fragment key={`${segment.segmentId}-${unit.start}`}>
+            <button
+              type="button"
+              className={annotationCursorBySegment[segment.segmentId] === unit.end ? 'script-character active' : 'script-character'}
+              title={`点击后在“${unit.char}”之后插入标记`}
+              onClick={() => setAnnotationCursorBySegment((current) => ({
+                ...current,
+                [segment.segmentId]: unit.end
+              }))}
+            >
+              {unit.char}
+            </button>
+            {renderAnnotations(unit.end)}
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  }
+
+  function renderAiComposer(bundle: DubbingUnitBundle) {
+    if (!aiComposerOpen) return null;
+    if (aiPlanning || !aiPlan) {
+      return <p className="voice-panel-empty">正在识别角色和表演方式...</p>;
+    }
+    const speakerOptions = aiPlan.roles.filter((role) =>
+      aiPlan.segments.some((segment) => segment.speakerCode === role.code)
+    );
+    const selectedDesign = voiceDesignsBySpeaker[selectedVoiceSpeaker];
+    const capabilities = aiPlan.capabilities;
+
+    return (
+      <section className="ai-dubbing-composer">
+        <div className="ai-composer-heading">
+          <div>
+            <strong>AI 配音创作</strong>
+            <small>逐句编辑，发布时组成不可修改的新版本</small>
+          </div>
+          <button type="button" onClick={() => setAiComposerOpen(false)}>关闭</button>
+        </div>
+
+        <div className="voice-design-editor">
+          <label>
+            设计角色
+            <select
+              value={selectedVoiceSpeaker}
+              onChange={(event) => {
+                const speakerCode = event.target.value;
+                setSelectedVoiceSpeaker(speakerCode);
+                const existing = voiceDesignsBySpeaker[speakerCode];
+                setVoicePrompt(existing?.prompt || '');
+                setVoicePreviewText(
+                  existing?.previewText ||
+                    aiPlan.segments.find((segment) => segment.speakerCode === speakerCode)?.text ||
+                    ''
+                );
+              }}
+            >
+              {speakerOptions.map((role) => <option key={role.code} value={role.code}>{role.label}</option>)}
+            </select>
+          </label>
+          <label>
+            音色提示词
+            <textarea
+              value={voicePrompt}
+              maxLength={500}
+              rows={3}
+              placeholder="例如：冷静、敏锐、克制的成年男性声音，语气清晰而有洞察力"
+              onChange={(event) => setVoicePrompt(event.target.value)}
+            />
+          </label>
+          <label>
+            试听文本
+            <input
+              value={voicePreviewText}
+              maxLength={200}
+              onChange={(event) => setVoicePreviewText(event.target.value)}
+            />
+          </label>
+          <div className="voice-design-actions">
+            <button type="button" onClick={() => void saveCharacterVoiceDesign()} disabled={voiceDesignSaving}>
+              {voiceDesignSaving ? '生成声线中...' : selectedDesign ? '生成新声线版本' : '生成并保存声线'}
+            </button>
+            {selectedDesign && <span>已选 {selectedDesign.characterName} V{selectedDesign.versionNumber}</span>}
+            {selectedDesign?.previewAudioUrl && <audio controls src={selectedDesign.previewAudioUrl} />}
+          </div>
+        </div>
+
+        <details className="minimax-global-settings">
+          <summary>MiniMax 生成与音频设置</summary>
+          <div className="ai-segment-fields">
+            <label>
+              模型
+              <select
+                value={aiPlan.generationSettings.model}
+                onChange={(event) => updateGenerationSettings((settings) => ({
+                  ...settings,
+                  model: event.target.value
+                }))}
+              >
+                {capabilities.models.map((model) => <option key={model} value={model}>{model}</option>)}
+              </select>
+            </label>
+            <label>
+              语言增强
+              <select
+                value={aiPlan.generationSettings.languageBoost}
+                onChange={(event) => updateGenerationSettings((settings) => ({
+                  ...settings,
+                  languageBoost: event.target.value
+                }))}
+              >
+                {capabilities.languages.map((language) => <option key={language} value={language}>{language}</option>)}
+              </select>
+            </label>
+            <label>
+              采样率
+              <select
+                value={aiPlan.generationSettings.audioSetting.sampleRate}
+                onChange={(event) => updateGenerationSettings((settings) => ({
+                  ...settings,
+                  audioSetting: { ...settings.audioSetting, sampleRate: Number(event.target.value) }
+                }))}
+              >
+                {capabilities.audio.sampleRates.map((value) => <option key={value} value={value}>{value} Hz</option>)}
+              </select>
+            </label>
+            <label>
+              MP3 比特率
+              <select
+                value={aiPlan.generationSettings.audioSetting.bitrate}
+                onChange={(event) => updateGenerationSettings((settings) => ({
+                  ...settings,
+                  audioSetting: { ...settings.audioSetting, bitrate: Number(event.target.value) }
+                }))}
+              >
+                {capabilities.audio.bitrates.map((value) => <option key={value} value={value}>{value / 1000} kbps</option>)}
+              </select>
+            </label>
+            <label>
+              声道
+              <select
+                value={aiPlan.generationSettings.audioSetting.channel}
+                onChange={(event) => updateGenerationSettings((settings) => ({
+                  ...settings,
+                  audioSetting: { ...settings.audioSetting, channel: Number(event.target.value) }
+                }))}
+              >
+                {capabilities.audio.channels.map((value) => (
+                  <option key={value} value={value}>{value === 1 ? '单声道' : '双声道'}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              字幕粒度
+              <select
+                value={aiPlan.generationSettings.subtitle.type}
+                disabled={!aiPlan.generationSettings.subtitle.enabled}
+                onChange={(event) => updateGenerationSettings((settings) => ({
+                  ...settings,
+                  subtitle: { ...settings.subtitle, type: event.target.value }
+                }))}
+              >
+                {capabilities.subtitleTypes.filter((value) => value !== 'word_streaming').map((value) => (
+                  <option key={value} value={value}>{value === 'word' ? '词级' : '句级'}</option>
+                ))}
+              </select>
+            </label>
+            <label className="toggle-field">
+              <input
+                type="checkbox"
+                checked={aiPlan.generationSettings.subtitle.enabled}
+                onChange={(event) => updateGenerationSettings((settings) => ({
+                  ...settings,
+                  subtitle: { ...settings.subtitle, enabled: event.target.checked }
+                }))}
+              />
+              生成时间戳字幕
+            </label>
+            <label className="toggle-field">
+              <input
+                type="checkbox"
+                checked={aiPlan.generationSettings.aigcWatermark}
+                onChange={(event) => updateGenerationSettings((settings) => ({
+                  ...settings,
+                  aigcWatermark: event.target.checked
+                }))}
+              />
+              MiniMax AIGC 音频标识
+            </label>
+          </div>
+          <p className="platform-output-note">正式版本固定使用非流式、MP3、HEX 持久化输出；这些传输参数由平台管理。</p>
+        </details>
+
+        <div className="ai-segment-list">
+          {aiPlan.segments.map((segment) => {
+            const recipe = segment.recipe;
+            if (!recipe) return null;
+            return (
+              <article key={segment.segmentId} className="ai-segment-editor">
+                <div className="segment-editor-heading">
+                  <label>
+                    角色
+                    <select
+                      value={segment.speakerCode || ''}
+                      onChange={(event) => updateAiPlanSegment(segment.segmentId, 'speakerCode', event.target.value)}
+                    >
+                      {aiPlan.roles.map((role) => <option key={role.code} value={role.code}>{role.label}</option>)}
+                    </select>
+                  </label>
+                  <small>点击台词中的字，标记会插入在该字之后；点击标记可删除。</small>
+                </div>
+
+                {renderAnnotatedSegmentText(segment)}
+
+                <div className="annotation-toolbar">
+                  <label>
+                    停顿秒数
+                    <input
+                      type="number"
+                      min={capabilities.ranges.pause.min}
+                      max={capabilities.ranges.pause.max}
+                      step={capabilities.ranges.pause.step}
+                      value={pauseSecondsBySegment[segment.segmentId] ?? capabilities.ranges.pause.default}
+                      onChange={(event) => setPauseSecondsBySegment((current) => ({
+                        ...current,
+                        [segment.segmentId]: Number(event.target.value)
+                      }))}
+                    />
+                  </label>
+                  <button type="button" onClick={() => addSegmentAnnotation(segment, 'pause')}>插入停顿</button>
+                  <label>
+                    语气词
+                    <select
+                      value={vocalTagBySegment[segment.segmentId] || capabilities.vocalTags[0]?.value}
+                      onChange={(event) => setVocalTagBySegment((current) => ({
+                        ...current,
+                        [segment.segmentId]: event.target.value
+                      }))}
+                    >
+                      {capabilities.vocalTags.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    disabled={!capabilities.vocalTagModels.includes(aiPlan.generationSettings.model)}
+                    title={capabilities.vocalTagModels.includes(aiPlan.generationSettings.model) ? '' : '当前模型不支持语气词标签'}
+                    onClick={() => addSegmentAnnotation(segment, 'vocal')}
+                  >
+                    插入语气词
+                  </button>
+                </div>
+
+                <div className="ai-segment-fields primary-settings">
+                  <label>
+                    情绪
+                    <select
+                      value={recipe.voiceSetting.emotion}
+                      onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceSetting', { emotion: event.target.value })}
+                    >
+                      {capabilities.emotions.map((item) => <option key={item.value || 'auto'} value={item.value}>{item.label}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    语速 {recipe.voiceSetting.speed.toFixed(2)}
+                    <input
+                      type="range"
+                      min={capabilities.ranges.speed.min}
+                      max={capabilities.ranges.speed.max}
+                      step={capabilities.ranges.speed.step}
+                      value={recipe.voiceSetting.speed}
+                      onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceSetting', { speed: Number(event.target.value) })}
+                    />
+                  </label>
+                  <label>
+                    音量 {recipe.voiceSetting.volume.toFixed(1)}
+                    <input
+                      type="range"
+                      min={capabilities.ranges.volume.min}
+                      max={capabilities.ranges.volume.max}
+                      step={capabilities.ranges.volume.step}
+                      value={recipe.voiceSetting.volume}
+                      onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceSetting', { volume: Number(event.target.value) })}
+                    />
+                  </label>
+                  <label>
+                    基础音调 {recipe.voiceSetting.pitch > 0 ? '+' : ''}{recipe.voiceSetting.pitch}
+                    <input
+                      type="range"
+                      min={capabilities.ranges.pitch.min}
+                      max={capabilities.ranges.pitch.max}
+                      step={capabilities.ranges.pitch.step}
+                      value={recipe.voiceSetting.pitch}
+                      onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceSetting', { pitch: Number(event.target.value) })}
+                    />
+                  </label>
+                </div>
+
+                <details className="segment-advanced-settings">
+                  <summary>高级参数：音色来源、声音塑形与发音</summary>
+                  <div className="ai-segment-fields">
+                    <label>
+                      音色来源
+                      <select
+                        value={recipe.voiceSource.mode}
+                        onChange={(event) => setRecipeVoiceSourceMode(
+                          segment.segmentId,
+                          event.target.value as MiniMaxSegmentRecipe['voiceSource']['mode']
+                        )}
+                      >
+                        <option value="default">角色当前声线</option>
+                        <option value="voiceId">指定 voice_id</option>
+                        <option value="blend">混合音色</option>
+                      </select>
+                    </label>
+                    {recipe.voiceSource.mode === 'voiceId' && (
+                      <label className="wide">
+                        MiniMax voice_id
+                        <input
+                          value={recipe.voiceSource.voiceId}
+                          onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceSource', { voiceId: event.target.value })}
+                        />
+                      </label>
+                    )}
+                    <label>
+                      效果器音高 {recipe.voiceModify.pitch}
+                      <input type="range" min={capabilities.ranges.effect.min} max={capabilities.ranges.effect.max} step={capabilities.ranges.effect.step} value={recipe.voiceModify.pitch} onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceModify', { pitch: Number(event.target.value) })} />
+                    </label>
+                    <label>
+                      刚劲 ← {recipe.voiceModify.intensity} → 轻柔
+                      <input type="range" min={capabilities.ranges.effect.min} max={capabilities.ranges.effect.max} step={capabilities.ranges.effect.step} value={recipe.voiceModify.intensity} onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceModify', { intensity: Number(event.target.value) })} />
+                    </label>
+                    <label>
+                      浑厚 ← {recipe.voiceModify.timbre} → 清脆
+                      <input type="range" min={capabilities.ranges.effect.min} max={capabilities.ranges.effect.max} step={capabilities.ranges.effect.step} value={recipe.voiceModify.timbre} onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceModify', { timbre: Number(event.target.value) })} />
+                    </label>
+                    <label>
+                      声音效果
+                      <select value={recipe.voiceModify.soundEffects} onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceModify', { soundEffects: event.target.value })}>
+                        {capabilities.soundEffects.map((item) => <option key={item.value || 'none'} value={item.value}>{item.label}</option>)}
+                      </select>
+                    </label>
+                    <label className="toggle-field">
+                      <input type="checkbox" checked={recipe.voiceSetting.englishNormalization} onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceSetting', { englishNormalization: event.target.checked })} />
+                      英文数字规范化
+                    </label>
+                    <label className="toggle-field">
+                      <input type="checkbox" checked={recipe.voiceSetting.latexRead} onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceSetting', { latexRead: event.target.checked })} />
+                      朗读 LaTeX
+                    </label>
+                    <label className="wide">
+                      发音修正（每行一项：文字/读法）
+                      <textarea
+                        rows={2}
+                        value={recipe.pronunciation.join('\n')}
+                        placeholder={'处理/(chu3)(li3)\nHolmes/(hoʊmz)'}
+                        onChange={(event) => updateAiSegmentRecipe(segment.segmentId, (currentRecipe) => ({
+                          ...currentRecipe,
+                          pronunciation: event.target.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean)
+                        }))}
+                      />
+                    </label>
+                  </div>
+
+                  {recipe.voiceSource.mode === 'blend' && (
+                    <div className="timbre-weight-editor">
+                      <strong>混合音色（2–{capabilities.maxTimbreWeights} 个）</strong>
+                      {recipe.voiceSource.timbreWeights.map((item, index) => (
+                        <div key={`${segment.segmentId}-weight-${index}`}>
+                          <input placeholder="voice_id" value={item.voiceId} onChange={(event) => updateTimbreWeight(segment.segmentId, index, { voiceId: event.target.value })} />
+                          <input type="number" min={1} max={100} step={1} value={item.weight} onChange={(event) => updateTimbreWeight(segment.segmentId, index, { weight: Number(event.target.value) })} />
+                          <button type="button" disabled={recipe.voiceSource.timbreWeights.length <= 2} onClick={() => removeTimbreWeight(segment.segmentId, index)}>删除</button>
+                        </div>
+                      ))}
+                      <button type="button" disabled={recipe.voiceSource.timbreWeights.length >= capabilities.maxTimbreWeights} onClick={() => addTimbreWeight(segment.segmentId)}>添加音色</button>
+                    </div>
+                  )}
+                </details>
+              </article>
+            );
+          })}
+        </div>
+        <div className="ai-composer-actions">
+          <button type="button" onClick={() => void saveAiDubbingVersion('private')} disabled={voiceSaving}>保存私密</button>
+          <button type="button" onClick={() => void saveAiDubbingVersion('public')} disabled={voiceSaving}>
+            {voiceSaving ? '生成中...' : '生成并公开新版本'}
+          </button>
+        </div>
+        <small>未自定义的角色继续使用平台默认声线。当前单元：{bundle.unit.sourceText.slice(0, 46)}...</small>
+      </section>
     );
   }
 
@@ -2531,10 +3562,15 @@ function ReaderPage({
       return null;
     }
 
-    const key = rangeKey(selectedParagraph.chapterId, selectedParagraph.range);
-    const group = voiceRecordingGroups[key] || { myRecording: null, publicRecordings: [] };
-    const squareRecordings = group.publicRecordings;
+    const key = dubbingBundleKey(selectedParagraph);
+    const bundle = dubbingBundles[key];
     const loading = voiceLoadingKey === key;
+    const versions = (bundle?.versions || []).filter((version) => {
+      if (voicePanelTab === 'ai') return version.kind === 'ai';
+      if (voicePanelTab === 'human') return version.kind === 'human';
+      if (voicePanelTab === 'mine') return version.ownerUserId === user?.id;
+      return true;
+    });
 
     return (
       <div
@@ -2543,39 +3579,62 @@ function ReaderPage({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="voice-panel-tabs">
-          <button
-            type="button"
-            className={voicePanelTab === 'mine' ? 'active' : ''}
-            onClick={() => setVoicePanelTab('mine')}
-          >
-            我的配音
-          </button>
-          <button
-            type="button"
-            className={voicePanelTab === 'square' ? 'active' : ''}
-            onClick={() => setVoicePanelTab('square')}
-          >
-            配音广场
-          </button>
+          {([['all', '全部'], ['ai', 'AI 配音'], ['human', '真人配音'], ['mine', '我的作品']] as const).map(([value, label]) => (
+            <button key={value} type="button" className={voicePanelTab === value ? 'active' : ''} onClick={() => setVoicePanelTab(value)}>{label}</button>
+          ))}
         </div>
 
         {loading ? (
           <p className="voice-panel-empty">正在加载...</p>
-        ) : voicePanelTab === 'mine' ? (
+        ) : !bundle ? (
+          <p className="voice-panel-empty">暂时无法读取这个段落的配音。</p>
+        ) : (
           <div className="voice-panel-section">
-            {group.myRecording && renderVoiceRecordingRow(group.myRecording, { mine: true })}
+            {platformParagraphAudios[rangeKey(bundle.unit.chapterId, bundle.unit.range)] && (
+              <article className={`voice-recording-row dubbing-version-card${bundle.versions.some((version) => version.adoptedByMe) ? '' : ' adopted'}`}>
+                <div className="dubbing-version-summary">
+                  <strong>平台默认配音</strong>
+                  <small>{bundle.versions.some((version) => version.adoptedByMe) ? '可恢复' : '当前使用'}</small>
+                  <span>平台统一选角与表演导演</span>
+                </div>
+                <div className="voice-recording-actions">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      toggleParagraphAudio(
+                        `platform-${bundle.unit.id}`,
+                        platformParagraphAudios[rangeKey(bundle.unit.chapterId, bundle.unit.range)].audioUrl
+                      )
+                    }
+                  >
+                    播放
+                  </button>
+                  {bundle.versions.some((version) => version.adoptedByMe) && (
+                    <button type="button" onClick={() => void cancelDubbingAdoption(bundle.unit)}>
+                      恢复平台默认
+                    </button>
+                  )}
+                </div>
+              </article>
+            )}
+            <div className="dubbing-create-actions">
+              {user ? (
+                <>
+                  <button type="button" onClick={() => void startAiDubbingCreation()} disabled={aiPlanning}>创建 AI 配音</button>
+                  {recordingState === 'recording' ? (
+                    <button type="button" onClick={stopUserRecording}>停止真人录音</button>
+                  ) : (
+                    <button type="button" onClick={() => void startUserRecording()}>录制真人配音</button>
+                  )}
+                </>
+              ) : (
+                <button type="button" onClick={() => setPage('login')}>登录后创作、点赞或采用</button>
+              )}
+            </div>
+
+            {renderAiComposer(bundle)}
 
             <div className="voice-recorder">
-              {recordingState === 'recording' ? (
-                <button type="button" onClick={stopUserRecording}>
-                  停止录音
-                </button>
-              ) : (
-                <button type="button" onClick={() => void startUserRecording()}>
-                  {group.myRecording ? '重录' : '开始录音'}
-                </button>
-              )}
-
               {recordingPreviewUrl && (
                 <>
                   <audio controls src={recordingPreviewUrl} />
@@ -2591,13 +3650,11 @@ function ReaderPage({
                 </>
               )}
             </div>
-          </div>
-        ) : (
-          <div className="voice-panel-section">
-            {squareRecordings.length ? (
-              squareRecordings.map((recording) => renderVoiceRecordingRow(recording, { mine: false }))
+
+            {versions.length ? (
+              versions.map((version) => renderDubbingVersionCard(version, bundle.unit))
             ) : (
-              <p className="voice-panel-empty">这段文字还没有公开配音。</p>
+              <p className="voice-panel-empty">这个分类下还没有配音版本。</p>
             )}
           </div>
         )}
@@ -2692,7 +3749,7 @@ function ReaderPage({
     ? rangeKey(selectedParagraph.chapterId, selectedParagraph.range)
     : null;
   const imageGenerating = Boolean(currentRangeKey && paragraphImageLoadingKey === currentRangeKey);
-  const speechGenerating = Boolean(currentRangeKey && paragraphSpeechLoadingKey === currentRangeKey);
+  const speechGenerating = aiPlanning || voiceSaving;
 
   return (
     <section className="app-shell">
@@ -2977,13 +4034,13 @@ function ReaderPage({
                     onClick={generateParagraphSpeech}
                     disabled={imageGenerating || speechGenerating}
                   >
-                    {speechGenerating ? '生成中...' : '生成配音'}
+                    {speechGenerating ? '处理中...' : '创作 AI 配音'}
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       setVoicePanelOpen((open) => !open);
-                      setVoicePanelTab('mine');
+                      setVoicePanelTab('all');
                     }}
                     disabled={imageGenerating || speechGenerating}
                   >

@@ -78,6 +78,7 @@ jobs:
           MINIMAX_TTS_MODEL=speech-2.8-hd
           MINIMAX_IMAGE_MODEL=image-01
           MINIMAX_DEFAULT_VOICE_ID=Chinese (Mandarin)_Lyrical_Voice
+          AUTH_TOKEN_SECRET=${{ secrets.AUTH_TOKEN_SECRET }}
           MYSQL_HOST=${{ secrets.MYSQL_HOST }}
           MYSQL_PORT=${{ secrets.MYSQL_PORT }}
           MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
@@ -116,12 +117,15 @@ jobs:
           recover_media_tree "$PREV_DIR/backend/storage/media"
           recover_media_tree "$APP_DIR/backend/storage/media"
 
-          mysql \
-            -h "${{ secrets.MYSQL_HOST }}" \
-            -P "${{ secrets.MYSQL_PORT }}" \
-            -u "${{ secrets.MYSQL_USER }}" \
-            -p"${{ secrets.MYSQL_PASSWORD }}" \
-            "${{ secrets.MYSQL_DATABASE }}" < backend/sql/001_media_assets.sql
+          for migration in backend/sql/*.sql; do
+            echo "Applying database migration: $migration"
+            mysql \
+              -h "${{ secrets.MYSQL_HOST }}" \
+              -P "${{ secrets.MYSQL_PORT }}" \
+              -u "${{ secrets.MYSQL_USER }}" \
+              -p"${{ secrets.MYSQL_PASSWORD }}" \
+              "${{ secrets.MYSQL_DATABASE }}" < "$migration"
+          done
 
           npm install
           npm run build

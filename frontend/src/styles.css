@@ -1543,8 +1543,9 @@ button:disabled {
   position: absolute;
   top: calc(100% + 8px);
   left: 50%;
-  width: min(360px, 88vw);
-  max-height: 360px;
+  z-index: 20;
+  width: min(920px, calc(100vw - 32px));
+  max-height: min(72vh, 760px);
   overflow: auto;
   transform: translateX(-50%);
   border: 1px solid rgba(36, 81, 89, 0.18);
@@ -1557,14 +1558,16 @@ button:disabled {
 
 .voice-panel-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   margin-bottom: 10px;
 }
 
 .selection-toolbar .voice-panel-tabs button,
 .selection-toolbar .voice-recorder button,
-.selection-toolbar .voice-recording-actions button {
+.selection-toolbar .voice-recording-actions button,
+.selection-toolbar .dubbing-create-actions button,
+.selection-toolbar .ai-dubbing-composer button {
   border: 1px solid rgba(36, 81, 89, 0.18);
   background: #f5efe6;
   color: #253044;
@@ -1622,6 +1625,366 @@ button:disabled {
 .voice-recorder audio {
   width: 100%;
   height: 34px;
+}
+
+.dubbing-create-actions,
+.voice-design-actions,
+.ai-composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.dubbing-version-card.adopted {
+  border-color: rgba(36, 81, 89, 0.52);
+  box-shadow: inset 3px 0 0 #245159;
+}
+
+.dubbing-version-summary {
+  display: grid !important;
+  grid-template-columns: 1fr auto;
+  align-items: baseline !important;
+}
+
+.dubbing-version-summary span {
+  grid-column: 1 / -1;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.dubbing-prompt-details {
+  border-top: 1px solid rgba(36, 81, 89, 0.12);
+  padding-top: 8px;
+}
+
+.dubbing-prompt-details summary {
+  color: #245159;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dubbing-prompt-block {
+  display: grid !important;
+  justify-content: stretch !important;
+  gap: 4px !important;
+  margin-top: 8px;
+  border-radius: 7px;
+  background: #f6f1e8;
+  padding: 8px;
+}
+
+.dubbing-prompt-block p {
+  margin: 0;
+  color: #374151;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.raw-minimax-recipe {
+  margin-top: 8px;
+  border-radius: 7px;
+  background: #17202b;
+  padding: 8px;
+  color: #e5edf0;
+}
+
+.raw-minimax-recipe summary {
+  color: #d7e8e7;
+}
+
+.raw-minimax-recipe pre {
+  max-height: 280px;
+  overflow: auto;
+  margin: 8px 0 0;
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.ai-dubbing-composer {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(36, 81, 89, 0.24);
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 12px;
+}
+
+.ai-composer-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-composer-heading div {
+  display: grid;
+  gap: 3px;
+}
+
+.voice-design-editor,
+.ai-segment-list {
+  display: grid;
+  gap: 10px;
+}
+
+.voice-design-editor {
+  grid-template-columns: minmax(140px, 0.35fr) minmax(220px, 1fr);
+  border-radius: 8px;
+  background: #f6f1e8;
+  padding: 10px;
+}
+
+.voice-design-editor label,
+.ai-segment-fields label {
+  display: grid;
+  gap: 4px;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.voice-design-editor label:nth-child(2),
+.voice-design-actions {
+  grid-column: 2;
+}
+
+.selection-voice-panel input,
+.selection-voice-panel select,
+.selection-voice-panel textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(36, 81, 89, 0.2);
+  border-radius: 7px;
+  background: #fff;
+  padding: 7px 8px;
+  color: #17202b;
+  font: inherit;
+  resize: vertical;
+}
+
+.voice-design-actions audio {
+  width: min(280px, 100%);
+  height: 34px;
+}
+
+.ai-segment-editor {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(36, 81, 89, 0.12);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.ai-segment-editor > p {
+  margin: 0;
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.ai-segment-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ai-segment-fields .wide {
+  grid-column: span 2;
+}
+
+.minimax-global-settings,
+.segment-advanced-settings {
+  border: 1px solid rgba(36, 81, 89, 0.14);
+  border-radius: 8px;
+  background: rgba(246, 241, 232, 0.6);
+  padding: 9px;
+}
+
+.minimax-global-settings > summary,
+.segment-advanced-settings > summary {
+  color: #245159;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.minimax-global-settings[open] > summary,
+.segment-advanced-settings[open] > summary {
+  margin-bottom: 10px;
+}
+
+.platform-output-note {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.segment-editor-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.segment-editor-heading label {
+  width: min(210px, 45%);
+}
+
+.segment-editor-heading small {
+  color: #6b7280;
+  text-align: right;
+}
+
+.annotated-script {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: 54px;
+  border: 1px solid rgba(36, 81, 89, 0.16);
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: 16px;
+  line-height: 2.2;
+}
+
+.selection-toolbar .ai-dubbing-composer .script-character {
+  min-width: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  padding: 1px 0;
+  color: #17202b;
+  font: inherit;
+  line-height: inherit;
+}
+
+.selection-toolbar .ai-dubbing-composer .script-character:hover,
+.selection-toolbar .ai-dubbing-composer .script-character.active {
+  background: rgba(180, 138, 82, 0.18);
+  box-shadow: inset 0 -2px 0 #b48a52;
+}
+
+.selection-toolbar .ai-dubbing-composer .speech-annotation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0 3px;
+  border-color: rgba(36, 81, 89, 0.28);
+  border-radius: 999px;
+  background: #e9f2f1;
+  padding: 3px 7px;
+  color: #245159;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.selection-toolbar .ai-dubbing-composer .speech-annotation-chip.vocal {
+  border-color: rgba(139, 90, 47, 0.24);
+  background: #f5eee3;
+  color: #7a4e2d;
+}
+
+.annotation-toolbar {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.6fr) auto minmax(140px, 0.8fr) auto;
+  align-items: end;
+  gap: 7px;
+}
+
+.annotation-toolbar label,
+.segment-advanced-settings label,
+.minimax-global-settings label,
+.segment-editor-heading label {
+  display: grid;
+  gap: 4px;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ai-segment-fields label.toggle-field {
+  display: flex;
+  align-items: center;
+  align-self: end;
+  min-height: 32px;
+  gap: 7px;
+}
+
+.toggle-field input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.primary-settings {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.primary-settings input[type="range"],
+.segment-advanced-settings input[type="range"] {
+  padding: 0;
+}
+
+.timbre-weight-editor {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(36, 81, 89, 0.12);
+  padding-top: 10px;
+}
+
+.timbre-weight-editor > div {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 90px auto;
+  gap: 7px;
+}
+
+@media (max-width: 680px) {
+  .selection-voice-panel {
+    position: fixed;
+    top: 12vh;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-height: 76vh;
+    transform: none;
+  }
+
+  .voice-panel-tabs,
+  .ai-segment-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .annotation-toolbar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .segment-editor-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .segment-editor-heading label {
+    width: 100%;
+  }
+
+  .segment-editor-heading small {
+    text-align: left;
+  }
+
+  .voice-design-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-design-editor label:nth-child(2),
+  .voice-design-actions {
+    grid-column: 1;
+  }
 }
 
 .inline-audio-play {

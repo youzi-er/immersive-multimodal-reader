@@ -11,26 +11,30 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import { chapters, clues } from './data.js';
 import {
   createMediaAsset,
+  createParagraphComment,
+  createUser,
   createVoiceRecording,
   deleteMediaAsset,
+  deleteParagraphComment,
   deleteVoiceRecording,
+  ensureUser,
   getMediaAsset,
+  getUserById,
+  getUserByUsername,
   getVoiceRecording,
   listMediaAssets,
+  listParagraphComments,
   listVoiceRecordings,
   setVoiceRecordingLike,
   updateVoiceRecordingVisibility
 } from './db.js';
 import {
-  createParagraphComment,
-  createUser,
-  deleteParagraphComment,
-  ensureUser,
-  getUserById,
-  getUserByUsername,
-  listParagraphComments
-} from './local-store.js';
-import { getMediaRoot, removeStoredMedia, saveAudioDataUrl, saveImageFromUrl } from './media-store.js';
+  getMediaRoot,
+  removeStoredMedia,
+  saveAndRegisterMedia,
+  saveAudioDataUrl,
+  saveImageFromUrl
+} from './media-store.js';
 import {
   buildSherlockImagePrompt,
   chatWithMiniMax,
@@ -52,8 +56,17 @@ import {
   generateParagraphSpeech,
   getSpeechDebugInfo,
   getSpeechVoicesStatus,
-  regenerateSpeechVoices
+  planParagraphSpeech,
+  regenerateSpeechVoices,
+  synthesizePlannedParagraphSpeech
 } from './services/paragraphSpeech.js';
+import {
+  getContentUnit,
+  getContentUnitByPosition,
+  listContentUnits,
+  toPublicContentUnit
+} from './content-units.js';
+import { communityStore } from './community-store.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -437,88 +450,71 @@ async function persistGeneratedImage({
   position = null,
   userId = null
 }) {
-  let saved = { url: sourceUrl, filePath: null };
-  let localSaveError = null;
+  const { asset } = await saveAndRegisterMedia({
+    save: () => saveImageFromUrl(sourceUrl),
+    register: (saved) =>
+      createMediaAsset({
+        id: crypto.randomUUID(),
+        ...(position || normalizeMediaPosition(req.body)),
+        mediaType: 'image',
+        url: saved.url,
+        sourceUrl,
+        filePath: saved.filePath,
+        prompt,
+        sourceText,
+        provider: 'minimax',
+        model,
+        userId: userId || currentUserId(req),
+        metadata
+      })
+  });
 
-  try {
-    saved = await saveImageFromUrl(sourceUrl);
-  } catch (error) {
-    localSaveError = error;
-  }
-
-  try {
-    const asset = await createMediaAsset({
-      id: crypto.randomUUID(),
-      ...(position || normalizeMediaPosition(req.body)),
-      mediaType: 'image',
-      url: saved.url,
-      sourceUrl,
-      filePath: saved.filePath,
-      prompt,
-      sourceText,
-      provider: 'minimax',
-      model,
-      userId: userId || currentUserId(req),
-      metadata: {
-        ...metadata,
-        localSaveError: localSaveError?.message || null
-      }
-    });
-
-    return {
-      asset,
-      mediaAssetId: asset.id,
-      imageUrl: asset.url,
-      sourceImageUrl: sourceUrl,
-      mediaPersistenceError: localSaveError?.message || null
-    };
-  } catch (error) {
-    console.error('Failed to persist image media asset:', error);
-    return {
-      asset: null,
-      mediaAssetId: null,
-      imageUrl: saved.url,
-      sourceImageUrl: sourceUrl,
-      mediaPersistenceError: error.message || 'Failed to persist image media asset'
-    };
-  }
+  return {
+    asset,
+    mediaAssetId: asset.id,
+    imageUrl: asset.url,
+    sourceImageUrl: sourceUrl,
+    mediaPersistenceError: null
+  };
 }
 
-async function persistGeneratedAudio({ req, audioUrl, prompt, sourceText, model, metadata = {} }) {
-  try {
-    const saved = await saveAudioDataUrl(audioUrl);
-    const asset = await createMediaAsset({
-      id: crypto.randomUUID(),
-      ...normalizeMediaPosition(req.body),
-      mediaType: 'audio',
-      url: saved.url,
-      sourceUrl: null,
-      filePath: saved.filePath,
-      prompt,
-      sourceText,
-      provider: 'minimax',
-      model,
-      userId: currentUserId(req),
-      metadata
-    });
+async function persistGeneratedAudio({
+  req,
+  audioUrl,
+  prompt,
+  sourceText,
+  model,
+  metadata = {},
+  position = null,
+  provider = 'minimax',
+  userId = null
+}) {
+  const { asset } = await saveAndRegisterMedia({
+    save: () => saveAudioDataUrl(audioUrl),
+    register: (saved) =>
+      createMediaAsset({
+        id: crypto.randomUUID(),
+        ...(position || normalizeMediaPosition(req.body)),
+        mediaType: 'audio',
+        url: saved.url,
+        sourceUrl: null,
+        filePath: saved.filePath,
+        prompt,
+        sourceText,
+        provider,
+        model,
+        userId: userId || currentUserId(req),
+        metadata
+      })
+  });
 
-    return {
-      asset,
-      mediaAssetId: asset.id,
-      audioUrl: asset.url,
-      sourceAudioUrl: audioUrl,
-      mediaPersistenceError: null
-    };
-  } catch (error) {
-    console.error('Failed to persist audio media asset:', error);
-    return {
-      asset: null,
-      mediaAssetId: null,
-      audioUrl,
-      sourceAudioUrl: null,
-      mediaPersistenceError: error.message || 'Failed to persist audio media asset'
-    };
-  }
+  return {
+    asset,
+    mediaAssetId: asset.id,
+    audioUrl: asset.url,
+    sourceAudioUrl: audioUrl,
+    mediaPersistenceError: null
+  };
 }
 
 app.get('/api/health', (_req, res) => {
@@ -760,6 +756,445 @@ app.delete('/api/media/assets/:id', optionalAuth, async (req, res) => {
     res.json({ ok: true, asset });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Failed to delete media asset' });
+  }
+});
+
+function requireContentUnit(unitId) {
+  const unit = getContentUnit(unitId);
+  if (!unit) {
+    const error = new Error('Standard dubbing unit not found');
+    error.statusCode = 404;
+    throw error;
+  }
+  return unit;
+}
+
+function versionVisibility(value) {
+  return value === 'public' ? 'public' : 'private';
+}
+
+function sendRouteError(res, error, fallback) {
+  const candidate = Number(error?.statusCode);
+  const status = Number.isInteger(candidate) && candidate >= 400 && candidate <= 599 ? candidate : 500;
+  res.status(status).json({ error: error?.message || fallback });
+}
+
+async function cleanUpPersistedAudio(persisted) {
+  if (!persisted?.mediaAssetId) {
+    return;
+  }
+  try {
+    const asset = await deleteMediaAsset(persisted.mediaAssetId);
+    await removeStoredMedia(asset?.filePath);
+  } catch (error) {
+    console.error('Failed to clean up orphaned audio asset:', error);
+  }
+}
+
+app.get('/api/dubbing/units', optionalAuth, (req, res) => {
+  const articleId = String(req.query.articleId || 'speckled-band');
+  const chapterId = req.query.chapterId ? String(req.query.chapterId) : undefined;
+  const units = listContentUnits({ articleId, chapterId }).map(toPublicContentUnit);
+  res.json({ units });
+});
+
+app.get('/api/dubbing/unit-at-position', optionalAuth, async (req, res) => {
+  try {
+    const unit = getContentUnitByPosition({
+      articleId: String(req.query.articleId || 'speckled-band'),
+      chapterId: String(req.query.chapterId || ''),
+      paragraphIndex: normalizeInteger(req.query.paragraphIndex)
+    });
+    if (!unit) {
+      res.status(404).json({ error: 'Standard dubbing unit not found' });
+      return;
+    }
+    const versions = await communityStore.listVersionsForUnit(unit.id, req.user?.id || '');
+    res.json({ unit: toPublicContentUnit(unit), versions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to locate dubbing unit');
+  }
+});
+
+app.get('/api/dubbing/units/:unitId/versions', optionalAuth, async (req, res) => {
+  try {
+    const unit = requireContentUnit(req.params.unitId);
+    const versions = await communityStore.listVersionsForUnit(unit.id, req.user?.id || '');
+    res.json({ unit: toPublicContentUnit(unit), versions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to list dubbing versions');
+  }
+});
+
+app.get('/api/dubbing/adoptions', optionalAuth, async (req, res) => {
+  try {
+    const versions = req.user
+      ? await communityStore.listAdoptedVersions({
+          userId: req.user.id,
+          articleId: String(req.query.articleId || 'speckled-band'),
+          chapterId: req.query.chapterId ? String(req.query.chapterId) : undefined
+        })
+      : [];
+    res.json({ versions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to list adopted dubbing versions');
+  }
+});
+
+app.get('/api/dubbing/voice-designs', requireAuth, async (req, res) => {
+  try {
+    const versions = await communityStore.listVoiceDesignVersions({
+      ownerUserId: req.user.id,
+      articleId: String(req.query.articleId || 'speckled-band'),
+      characterCode: req.query.characterCode ? String(req.query.characterCode) : undefined
+    });
+    res.json({ versions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to list character voice designs');
+  }
+});
+
+app.post('/api/dubbing/voice-designs', requireAuth, async (req, res) => {
+  let savedPreview = null;
+  let previewAsset = null;
+  try {
+    const articleId = String(req.body.articleId || 'speckled-band');
+    const characterCode = String(req.body.characterCode || '').trim();
+    const characterName = String(req.body.characterName || '').trim();
+    const prompt = String(req.body.prompt || '').trim();
+    const previewText = String(req.body.previewText || '').trim();
+
+    if (!/^[a-z0-9_-]{2,64}$/i.test(characterCode)) {
+      res.status(400).json({ error: 'characterCode is invalid' });
+      return;
+    }
+    if (!characterName || characterName.length > 80) {
+      res.status(400).json({ error: 'characterName is required and must be at most 80 characters' });
+      return;
+    }
+    if (prompt.length < 5 || prompt.length > 500) {
+      res.status(400).json({ error: 'Voice prompt must contain 5-500 characters' });
+      return;
+    }
+    if (previewText.length < 5 || previewText.length > 200) {
+      res.status(400).json({ error: 'Preview text must contain 5-200 characters' });
+      return;
+    }
+
+    const designed = await designVoice({ prompt, previewText });
+    if (!designed.voiceId) {
+      throw new Error('Voice provider did not return a voice ID');
+    }
+    if (designed.trialAudioUrl) {
+      savedPreview = await saveAudioDataUrl(designed.trialAudioUrl);
+      try {
+        previewAsset = await createMediaAsset({
+          id: crypto.randomUUID(),
+          articleId,
+          chapterId: null,
+          paragraphIndex: null,
+          range: null,
+          mediaType: 'audio',
+          url: savedPreview.url,
+          sourceUrl: null,
+          filePath: savedPreview.filePath,
+          prompt,
+          sourceText: previewText,
+          provider: 'minimax',
+          model: 'voice-design',
+          userId: req.user.id,
+          metadata: { generationType: 'character-voice-preview', characterCode }
+        });
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    const version = await communityStore.createVoiceDesignVersion({
+      ownerUserId: req.user.id,
+      articleId,
+      characterCode,
+      characterName,
+      prompt,
+      previewText,
+      voiceId: designed.voiceId,
+      previewAudioUrl: savedPreview?.url || null,
+      previewMediaAssetId: previewAsset?.id || null
+    });
+    res.status(201).json({ version });
+  } catch (error) {
+    if (previewAsset) {
+      await deleteMediaAsset(previewAsset.id).catch(() => null);
+      await removeStoredMedia(previewAsset.filePath).catch(() => {});
+    } else if (savedPreview?.filePath) {
+      await removeStoredMedia(savedPreview.filePath).catch(() => {});
+    }
+    sendRouteError(res, error, 'Failed to create character voice design');
+  }
+});
+
+app.post('/api/dubbing/units/:unitId/ai-plan', requireAuth, async (req, res) => {
+  try {
+    const unit = requireContentUnit(req.params.unitId);
+    if (!unit.hasDialogue) {
+      res.status(400).json({ error: 'This paragraph does not contain character dialogue' });
+      return;
+    }
+    const plan = await planParagraphSpeech({
+      chapterId: unit.chapterId,
+      paragraphIndex: unit.paragraphIndex,
+      targetSegment: unit.sourceText
+    });
+    res.json({ unit: toPublicContentUnit(unit), plan });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to plan AI dubbing');
+  }
+});
+
+app.post('/api/dubbing/units/:unitId/ai-versions', requireAuth, async (req, res) => {
+  let persisted = null;
+  try {
+    const unit = requireContentUnit(req.params.unitId);
+    const designIds =
+      req.body.voiceDesignVersionIdsBySpeaker && typeof req.body.voiceDesignVersionIdsBySpeaker === 'object'
+        ? req.body.voiceDesignVersionIdsBySpeaker
+        : {};
+    const voiceOverrides = {};
+    const voiceDesigns = {};
+
+    for (const [speakerCode, versionId] of Object.entries(designIds)) {
+      const design = await communityStore.getVoiceDesignVersion(String(versionId), req.user.id);
+      if (!design || design.articleId !== unit.articleId || design.characterCode !== speakerCode) {
+        res.status(400).json({ error: `Invalid voice design for speaker ${speakerCode}` });
+        return;
+      }
+      voiceOverrides[speakerCode] = {
+        voiceId: design.voiceId,
+        characterName: design.characterName
+      };
+      voiceDesigns[speakerCode] = {
+        versionId: design.id,
+        characterName: design.characterName,
+        prompt: design.prompt,
+        previewText: design.previewText,
+        versionNumber: design.versionNumber
+      };
+    }
+
+    const result = await synthesizePlannedParagraphSpeech({
+      chapterId: unit.chapterId,
+      paragraphIndex: unit.paragraphIndex,
+      targetSegment: unit.sourceText,
+      segments: req.body.segments,
+      voiceOverrides,
+      generationSettings: req.body.generationSettings
+    });
+    persisted = await persistGeneratedAudio({
+      req,
+      audioUrl: result.audioUrl,
+      prompt: unit.sourceText,
+      sourceText: unit.sourceText,
+      model: process.env.MINIMAX_TTS_MODEL || 'speech-2.8-hd',
+      position: {
+        articleId: unit.articleId,
+        chapterId: unit.chapterId,
+        paragraphIndex: unit.paragraphIndex,
+        range: unit.range
+      },
+      userId: req.user.id,
+      metadata: {
+        generationType: 'community-ai-dubbing',
+        unitId: unit.id,
+        sourceHash: unit.sourceHash,
+        durationMs: result.durationMs,
+        segmentCount: result.segmentCount,
+        script: result.script,
+        planSegments: result.planSegments,
+        generationSettings: result.generationSettings,
+        ttsRequests: result.ttsRequests,
+        traceId: result.traceId
+      }
+    });
+    if (!persisted.mediaAssetId) {
+      throw new Error(persisted.mediaPersistenceError || 'AI dubbing audio could not be persisted');
+    }
+
+    const version = await communityStore.createDubbingVersion({
+      ownerUserId: req.user.id,
+      unitId: unit.id,
+      articleId: unit.articleId,
+      chapterId: unit.chapterId,
+      paragraphIndex: unit.paragraphIndex,
+      kind: 'ai',
+      status: versionVisibility(req.body.visibility),
+      audioUrl: persisted.audioUrl,
+      mediaAssetId: persisted.mediaAssetId,
+      sourceText: unit.sourceText,
+      sourceHash: unit.sourceHash,
+      durationMs: result.durationMs,
+      promptSnapshot: {
+        voiceDesigns,
+        performanceSegments: result.planSegments,
+        generationSettings: result.generationSettings,
+        ttsRequests: result.ttsRequests
+      },
+      segments: result.planSegments
+    });
+    res.status(201).json({ unit: toPublicContentUnit(unit), version });
+  } catch (error) {
+    await cleanUpPersistedAudio(persisted);
+    sendRouteError(res, error, 'Failed to create AI dubbing version');
+  }
+});
+
+app.post('/api/dubbing/units/:unitId/human-versions', requireAuth, async (req, res) => {
+  let persisted = null;
+  try {
+    const unit = requireContentUnit(req.params.unitId);
+    const audioDataUrl = String(req.body.audioDataUrl || '');
+    if (!audioDataUrl.startsWith('data:audio/') && !audioDataUrl.startsWith('data:video/')) {
+      res.status(400).json({ error: 'A valid audio recording is required' });
+      return;
+    }
+    persisted = await persistGeneratedAudio({
+      req,
+      audioUrl: audioDataUrl,
+      prompt: unit.sourceText,
+      sourceText: unit.sourceText,
+      model: null,
+      position: {
+        articleId: unit.articleId,
+        chapterId: unit.chapterId,
+        paragraphIndex: unit.paragraphIndex,
+        range: unit.range
+      },
+      provider: 'user_recording',
+      userId: req.user.id,
+      metadata: {
+        generationType: 'community-human-dubbing',
+        unitId: unit.id,
+        sourceHash: unit.sourceHash,
+        dialogueOnly: true
+      }
+    });
+    if (!persisted.mediaAssetId) {
+      throw new Error(persisted.mediaPersistenceError || 'Human dubbing audio could not be persisted');
+    }
+    const version = await communityStore.createDubbingVersion({
+      ownerUserId: req.user.id,
+      unitId: unit.id,
+      articleId: unit.articleId,
+      chapterId: unit.chapterId,
+      paragraphIndex: unit.paragraphIndex,
+      kind: 'human',
+      status: versionVisibility(req.body.visibility),
+      audioUrl: persisted.audioUrl,
+      mediaAssetId: persisted.mediaAssetId,
+      sourceText: unit.sourceText,
+      sourceHash: unit.sourceHash,
+      durationMs: null,
+      promptSnapshot: null,
+      segments: []
+    });
+    res.status(201).json({ unit: toPublicContentUnit(unit), version });
+  } catch (error) {
+    await cleanUpPersistedAudio(persisted);
+    sendRouteError(res, error, 'Failed to create human dubbing version');
+  }
+});
+
+app.patch('/api/dubbing/versions/:versionId/status', requireAuth, async (req, res) => {
+  try {
+    const status = String(req.body.status || '');
+    const version = await communityStore.setVersionStatus(req.params.versionId, req.user.id, status);
+    if (!version) {
+      res.status(404).json({ error: 'Dubbing version not found' });
+      return;
+    }
+    if (status === 'deleted' && version.mediaAssetId) {
+      try {
+        const asset = await deleteMediaAsset(version.mediaAssetId);
+        await removeStoredMedia(asset?.filePath);
+      } catch (cleanupError) {
+        console.error('Failed to clean up deleted private dubbing media:', cleanupError);
+      }
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to update dubbing status');
+  }
+});
+
+app.post('/api/dubbing/versions/:versionId/like', requireAuth, async (req, res) => {
+  try {
+    const version = await communityStore.setLike(req.params.versionId, req.user.id, true);
+    if (!version) {
+      res.status(404).json({ error: 'Public dubbing version not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to like dubbing version');
+  }
+});
+
+app.delete('/api/dubbing/versions/:versionId/like', requireAuth, async (req, res) => {
+  try {
+    const version = await communityStore.setLike(req.params.versionId, req.user.id, false);
+    if (!version) {
+      res.status(404).json({ error: 'Public dubbing version not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to unlike dubbing version');
+  }
+});
+
+app.put('/api/dubbing/units/:unitId/adoption', requireAuth, async (req, res) => {
+  try {
+    const unit = requireContentUnit(req.params.unitId);
+    const requestedVersion = await communityStore.getVersion(String(req.body.versionId || ''), req.user.id);
+    if (!requestedVersion || requestedVersion.unitId !== unit.id || requestedVersion.status !== 'public') {
+      res.status(400).json({ error: 'A public dubbing version from this unit is required' });
+      return;
+    }
+    const version = await communityStore.adoptVersion(requestedVersion.id, req.user.id);
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to adopt dubbing version');
+  }
+});
+
+app.delete('/api/dubbing/units/:unitId/adoption', requireAuth, async (req, res) => {
+  try {
+    const unit = requireContentUnit(req.params.unitId);
+    const removed = await communityStore.cancelAdoption(unit.id, req.user.id);
+    res.json({ ok: true, removed });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to cancel dubbing adoption');
+  }
+});
+
+app.post('/api/dubbing/versions/:versionId/reports', requireAuth, async (req, res) => {
+  try {
+    const reason = String(req.body.reason || '').trim();
+    if (reason.length < 3 || reason.length > 500) {
+      res.status(400).json({ error: 'Report reason must contain 3-500 characters' });
+      return;
+    }
+    const report = await communityStore.createReport({
+      versionId: req.params.versionId,
+      reporterUserId: req.user.id,
+      reason
+    });
+    if (!report) {
+      res.status(404).json({ error: 'Public dubbing version not found' });
+      return;
+    }
+    res.status(201).json({ report });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to report dubbing version');
   }
 });
 
