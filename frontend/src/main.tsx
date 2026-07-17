@@ -1693,6 +1693,7 @@ function ReaderPage({
   >({});
   const [playingAudioKey, setPlayingAudioKey] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [paragraphSpeechLoadingKey, setParagraphSpeechLoadingKey] = useState<string | null>(null);
   const [voicePanelOpen, setVoicePanelOpen] = useState(false);
   const [voicePanelTab, setVoicePanelTab] = useState<'all' | 'ai' | 'human' | 'mine'>('all');
   const [dubbingBundles, setDubbingBundles] = useState<Record<string, DubbingUnitBundle>>({});
@@ -2086,6 +2087,11 @@ function ReaderPage({
     resetAiComposerState();
   }
 
+  function closeAiDesignMenu() {
+    closeAiComposer();
+    setVoicePanelOpen(false);
+  }
+
   async function loadDubbingBundle(selection = selectedParagraph) {
     if (!selection) {
       return null;
@@ -2188,6 +2194,7 @@ function ReaderPage({
         return;
       }
       resetAiComposerState(false);
+      setVoicePanelOpen(false);
       setNotice(error instanceof Error ? error.message : 'AI 配音规划失败');
       window.setTimeout(() => setNotice(''), 2800);
     } finally {
@@ -2781,6 +2788,7 @@ function ReaderPage({
 
     selectedDubbingKeyRef.current = selectionKey;
     resetAiComposerState();
+    setVoicePanelOpen(false);
   }, [selectedParagraph?.chapterId, selectedParagraph?.paragraphIndex]);
 
   useEffect(() => {
@@ -2833,7 +2841,47 @@ function ReaderPage({
   }
 
   async function generateParagraphSpeech() {
-    await startAiDubbingCreation();
+    if (!selectedParagraph || paragraphSpeechLoadingKey) return;
+
+    const targetSegment = selectedParagraph.draft.trim();
+    if (!targetSegment) {
+      setNotice('目标段落不能为空');
+      window.setTimeout(() => setNotice(''), 1800);
+      return;
+    }
+
+    const key = rangeKey(selectedParagraph.chapterId, selectedParagraph.range);
+    const savedRange = selectedParagraph.range;
+    const savedChapterId = selectedParagraph.chapterId;
+    const savedParagraphIndex = selectedParagraph.paragraphIndex;
+
+    setParagraphSpeechLoadingKey(key);
+    setNotice('正在一键生成 AI 配音...');
+    try {
+      const result = await api.paragraphSpeech({
+        chapterId: savedChapterId,
+        paragraphIndex: savedParagraphIndex,
+        targetSegment,
+        range: savedRange
+      });
+      const audio = { ...result, chapterId: savedChapterId, range: savedRange, fromLibrary: false };
+      setParagraphAudios((prev) => ({ ...prev, [key]: audio }));
+      setPlatformParagraphAudios((prev) => ({ ...prev, [key]: audio }));
+      setSelectedParagraph(null);
+      setNotice('AI 配音已生成');
+      window.setTimeout(() => setNotice(''), 1800);
+      playParagraphAudio(key, result.audioUrl);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'AI 配音生成失败');
+      window.setTimeout(() => setNotice(''), 2600);
+    } finally {
+      setParagraphSpeechLoadingKey(null);
+    }
+  }
+
+  function openHumanDubbingPlaceholder() {
+    setNotice('“我来配音”下级菜单将在下一阶段实现');
+    window.setTimeout(() => setNotice(''), 2200);
   }
 
   async function generateParagraphImage() {
@@ -3297,67 +3345,16 @@ function ReaderPage({
       return <p className="voice-panel-empty">正在识别角色和表演方式...</p>;
     }
     if (!aiPlan || !aiComposerMatchesUnit(aiComposerBinding, bundle.unit)) return null;
-    const speakerOptions = aiPlan.roles.filter((role) =>
-      aiPlan.segments.some((segment) => segment.speakerCode === role.code)
-    );
-    const selectedDesign = voiceDesignsBySpeaker[selectedVoiceSpeaker];
     const capabilities = aiPlan.capabilities;
 
     return (
       <section className="ai-dubbing-composer">
-        <div className="ai-composer-heading">
+        <div className="ai-voice-lock">
           <div>
-            <strong>AI 配音创作</strong>
-            <small>逐句编辑，发布时组成不可修改的新版本</small>
+            <span className="ai-voice-lock-dot" aria-hidden="true" />
+            <strong>角色音色已锁定</strong>
           </div>
-          <button type="button" onClick={closeAiComposer}>关闭</button>
-        </div>
-
-        <div className="voice-design-editor">
-          <label>
-            设计角色
-            <select
-              value={selectedVoiceSpeaker}
-              onChange={(event) => {
-                const speakerCode = event.target.value;
-                setSelectedVoiceSpeaker(speakerCode);
-                const existing = voiceDesignsBySpeaker[speakerCode];
-                setVoicePrompt(existing?.prompt || '');
-                setVoicePreviewText(
-                  existing?.previewText ||
-                    aiPlan.segments.find((segment) => segment.speakerCode === speakerCode)?.text ||
-                    ''
-                );
-              }}
-            >
-              {speakerOptions.map((role) => <option key={role.code} value={role.code}>{role.label}</option>)}
-            </select>
-          </label>
-          <label>
-            音色提示词
-            <textarea
-              value={voicePrompt}
-              maxLength={500}
-              rows={3}
-              placeholder="例如：冷静、敏锐、克制的成年男性声音，语气清晰而有洞察力"
-              onChange={(event) => setVoicePrompt(event.target.value)}
-            />
-          </label>
-          <label>
-            试听文本
-            <input
-              value={voicePreviewText}
-              maxLength={200}
-              onChange={(event) => setVoicePreviewText(event.target.value)}
-            />
-          </label>
-          <div className="voice-design-actions">
-            <button type="button" onClick={() => void saveCharacterVoiceDesign()} disabled={voiceDesignSaving}>
-              {voiceDesignSaving ? '生成声线中...' : selectedDesign ? '生成新声线版本' : '生成并保存声线'}
-            </button>
-            {selectedDesign && <span>已选 {selectedDesign.characterName} V{selectedDesign.versionNumber}</span>}
-            {selectedDesign?.previewAudioUrl && <audio controls src={selectedDesign.previewAudioUrl} />}
-          </div>
+          <small>这里只调整台词的停顿、情绪与节奏，不创建或更换角色声线。</small>
         </div>
 
         <details className="minimax-global-settings">
@@ -3557,63 +3554,15 @@ function ReaderPage({
                       onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceSetting', { volume: Number(event.target.value) })}
                     />
                   </label>
-                  <label>
-                    基础音调 {recipe.voiceSetting.pitch > 0 ? '+' : ''}{recipe.voiceSetting.pitch}
-                    <input
-                      type="range"
-                      min={capabilities.ranges.pitch.min}
-                      max={capabilities.ranges.pitch.max}
-                      step={capabilities.ranges.pitch.step}
-                      value={recipe.voiceSetting.pitch}
-                      onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceSetting', { pitch: Number(event.target.value) })}
-                    />
-                  </label>
+                  <div className="locked-setting">
+                    <span>角色音色与基础音调</span>
+                    <strong>平台锁定</strong>
+                  </div>
                 </div>
 
                 <details className="segment-advanced-settings">
-                  <summary>高级参数：音色来源、声音塑形与发音</summary>
+                  <summary>发音与文本选项</summary>
                   <div className="ai-segment-fields">
-                    <label>
-                      音色来源
-                      <select
-                        value={recipe.voiceSource.mode}
-                        onChange={(event) => setRecipeVoiceSourceMode(
-                          segment.segmentId,
-                          event.target.value as MiniMaxSegmentRecipe['voiceSource']['mode']
-                        )}
-                      >
-                        <option value="default">角色当前声线</option>
-                        <option value="voiceId">指定 voice_id</option>
-                        <option value="blend">混合音色</option>
-                      </select>
-                    </label>
-                    {recipe.voiceSource.mode === 'voiceId' && (
-                      <label className="wide">
-                        MiniMax voice_id
-                        <input
-                          value={recipe.voiceSource.voiceId}
-                          onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceSource', { voiceId: event.target.value })}
-                        />
-                      </label>
-                    )}
-                    <label>
-                      效果器音高 {recipe.voiceModify.pitch}
-                      <input type="range" min={capabilities.ranges.effect.min} max={capabilities.ranges.effect.max} step={capabilities.ranges.effect.step} value={recipe.voiceModify.pitch} onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceModify', { pitch: Number(event.target.value) })} />
-                    </label>
-                    <label>
-                      刚劲 ← {recipe.voiceModify.intensity} → 轻柔
-                      <input type="range" min={capabilities.ranges.effect.min} max={capabilities.ranges.effect.max} step={capabilities.ranges.effect.step} value={recipe.voiceModify.intensity} onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceModify', { intensity: Number(event.target.value) })} />
-                    </label>
-                    <label>
-                      浑厚 ← {recipe.voiceModify.timbre} → 清脆
-                      <input type="range" min={capabilities.ranges.effect.min} max={capabilities.ranges.effect.max} step={capabilities.ranges.effect.step} value={recipe.voiceModify.timbre} onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceModify', { timbre: Number(event.target.value) })} />
-                    </label>
-                    <label>
-                      声音效果
-                      <select value={recipe.voiceModify.soundEffects} onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceModify', { soundEffects: event.target.value })}>
-                        {capabilities.soundEffects.map((item) => <option key={item.value || 'none'} value={item.value}>{item.label}</option>)}
-                      </select>
-                    </label>
                     <label className="toggle-field">
                       <input type="checkbox" checked={recipe.voiceSetting.englishNormalization} onChange={(event) => updateRecipeSection(segment.segmentId, 'voiceSetting', { englishNormalization: event.target.checked })} />
                       英文数字规范化
@@ -3635,32 +3584,18 @@ function ReaderPage({
                       />
                     </label>
                   </div>
-
-                  {recipe.voiceSource.mode === 'blend' && (
-                    <div className="timbre-weight-editor">
-                      <strong>混合音色（2–{capabilities.maxTimbreWeights} 个）</strong>
-                      {recipe.voiceSource.timbreWeights.map((item, index) => (
-                        <div key={`${segment.segmentId}-weight-${index}`}>
-                          <input placeholder="voice_id" value={item.voiceId} onChange={(event) => updateTimbreWeight(segment.segmentId, index, { voiceId: event.target.value })} />
-                          <input type="number" min={1} max={100} step={1} value={item.weight} onChange={(event) => updateTimbreWeight(segment.segmentId, index, { weight: Number(event.target.value) })} />
-                          <button type="button" disabled={recipe.voiceSource.timbreWeights.length <= 2} onClick={() => removeTimbreWeight(segment.segmentId, index)}>删除</button>
-                        </div>
-                      ))}
-                      <button type="button" disabled={recipe.voiceSource.timbreWeights.length >= capabilities.maxTimbreWeights} onClick={() => addTimbreWeight(segment.segmentId)}>添加音色</button>
-                    </div>
-                  )}
                 </details>
               </article>
             );
           })}
         </div>
         <div className="ai-composer-actions">
-          <button type="button" onClick={() => void saveAiDubbingVersion('private')} disabled={voiceSaving}>保存私密</button>
-          <button type="button" onClick={() => void saveAiDubbingVersion('public')} disabled={voiceSaving}>
+          <button className="ai-secondary-action" type="button" onClick={() => void saveAiDubbingVersion('private')} disabled={voiceSaving}>保存私密</button>
+          <button className="ai-primary-action" type="button" onClick={() => void saveAiDubbingVersion('public')} disabled={voiceSaving}>
             {voiceSaving ? '生成中...' : '生成并公开新版本'}
           </button>
         </div>
-        <small>未自定义的角色继续使用平台默认声线。当前单元：{bundle.unit.sourceText.slice(0, 46)}...</small>
+        <small>角色声线由平台统一锁定。当前单元：{bundle.unit.sourceText.slice(0, 46)}...</small>
       </section>
     );
   }
@@ -3682,88 +3617,87 @@ function ReaderPage({
 
     return (
       <div
-        className="selection-voice-panel"
+        className="selection-voice-panel ai-design-panel"
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="voice-panel-tabs">
-          {([['all', '全部'], ['ai', 'AI 配音'], ['human', '真人配音'], ['mine', '我的作品']] as const).map(([value, label]) => (
-            <button key={value} type="button" className={voicePanelTab === value ? 'active' : ''} onClick={() => setVoicePanelTab(value)}>{label}</button>
-          ))}
-        </div>
+        <header className="ai-design-panel-header">
+          <div>
+            <span>AI DUBBING DESIGN</span>
+            <strong>我来设计 AI 配音</strong>
+            <p>按句调整表演方式，角色音色始终保持不变。</p>
+          </div>
+          <button type="button" className="ai-design-close" onClick={closeAiDesignMenu} aria-label="关闭 AI 配音设计">
+            ×
+          </button>
+        </header>
 
         {loading ? (
-          <p className="voice-panel-empty">正在加载...</p>
+          <div className="ai-design-loading">
+            <span aria-hidden="true" />
+            <p>正在准备这段台词...</p>
+          </div>
         ) : !bundle ? (
           <p className="voice-panel-empty">暂时无法读取这个段落的配音。</p>
         ) : (
-          <div className="voice-panel-section">
-            {platformParagraphAudios[rangeKey(bundle.unit.chapterId, bundle.unit.range)] && (
-              <article className={`voice-recording-row dubbing-version-card${bundle.versions.some((version) => version.adoptedByMe) ? '' : ' adopted'}`}>
-                <div className="dubbing-version-summary">
-                  <strong>平台默认配音</strong>
-                  <small>{bundle.versions.some((version) => version.adoptedByMe) ? '可恢复' : '当前使用'}</small>
-                  <span>平台统一选角与表演导演</span>
-                </div>
-                <div className="voice-recording-actions">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      toggleParagraphAudio(
-                        `platform-${bundle.unit.id}`,
-                        platformParagraphAudios[rangeKey(bundle.unit.chapterId, bundle.unit.range)].audioUrl
-                      )
-                    }
-                  >
-                    播放
-                  </button>
-                  {bundle.versions.some((version) => version.adoptedByMe) && (
-                    <button type="button" onClick={() => void cancelDubbingAdoption(bundle.unit)}>
-                      恢复平台默认
-                    </button>
-                  )}
-                </div>
-              </article>
-            )}
-            <div className="dubbing-create-actions">
-              {user ? (
-                <>
-                  <button type="button" onClick={() => void startAiDubbingCreation()} disabled={aiPlanning}>创建 AI 配音</button>
-                  {recordingState === 'recording' ? (
-                    <button type="button" onClick={stopUserRecording}>停止真人录音</button>
-                  ) : (
-                    <button type="button" onClick={() => void startUserRecording()}>录制真人配音</button>
-                  )}
-                </>
-              ) : (
-                <button type="button" onClick={() => setPage('login')}>登录后创作、点赞或采用</button>
-              )}
+          <div className="ai-design-panel-body">
+            <div className="ai-design-source">
+              <span>当前段落</span>
+              <p>{bundle.unit.sourceText}</p>
             </div>
 
             {renderAiComposer(bundle)}
 
-            <div className="voice-recorder">
-              {recordingPreviewUrl && (
-                <>
-                  <audio controls src={recordingPreviewUrl} />
-                  <button type="button" onClick={() => void saveUserRecording('private')} disabled={voiceSaving}>
-                    保存私密
-                  </button>
-                  <button type="button" onClick={() => void saveUserRecording('public')} disabled={voiceSaving}>
-                    保存公开
-                  </button>
-                  <button type="button" onClick={resetRecordingDraft}>
-                    丢弃
-                  </button>
-                </>
-              )}
-            </div>
-
-            {versions.length ? (
-              versions.map((version) => renderDubbingVersionCard(version, bundle.unit))
-            ) : (
-              <p className="voice-panel-empty">这个分类下还没有配音版本。</p>
-            )}
+            <details className="ai-design-library">
+              <summary>
+                <div>
+                  <strong>已有配音版本</strong>
+                  <small>{bundle.versions.length} 个社区版本</small>
+                </div>
+                <span>查看</span>
+              </summary>
+              <div className="ai-design-library-content">
+                <div className="voice-panel-tabs">
+                  {([['all', '全部'], ['ai', 'AI 配音'], ['human', '真人配音'], ['mine', '我的作品']] as const).map(([value, label]) => (
+                    <button key={value} type="button" className={voicePanelTab === value ? 'active' : ''} onClick={() => setVoicePanelTab(value)}>{label}</button>
+                  ))}
+                </div>
+                <div className="voice-panel-section">
+                  {platformParagraphAudios[rangeKey(bundle.unit.chapterId, bundle.unit.range)] && (
+                    <article className={`voice-recording-row dubbing-version-card${bundle.versions.some((version) => version.adoptedByMe) ? '' : ' adopted'}`}>
+                      <div className="dubbing-version-summary">
+                        <strong>平台默认配音</strong>
+                        <small>{bundle.versions.some((version) => version.adoptedByMe) ? '可恢复' : '当前使用'}</small>
+                        <span>平台统一选角与表演导演</span>
+                      </div>
+                      <div className="voice-recording-actions">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            toggleParagraphAudio(
+                              `platform-${bundle.unit.id}`,
+                              platformParagraphAudios[rangeKey(bundle.unit.chapterId, bundle.unit.range)].audioUrl
+                            )
+                          }
+                        >
+                          播放
+                        </button>
+                        {bundle.versions.some((version) => version.adoptedByMe) && (
+                          <button type="button" onClick={() => void cancelDubbingAdoption(bundle.unit)}>
+                            恢复平台默认
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  )}
+                  {versions.length ? (
+                    versions.map((version) => renderDubbingVersionCard(version, bundle.unit))
+                  ) : (
+                    <p className="voice-panel-empty">这个分类下还没有配音版本。</p>
+                  )}
+                </div>
+              </div>
+            </details>
           </div>
         )}
       </div>
@@ -3857,7 +3791,10 @@ function ReaderPage({
     ? rangeKey(selectedParagraph.chapterId, selectedParagraph.range)
     : null;
   const imageGenerating = Boolean(currentRangeKey && paragraphImageLoadingKey === currentRangeKey);
-  const speechGenerating = aiPlanning || voiceSaving;
+  const oneClickSpeechGenerating = Boolean(
+    currentRangeKey && paragraphSpeechLoadingKey === currentRangeKey
+  );
+  const speechGenerating = oneClickSpeechGenerating || aiPlanning || voiceSaving;
 
   return (
     <section className="app-shell">
@@ -4142,17 +4079,32 @@ function ReaderPage({
                     onClick={generateParagraphSpeech}
                     disabled={imageGenerating || speechGenerating}
                   >
-                    {speechGenerating ? '处理中...' : '创作 AI 配音'}
+                    {oneClickSpeechGenerating ? '生成中...' : '一键生成 AI 配音'}
                   </button>
                   <button
                     type="button"
+                    className="selection-menu-button"
+                    onClick={openHumanDubbingPlaceholder}
+                    disabled={imageGenerating || speechGenerating}
+                  >
+                    <span>我来配音</span>
+                    <span className="selection-menu-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={voicePanelOpen ? 'selection-menu-button active' : 'selection-menu-button'}
+                    aria-expanded={voicePanelOpen}
                     onClick={() => {
-                      setVoicePanelOpen((open) => !open);
-                      setVoicePanelTab('all');
+                      if (voicePanelOpen) {
+                        closeAiDesignMenu();
+                        return;
+                      }
+                      void startAiDubbingCreation();
                     }}
                     disabled={imageGenerating || speechGenerating}
                   >
-                    更多配音
+                    <span>我来设计 AI 配音</span>
+                    <span className="selection-menu-chevron" aria-hidden="true">›</span>
                   </button>
                   {voicePanelOpen && renderVoicePanel()}
                 </div>

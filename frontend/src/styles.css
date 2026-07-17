@@ -1944,6 +1944,417 @@ button:disabled {
   gap: 7px;
 }
 
+/* Paragraph creation actions and the AI dubbing design sheet */
+.selection-toolbar {
+  gap: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  background: rgba(250, 250, 252, 0.92);
+  padding: 6px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.16);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+.selection-toolbar > button {
+  min-height: 38px;
+  border-radius: 10px;
+  padding: 9px 13px;
+  color: #1d1d1f;
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.selection-toolbar > button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.055);
+}
+
+.selection-toolbar > button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.selection-toolbar > .selection-menu-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.selection-toolbar > .selection-menu-button.active {
+  background: rgba(0, 113, 227, 0.1);
+  color: #0066cc;
+}
+
+.selection-menu-chevron {
+  display: inline-block;
+  color: #86868b;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 0.8;
+  transition: transform 180ms ease;
+}
+
+.selection-menu-button.active .selection-menu-chevron {
+  color: #0066cc;
+  transform: rotate(90deg);
+}
+
+.selection-voice-panel.ai-design-panel {
+  top: calc(100% + 12px);
+  width: min(960px, calc(100vw - 32px));
+  max-height: min(78vh, 820px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 24px;
+  background: rgba(250, 250, 252, 0.96);
+  padding: 0;
+  color: #1d1d1f;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24), 0 2px 8px rgba(0, 0, 0, 0.08);
+  backdrop-filter: saturate(180%) blur(30px);
+  overscroll-behavior: contain;
+}
+
+.ai-design-panel-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(250, 250, 252, 0.9);
+  padding: 22px 24px 18px;
+  backdrop-filter: saturate(180%) blur(24px);
+}
+
+.ai-design-panel-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.ai-design-panel-header span {
+  color: #86868b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.ai-design-panel-header strong {
+  color: #1d1d1f;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.ai-design-panel-header p {
+  margin: 2px 0 0;
+  color: #6e6e73;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.selection-toolbar .ai-design-close {
+  display: grid;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #e8e8ed;
+  padding: 0;
+  color: #6e6e73;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.selection-toolbar .ai-design-close:hover:not(:disabled) {
+  background: #dedee3;
+  color: #1d1d1f;
+}
+
+.ai-design-loading {
+  display: grid;
+  min-height: 260px;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  color: #6e6e73;
+}
+
+.ai-design-loading span {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #d2d2d7;
+  border-top-color: #0071e3;
+  border-radius: 50%;
+  animation: ai-design-spin 800ms linear infinite;
+}
+
+.ai-design-loading p {
+  margin: 0;
+  font-size: 13px;
+}
+
+@keyframes ai-design-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ai-design-panel-body {
+  display: grid;
+  gap: 16px;
+  padding: 20px 24px 26px;
+}
+
+.ai-design-source {
+  display: grid;
+  gap: 7px;
+  border-radius: 14px;
+  background: #f0f0f2;
+  padding: 14px 16px;
+}
+
+.ai-design-source span {
+  color: #86868b;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ai-design-source p {
+  max-height: 88px;
+  overflow: auto;
+  margin: 0;
+  color: #3a3a3c;
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.selection-toolbar .ai-dubbing-composer {
+  gap: 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.ai-voice-lock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(52, 199, 89, 0.22);
+  border-radius: 14px;
+  background: rgba(52, 199, 89, 0.08);
+  padding: 12px 14px;
+}
+
+.ai-voice-lock > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.ai-voice-lock-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #34c759;
+  box-shadow: 0 0 0 4px rgba(52, 199, 89, 0.12);
+}
+
+.ai-voice-lock strong {
+  color: #1d1d1f;
+  font-size: 13px;
+}
+
+.ai-voice-lock small {
+  color: #4d6654;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.ai-design-panel .minimax-global-settings,
+.ai-design-panel .segment-advanced-settings,
+.ai-design-library {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 12px 14px;
+}
+
+.ai-design-panel .minimax-global-settings > summary,
+.ai-design-panel .segment-advanced-settings > summary,
+.ai-design-library > summary {
+  color: #1d1d1f;
+  font-size: 13px;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.ai-design-panel details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-design-panel .ai-segment-list {
+  gap: 12px;
+}
+
+.ai-design-panel .ai-segment-editor {
+  gap: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.ai-design-panel input,
+.ai-design-panel select,
+.ai-design-panel textarea {
+  border-color: #d2d2d7;
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 10px;
+  color: #1d1d1f;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.ai-design-panel input:focus,
+.ai-design-panel select:focus,
+.ai-design-panel textarea:focus {
+  border-color: #0071e3;
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.14);
+}
+
+.ai-design-panel .annotated-script {
+  border-color: #d2d2d7;
+  border-radius: 12px;
+  background: #fbfbfd;
+}
+
+.selection-toolbar .ai-dubbing-composer .script-character:hover,
+.selection-toolbar .ai-dubbing-composer .script-character.active {
+  background: rgba(0, 113, 227, 0.09);
+  box-shadow: inset 0 -2px 0 #0071e3;
+}
+
+.selection-toolbar .ai-dubbing-composer .speech-annotation-chip {
+  border-color: rgba(0, 113, 227, 0.2);
+  background: rgba(0, 113, 227, 0.08);
+  color: #0066cc;
+}
+
+.locked-setting {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-height: 54px;
+  border-radius: 10px;
+  background: #f2f2f7;
+  padding: 8px 10px;
+}
+
+.locked-setting span {
+  color: #86868b;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.locked-setting strong {
+  color: #3a3a3c;
+  font-size: 12px;
+}
+
+.selection-toolbar .ai-design-panel button {
+  border: 0;
+  border-radius: 10px;
+  background: #e8e8ed;
+  padding: 8px 12px;
+  color: #1d1d1f;
+  font-weight: 500;
+}
+
+.selection-toolbar .ai-design-panel button:hover:not(:disabled) {
+  background: #dedee3;
+}
+
+.selection-toolbar .ai-design-panel .ai-primary-action {
+  background: #0071e3;
+  color: #fff;
+}
+
+.selection-toolbar .ai-design-panel .ai-primary-action:hover:not(:disabled) {
+  background: #0077ed;
+}
+
+.selection-toolbar .ai-design-panel .ai-secondary-action {
+  background: #e8e8ed;
+  color: #1d1d1f;
+}
+
+.ai-composer-actions {
+  justify-content: flex-end;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 16px;
+}
+
+.ai-design-library {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ai-design-library > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+}
+
+.ai-design-library > summary > div {
+  display: grid;
+  gap: 2px;
+}
+
+.ai-design-library > summary small {
+  color: #86868b;
+  font-weight: 400;
+}
+
+.ai-design-library > summary > span {
+  color: #0071e3;
+  font-size: 12px;
+}
+
+.ai-design-library-content {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 14px 16px 16px;
+}
+
+.ai-design-panel .voice-panel-tabs {
+  margin: 0;
+  border-radius: 10px;
+  background: #e8e8ed;
+  padding: 2px;
+}
+
+.selection-toolbar .ai-design-panel .voice-panel-tabs button {
+  border: 0;
+  background: transparent;
+  color: #3a3a3c;
+}
+
+.selection-toolbar .ai-design-panel .voice-panel-tabs button.active {
+  background: #fff;
+  color: #1d1d1f;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
 @media (max-width: 680px) {
   .selection-voice-panel {
     position: fixed;
@@ -1984,6 +2395,43 @@ button:disabled {
   .voice-design-editor label:nth-child(2),
   .voice-design-actions {
     grid-column: 1;
+  }
+
+  .selection-toolbar {
+    justify-content: stretch;
+  }
+
+  .selection-toolbar > button {
+    flex: 1 1 calc(50% - 4px);
+    justify-content: center;
+  }
+
+  .selection-voice-panel.ai-design-panel {
+    top: 16px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: calc(100vh - 32px);
+    border-radius: 20px;
+  }
+
+  .ai-design-panel-header,
+  .ai-design-panel-body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .ai-voice-lock {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ai-voice-lock small {
+    text-align: left;
+  }
+
+  .primary-settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
