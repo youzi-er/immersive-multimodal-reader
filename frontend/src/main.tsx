@@ -267,6 +267,12 @@ type DubbingPlan = {
   voicesInitializedNow: boolean;
 };
 
+type AiComposerBinding = {
+  unitId: string;
+  sourceHash: string;
+  selectionKey: string;
+};
+
 type VoiceDesignVersion = {
   id: string;
   designId: string;
@@ -1694,7 +1700,10 @@ function ReaderPage({
   const [voiceSaving, setVoiceSaving] = useState(false);
   const [aiComposerOpen, setAiComposerOpen] = useState(false);
   const [aiPlan, setAiPlan] = useState<DubbingPlan | null>(null);
+  const [aiComposerBinding, setAiComposerBinding] = useState<AiComposerBinding | null>(null);
   const [aiPlanning, setAiPlanning] = useState(false);
+  const aiComposerRequestRef = useRef(0);
+  const selectedDubbingKeyRef = useRef<string | null>(null);
   const [selectedVoiceSpeaker, setSelectedVoiceSpeaker] = useState('');
   const [voicePrompt, setVoicePrompt] = useState('');
   const [voicePreviewText, setVoicePreviewText] = useState('');
@@ -2045,6 +2054,38 @@ function ReaderPage({
     return `${selection.chapterId}-${selection.paragraphIndex}`;
   }
 
+  function aiComposerMatchesUnit(binding: AiComposerBinding | null, unit: ContentUnit) {
+    return Boolean(
+      binding &&
+        binding.unitId === unit.id &&
+        binding.sourceHash === unit.sourceHash &&
+        binding.selectionKey === `${unit.chapterId}-${unit.paragraphIndex}`
+    );
+  }
+
+  function resetAiComposerState(invalidateRequest = true) {
+    if (invalidateRequest) {
+      aiComposerRequestRef.current += 1;
+    }
+    setAiPlanning(false);
+    setVoiceSaving(false);
+    setVoiceDesignSaving(false);
+    setAiComposerOpen(false);
+    setAiPlan(null);
+    setAiComposerBinding(null);
+    setSelectedVoiceSpeaker('');
+    setVoicePrompt('');
+    setVoicePreviewText('');
+    setVoiceDesignsBySpeaker({});
+    setAnnotationCursorBySegment({});
+    setPauseSecondsBySegment({});
+    setVocalTagBySegment({});
+  }
+
+  function closeAiComposer() {
+    resetAiComposerState();
+  }
+
   async function loadDubbingBundle(selection = selectedParagraph) {
     if (!selection) {
       return null;
@@ -2080,25 +2121,47 @@ function ReaderPage({
       setPage('login');
       return;
     }
-    if (!selectedParagraph || aiPlanning) {
+    if (!selectedParagraph || aiPlanning || voiceSaving) {
       return;
     }
 
+    const requestedSelection = selectedParagraph;
+    const requestedSelectionKey = dubbingBundleKey(requestedSelection);
+    const requestId = aiComposerRequestRef.current + 1;
+    aiComposerRequestRef.current = requestId;
+
+    resetAiComposerState(false);
     setAiPlanning(true);
     setAiComposerOpen(true);
     setVoicePanelOpen(true);
     try {
       const bundle =
-        dubbingBundles[dubbingBundleKey(selectedParagraph)] || (await loadDubbingBundle(selectedParagraph));
-      if (!bundle) return;
+        dubbingBundles[requestedSelectionKey] || (await loadDubbingBundle(requestedSelection));
+      if (!bundle) {
+        throw new Error('暂时无法读取这个段落的配音');
+      }
       if (!bundle.unit.hasDialogue) {
         throw new Error('这个段落没有角色对白，不需要创建配音');
       }
-      const { plan } = await api.planAiDubbing(bundle.unit.id);
+      const { unit, plan } = await api.planAiDubbing(bundle.unit.id);
+      if (
+        aiComposerRequestRef.current !== requestId ||
+        selectedDubbingKeyRef.current !== requestedSelectionKey
+      ) {
+        return;
+      }
+      if (unit.id !== bundle.unit.id || unit.sourceHash !== bundle.unit.sourceHash) {
+        throw new Error('标准段落已更新，请重新打开 AI 配音编辑器');
+      }
       if (!plan.segments.length) {
         throw new Error('没有从这个段落识别出可配音的角色对白');
       }
       const firstSpeaker = plan.segments.find((segment) => segment.speakerCode)?.speakerCode || '';
+      setAiComposerBinding({
+        unitId: unit.id,
+        sourceHash: unit.sourceHash,
+        selectionKey: requestedSelectionKey
+      });
       setAiPlan(plan);
       setAnnotationCursorBySegment(Object.fromEntries(plan.segments.map((segment) => {
         const punctuationOffset = Math.max(segment.text.indexOf('，'), segment.text.indexOf(','));
@@ -2121,11 +2184,16 @@ function ReaderPage({
       setVoiceDesignsBySpeaker({});
       setVoicePanelTab('mine');
     } catch (error) {
-      setAiComposerOpen(false);
+      if (aiComposerRequestRef.current !== requestId) {
+        return;
+      }
+      resetAiComposerState(false);
       setNotice(error instanceof Error ? error.message : 'AI 配音规划失败');
       window.setTimeout(() => setNotice(''), 2800);
     } finally {
-      setAiPlanning(false);
+      if (aiComposerRequestRef.current === requestId) {
+        setAiPlanning(false);
+      }
     }
   }
 
@@ -2283,7 +2351,9 @@ function ReaderPage({
   }
 
   async function saveCharacterVoiceDesign() {
-    if (!aiPlan || !selectedVoiceSpeaker || voiceDesignSaving) return;
+    if (!aiPlan || !aiComposerBinding || !selectedVoiceSpeaker || voiceDesignSaving) return;
+    if (selectedDubbingKeyRef.current !== aiComposerBinding.selectionKey) return;
+    const requestId = aiComposerRequestRef.current;
     const prompt = voicePrompt.trim();
     const previewText = voicePreviewText.trim();
     if (prompt.length < 5 || previewText.length < 5) {
@@ -2301,21 +2371,39 @@ function ReaderPage({
         prompt,
         previewText
       });
+      if (aiComposerRequestRef.current !== requestId) {
+        return;
+      }
       setVoiceDesignsBySpeaker((current) => ({ ...current, [selectedVoiceSpeaker]: version }));
       setNotice(`${version.characterName}声线 V${version.versionNumber} 已保存`);
       window.setTimeout(() => setNotice(''), 1800);
     } catch (error) {
+      if (aiComposerRequestRef.current !== requestId) {
+        return;
+      }
       setNotice(error instanceof Error ? error.message : '角色声线生成失败');
       window.setTimeout(() => setNotice(''), 2600);
     } finally {
-      setVoiceDesignSaving(false);
+      if (aiComposerRequestRef.current === requestId) {
+        setVoiceDesignSaving(false);
+      }
     }
   }
 
   async function saveAiDubbingVersion(visibility: 'private' | 'public') {
     if (!selectedParagraph || !aiPlan || voiceSaving) return;
-    const bundle = dubbingBundles[dubbingBundleKey(selectedParagraph)];
+    const selectionKey = dubbingBundleKey(selectedParagraph);
+    const bundle = dubbingBundles[selectionKey];
     if (!bundle) return;
+    if (!aiComposerMatchesUnit(aiComposerBinding, bundle.unit)) {
+      closeAiComposer();
+      setNotice('段落已经切换，请重新打开 AI 配音编辑器');
+      window.setTimeout(() => setNotice(''), 2600);
+      return;
+    }
+
+    const requestId = aiComposerRequestRef.current;
+    const requestedSelection = selectedParagraph;
     setVoiceSaving(true);
     try {
       const voiceDesignVersionIdsBySpeaker = Object.fromEntries(
@@ -2327,16 +2415,25 @@ function ReaderPage({
         generationSettings: aiPlan.generationSettings,
         visibility
       });
-      await loadDubbingBundle(selectedParagraph);
-      setAiComposerOpen(false);
-      setAiPlan(null);
+      await loadDubbingBundle(requestedSelection);
+      if (
+        aiComposerRequestRef.current === requestId &&
+        selectedDubbingKeyRef.current === selectionKey
+      ) {
+        closeAiComposer();
+      }
       setNotice(visibility === 'public' ? 'AI 配音新版本已公开' : 'AI 配音已私密保存');
       window.setTimeout(() => setNotice(''), 1800);
     } catch (error) {
+      if (aiComposerRequestRef.current !== requestId) {
+        return;
+      }
       setNotice(error instanceof Error ? error.message : 'AI 配音生成失败');
       window.setTimeout(() => setNotice(''), 3000);
     } finally {
-      setVoiceSaving(false);
+      if (aiComposerRequestRef.current === requestId) {
+        setVoiceSaving(false);
+      }
     }
   }
 
@@ -2675,6 +2772,16 @@ function ReaderPage({
       window.removeEventListener('pointerdown', handlePointerDown, true);
     };
   }, [selectedParagraph]);
+
+  useEffect(() => {
+    const selectionKey = selectedParagraph ? dubbingBundleKey(selectedParagraph) : null;
+    if (selectedDubbingKeyRef.current === selectionKey) {
+      return;
+    }
+
+    selectedDubbingKeyRef.current = selectionKey;
+    resetAiComposerState();
+  }, [selectedParagraph?.chapterId, selectedParagraph?.paragraphIndex]);
 
   useEffect(() => {
     if (!selectedParagraph) {
@@ -3186,9 +3293,10 @@ function ReaderPage({
 
   function renderAiComposer(bundle: DubbingUnitBundle) {
     if (!aiComposerOpen) return null;
-    if (aiPlanning || !aiPlan) {
+    if (aiPlanning) {
       return <p className="voice-panel-empty">正在识别角色和表演方式...</p>;
     }
+    if (!aiPlan || !aiComposerMatchesUnit(aiComposerBinding, bundle.unit)) return null;
     const speakerOptions = aiPlan.roles.filter((role) =>
       aiPlan.segments.some((segment) => segment.speakerCode === role.code)
     );
@@ -3202,7 +3310,7 @@ function ReaderPage({
             <strong>AI 配音创作</strong>
             <small>逐句编辑，发布时组成不可修改的新版本</small>
           </div>
-          <button type="button" onClick={() => setAiComposerOpen(false)}>关闭</button>
+          <button type="button" onClick={closeAiComposer}>关闭</button>
         </div>
 
         <div className="voice-design-editor">
