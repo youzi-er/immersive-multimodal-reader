@@ -97,3 +97,22 @@ export async function removeStoredMedia(filePath) {
 
   await fs.rm(resolved, { force: true });
 }
+
+export async function saveAndRegisterMedia({ save, register, cleanup = removeStoredMedia }) {
+  if (typeof save !== 'function' || typeof register !== 'function') {
+    throw new TypeError('saveAndRegisterMedia requires save and register functions');
+  }
+
+  const saved = await save();
+  try {
+    const asset = await register(saved);
+    return { saved, asset };
+  } catch (error) {
+    try {
+      await cleanup(saved?.filePath);
+    } catch (cleanupError) {
+      console.error('Failed to roll back an unregistered media file:', cleanupError);
+    }
+    throw error;
+  }
+}
