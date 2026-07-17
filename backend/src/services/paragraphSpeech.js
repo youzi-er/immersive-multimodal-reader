@@ -22,6 +22,7 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROMPTS_DIR = path.resolve(__dirname, '../prompts');
 const CACHE_DIR = path.resolve(__dirname, '../../cache');
+const PREPARED_VOICE_PATH = path.resolve(__dirname, '../../content/dubbing-plans/speckled-band.voices.v1.json');
 
 const MAX_PHASE3A_ATTEMPTS = 3;
 const TTS_CONCURRENCY = Number(process.env.SPEECH_TTS_CONCURRENCY) || 3;
@@ -320,14 +321,16 @@ async function lockSpeechVoices(phase1) {
 }
 
 async function loadVoiceCacheFromDisk() {
-  try {
-    const raw = await readFile(voiceCachePath(), 'utf8');
-    const parsed = JSON.parse(raw);
-    if (parsed?.状态 === '可合成' && Array.isArray(parsed.角色音色列表)) {
-      return parsed;
+  for (const candidatePath of [PREPARED_VOICE_PATH, voiceCachePath()]) {
+    try {
+      const raw = await readFile(candidatePath, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (parsed?.状态 === '可合成' && Array.isArray(parsed.角色音色列表)) {
+        return parsed;
+      }
+    } catch {
+      // Continue to the next prepared source before falling back to online initialization.
     }
-  } catch {
-    return null;
   }
 
   return null;
@@ -1439,23 +1442,23 @@ async function runPhase3a({ context, targetSegment, voices }) {
     );
     // #endregion
 
-    const raw = await callMessagesApiForJson({
-      system,
-      user: userJson,
-      temperature: attempt === 1 ? 0.5 : 0.2,
-      maxTokens: 2400
-    });
-
-    // #region agent log
-    debugLog(
-      'paragraphSpeech.js:runPhase3a',
-      'phase3a raw response',
-      { attempt, raw },
-      'P-recv'
-    );
-    // #endregion
-
     try {
+      const raw = await callMessagesApiForJson({
+        system,
+        user: userJson,
+        temperature: attempt === 1 ? 0.5 : 0.2,
+        maxTokens: 2400
+      });
+
+      // #region agent log
+      debugLog(
+        'paragraphSpeech.js:runPhase3a',
+        'phase3a raw response',
+        { attempt, raw },
+        'P-recv'
+      );
+      // #endregion
+
       validatePhase3aOutput(raw);
       const refined = refinePhase3aScript(raw, context, targetSegment, voices);
       const targetHasQuotedDialogue = /[“「『"][^”」』"]+[”」』"]/.test(targetSegment);
@@ -1696,10 +1699,31 @@ export async function planParagraphSpeech({ chapterId, paragraphIndex, targetSeg
   });
   const generationSettings = generationSettingsForVoices(voices);
 
+  return buildEditablePlanResponse({
+    script,
+    voices,
+    initializedNow,
+    generationSettings,
+    paragraphContext,
+    planSource: 'online-planner'
+  });
+}
+
+function buildEditablePlanResponse({
+  script,
+  voices,
+  initializedNow,
+  generationSettings,
+  paragraphContext,
+  planSource,
+  contentVersion = null
+}) {
+  const voiceSummary = buildVoiceSummary(voices);
+
   return {
     segments: editableScriptSnapshot(script, voices, generationSettings),
-    roles: buildVoiceSummary(voices).roles,
-    templates: buildVoiceSummary(voices).templates,
+    roles: voiceSummary.roles,
+    templates: voiceSummary.templates,
     capabilities: getMiniMaxSpeechCapabilities(),
     generationSettings,
     voicesInitializedNow: initializedNow,
@@ -1707,9 +1731,48 @@ export async function planParagraphSpeech({ chapterId, paragraphIndex, targetSeg
       chapterId: paragraphContext.chapterId,
       chapterTitle: paragraphContext.chapterTitle,
       paragraphIndex: paragraphContext.paragraphIndex,
-      originalTarget: paragraphContext.originalTarget
+      originalTarget: paragraphContext.originalTarget,
+      planSource,
+      contentVersion
     }
   };
+}
+
+export async function planPreparedParagraphSpeech({
+  chapterId,
+  paragraphIndex,
+  targetSegment,
+  preparedSegments,
+  planSource = 'prepared-manifest',
+  contentVersion = null
+}) {
+  const { paragraphContext, safeTarget } = paragraphSpeechContext({
+    chapterId,
+    paragraphIndex,
+    targetSegment,
+    requireFullParagraph: true
+  });
+  if (!Array.isArray(preparedSegments) || preparedSegments.length === 0) {
+    throw new Error('这个段落没有可用的预制对白方案');
+  }
+
+  const { voices, initializedNow } = await ensureSpeechVoices();
+  const script = scriptFromEditableSnapshot(preparedSegments);
+  validatePhase3aOutput(script);
+  const refined = refinePhase3aScript(script, paragraphContext.context, safeTarget, voices);
+  if (refined.片段列表.length === 0) {
+    throw new Error('预制对白方案与当前原文不匹配');
+  }
+  const generationSettings = generationSettingsForVoices(voices);
+  return buildEditablePlanResponse({
+    script: refined,
+    voices,
+    initializedNow,
+    generationSettings,
+    paragraphContext,
+    planSource,
+    contentVersion
+  });
 }
 
 async function synthesizePreparedScript({
