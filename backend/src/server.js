@@ -56,7 +56,7 @@ import {
   generateParagraphSpeech,
   getSpeechDebugInfo,
   getSpeechVoicesStatus,
-  planParagraphSpeech,
+  planPreparedParagraphSpeech,
   regenerateSpeechVoices,
   synthesizePlannedParagraphSpeech
 } from './services/paragraphSpeech.js';
@@ -67,6 +67,7 @@ import {
   toPublicContentUnit
 } from './content-units.js';
 import { communityStore } from './community-store.js';
+import { getPreparedDubbingPlan } from './prepared-dubbing-plans.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -936,18 +937,23 @@ app.post('/api/dubbing/voice-designs', requireAuth, async (req, res) => {
 app.post('/api/dubbing/units/:unitId/ai-plan', requireAuth, async (req, res) => {
   try {
     const unit = requireContentUnit(req.params.unitId);
-    if (!unit.hasDialogue) {
+    const prepared = getPreparedDubbingPlan(unit);
+    if (prepared.segments.length === 0) {
       res.status(400).json({ error: 'This paragraph does not contain character dialogue' });
       return;
     }
-    const plan = await planParagraphSpeech({
+    const plan = await planPreparedParagraphSpeech({
       chapterId: unit.chapterId,
       paragraphIndex: unit.paragraphIndex,
-      targetSegment: unit.sourceText
+      targetSegment: unit.sourceText,
+      preparedSegments: prepared.segments,
+      planSource: prepared.source,
+      contentVersion: prepared.contentVersion
     });
     res.json({ unit: toPublicContentUnit(unit), plan });
   } catch (error) {
-    sendRouteError(res, error, 'Failed to plan AI dubbing');
+    console.error('Failed to load prepared AI dubbing plan:', error);
+    res.status(503).json({ error: '配音方案暂时无法加载，请稍后重试' });
   }
 });
 

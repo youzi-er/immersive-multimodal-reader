@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { callMessagesApi, isRetryableMiniMaxError } from '../src/services/minimax.js';
+import {
+  callMessagesApi,
+  callMessagesApiForJsonWithRetry,
+  isRetryableMiniMaxError
+} from '../src/services/minimax.js';
 
 test('classifies overload and transient MiniMax responses as retryable', () => {
   assert.equal(isRetryableMiniMaxError(undefined, 529), true);
@@ -40,5 +44,31 @@ test('retries a 529 text-planning response and returns the recovered result', as
     } else {
       process.env.MINIMAX_API_KEY = originalApiKey;
     }
+  }
+});
+
+test('retries malformed model JSON without exposing the raw response', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalApiKey = process.env.MINIMAX_API_KEY;
+  let attempts = 0;
+
+  process.env.MINIMAX_API_KEY = 'test-key';
+  globalThis.fetch = async () => {
+    attempts += 1;
+    const text = attempts === 1 ? '{"items":[{"id":1}{"id":2}]}' : '{"items":[{"id":1},{"id":2}]}';
+    return new Response(JSON.stringify({ content: [{ type: 'text', text }] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
+
+  try {
+    const result = await callMessagesApiForJsonWithRetry({ system: 'system', user: 'user' });
+    assert.equal(attempts, 2);
+    assert.deepEqual(result, { items: [{ id: 1 }, { id: 2 }] });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalApiKey === undefined) delete process.env.MINIMAX_API_KEY;
+    else process.env.MINIMAX_API_KEY = originalApiKey;
   }
 });

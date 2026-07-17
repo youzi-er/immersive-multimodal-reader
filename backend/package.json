@@ -7,6 +7,8 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "import:existing-audio": "node scripts/import-existing-audio.js",
+    "build:dubbing-plans": "node scripts/build-dubbing-plans.js",
+    "prepare:dubbing-speakers": "node scripts/prepare-dubbing-speakers.js",
     "build:clue-index": "node scripts/build-clue-index.js && node scripts/review-clue-index.js && node scripts/merge-clue-index.js",
     "build:clue-index:raw": "node scripts/build-clue-index.js",
     "review:clue-index": "node scripts/review-clue-index.js",
