@@ -339,12 +339,13 @@ export async function synthesizeSpeech({ text, voiceId, speed = 1, pitch = 0, em
   });
 }
 
-export async function generateImage({ prompt, aspectRatio = '16:9' }) {
+export async function generateImage({ prompt, aspectRatio = '16:9', promptOptimizer = false }) {
   return generateImageFromRequest({
     model: process.env.MINIMAX_IMAGE_MODEL || 'image-01',
     prompt,
     aspect_ratio: aspectRatio,
     response_format: 'url',
+    prompt_optimizer: promptOptimizer,
     n: 1
   });
 }

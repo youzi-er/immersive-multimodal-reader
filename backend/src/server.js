@@ -67,7 +67,10 @@ import {
   toPublicContentUnit
 } from './content-units.js';
 import { communityStore } from './community-store.js';
+import { coverStore } from './cover-store.js';
 import { getPreparedDubbingPlan } from './prepared-dubbing-plans.js';
+import { buildCoverPrompt } from './services/coverImage.js';
+import { ensureBookStyle } from './services/bookImageStyle.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -798,6 +801,16 @@ async function cleanUpPersistedAudio(persisted) {
   }
 }
 
+async function cleanUpPersistedImage(persisted) {
+  if (!persisted?.mediaAssetId) return;
+  try {
+    const asset = await deleteMediaAsset(persisted.mediaAssetId);
+    await removeStoredMedia(asset?.filePath);
+  } catch (error) {
+    console.error('Failed to clean up orphaned image asset:', error);
+  }
+}
+
 app.get('/api/dubbing/units', optionalAuth, (req, res) => {
   const articleId = String(req.query.articleId || 'speckled-band');
   const chapterId = req.query.chapterId ? String(req.query.chapterId) : undefined;
@@ -1247,6 +1260,165 @@ app.post('/api/dubbing/versions/:versionId/reports', requireAuth, async (req, re
   }
 });
 
+app.get('/api/covers/history', requireAuth, async (req, res) => {
+  try {
+    const articleId = String(req.query.articleId || 'speckled-band');
+    const versions = await coverStore.listHistory({ ownerUserId: req.user.id, articleId });
+    res.json({ versions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to load cover history');
+  }
+});
+
+app.get('/api/covers/current', optionalAuth, async (req, res) => {
+  try {
+    const articleId = String(req.query.articleId || 'speckled-band');
+    const version = req.user
+      ? await coverStore.getCurrentCover({ userId: req.user.id, articleId })
+      : null;
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to load the active cover');
+  }
+});
+
+app.get('/api/covers/community', optionalAuth, async (req, res) => {
+  try {
+    const scope = String(req.query.scope || 'all');
+    if (!['all', 'mine', 'collected'].includes(scope)) {
+      res.status(400).json({ error: 'Unsupported cover community scope' });
+      return;
+    }
+    const versions = await coverStore.listCommunityVersions({
+      articleId: String(req.query.articleId || ''),
+      currentUserId: req.user?.id || '',
+      sort: String(req.query.sort || 'popular'),
+      scope,
+      limit: normalizeInteger(req.query.limit) || 60
+    });
+    res.json({ versions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to load the cover community');
+  }
+});
+
+app.put('/api/covers/current', requireAuth, async (req, res) => {
+  try {
+    const articleId = String(req.body.articleId || 'speckled-band');
+    const versionId = String(req.body.versionId || '');
+    const version = await coverStore.setCurrentCover({ userId: req.user.id, articleId, versionId });
+    if (!version) {
+      res.status(400).json({ error: '请选择自己为这本书创作的有效封面' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to activate cover');
+  }
+});
+
+app.delete('/api/covers/current', requireAuth, async (req, res) => {
+  try {
+    const articleId = String(req.query.articleId || 'speckled-band');
+    const removed = await coverStore.clearCurrentCover({ userId: req.user.id, articleId });
+    res.json({ ok: true, removed, version: null });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to restore the official cover');
+  }
+});
+
+app.patch('/api/covers/versions/:versionId/status', requireAuth, async (req, res) => {
+  try {
+    const status = String(req.body.status || '');
+    if (!['public', 'withdrawn', 'deleted'].includes(status)) {
+      res.status(400).json({ error: 'Unsupported cover status' });
+      return;
+    }
+    const version = await coverStore.setVersionStatus(req.params.versionId, req.user.id, status);
+    if (!version) {
+      res.status(404).json({ error: 'Cover version not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to update cover status');
+  }
+});
+
+app.post('/api/covers/versions/:versionId/like', requireAuth, async (req, res) => {
+  try {
+    const version = await coverStore.setLike(req.params.versionId, req.user.id, true);
+    if (!version) {
+      res.status(404).json({ error: 'Public cover not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to like cover');
+  }
+});
+
+app.delete('/api/covers/versions/:versionId/like', requireAuth, async (req, res) => {
+  try {
+    const version = await coverStore.setLike(req.params.versionId, req.user.id, false);
+    if (!version) {
+      res.status(404).json({ error: 'Public cover not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to unlike cover');
+  }
+});
+
+app.post('/api/covers/versions/:versionId/collection', requireAuth, async (req, res) => {
+  try {
+    const version = await coverStore.setCollection(req.params.versionId, req.user.id, true);
+    if (!version) {
+      res.status(404).json({ error: 'Public cover not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to collect cover');
+  }
+});
+
+app.delete('/api/covers/versions/:versionId/collection', requireAuth, async (req, res) => {
+  try {
+    const version = await coverStore.setCollection(req.params.versionId, req.user.id, false);
+    if (!version) {
+      res.status(404).json({ error: 'Public cover not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to remove cover collection');
+  }
+});
+
+app.post('/api/covers/versions/:versionId/reports', requireAuth, async (req, res) => {
+  try {
+    const reason = String(req.body.reason || '').trim();
+    if (reason.length < 3 || reason.length > 500) {
+      res.status(400).json({ error: '举报原因需要 3—500 个字' });
+      return;
+    }
+    const report = await coverStore.createReport({
+      versionId: req.params.versionId,
+      reporterUserId: req.user.id,
+      reason
+    });
+    if (!report) {
+      res.status(404).json({ error: 'Public cover not found' });
+      return;
+    }
+    res.status(201).json({ report });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to report cover');
+  }
+});
+
 function normalizeVoiceRecordingQuery(query) {
   return {
     articleId: String(query.articleId || 'speckled-band'),
@@ -1528,6 +1700,109 @@ app.post('/api/ai/image', optionalAuth, async (req, res) => {
   }
 });
 
+app.post('/api/ai/cover', requireAuth, async (req, res) => {
+  let persisted = null;
+  try {
+    const articleId = String(req.body.articleId || 'speckled-band').trim();
+    const mode = String(req.body.mode || 'guided').trim();
+    const prompt = String(req.body.prompt || '').trim();
+    const mood = String(req.body.mood || '').trim().slice(0, 64);
+    const palette = String(req.body.palette || '').trim().slice(0, 64);
+    const composition = String(req.body.composition || '').trim().slice(0, 64);
+    const requestedParameters = req.body.parameters && typeof req.body.parameters === 'object'
+      ? req.body.parameters
+      : {};
+    const parameters = Object.fromEntries(
+      [
+        'cast', 'relationship', 'storyBeat', 'performance', 'shotSize',
+        'cameraAngle', 'lighting', 'colorGrade', 'texture'
+      ].map((key) => [key, String(requestedParameters[key] || '').trim().slice(0, 64)])
+        .filter(([, value]) => value)
+    );
+    const bookTitle = String(req.body.bookTitle || '斑点带子案').trim().slice(0, 255);
+    const bookAuthor = String(req.body.bookAuthor || 'Arthur Conan Doyle').trim().slice(0, 255);
+    const bookSubtitle = String(req.body.bookSubtitle || 'The Speckled Band').trim().slice(0, 255);
+    const remixedFromVersionId = String(req.body.remixedFromVersionId || '').trim() || null;
+
+    if (!articleId || !bookTitle || !bookAuthor || prompt.length < 5 || prompt.length > 900) {
+      res.status(400).json({ error: '请填写书名、作者和 5—900 字的封面描述' });
+      return;
+    }
+    if (!['guided', 'advanced'].includes(mode)) {
+      res.status(400).json({ error: '不支持的封面创作模式' });
+      return;
+    }
+    if (remixedFromVersionId) {
+      const source = await coverStore.getVersion(remixedFromVersionId, req.user.id);
+      const usable = source && source.articleId === articleId &&
+        (source.status === 'public' || source.ownerUserId === req.user.id);
+      if (!usable) {
+        res.status(400).json({ error: '引用的灵感封面不可用' });
+        return;
+      }
+    }
+
+    let prompts;
+    try {
+      const bookStyle = mode === 'guided' ? (await ensureBookStyle()).style : null;
+      prompts = buildCoverPrompt({ mode, prompt, mood, palette, composition, parameters, bookStyle });
+    } catch (error) {
+      res.status(400).json({ error: error.message || '封面提示词不符合要求' });
+      return;
+    }
+
+    const result = await generateImage({
+      prompt: prompts.finalPrompt,
+      aspectRatio: '2:3',
+      promptOptimizer: false
+    });
+    persisted = await persistGeneratedImage({
+      req,
+      sourceUrl: result.imageUrl,
+      prompt: prompts.finalPrompt,
+      sourceText: prompt,
+      model: process.env.MINIMAX_IMAGE_MODEL || 'image-01',
+      position: { articleId, chapterId: null, paragraphIndex: null, range: null },
+      userId: req.user.id,
+      metadata: {
+        generationType: 'book-cover',
+        mode,
+        mood,
+        palette,
+        composition,
+        parameters,
+        bookTitle,
+        bookAuthor,
+        bookSubtitle,
+        remixedFromVersionId,
+        traceId: result.traceId
+      }
+    });
+    const version = await coverStore.createVersion({
+      ownerUserId: req.user.id,
+      articleId,
+      status: 'private',
+      imageUrl: persisted.imageUrl,
+      mediaAssetId: persisted.mediaAssetId,
+      mode,
+      prompt: prompts.prompt,
+      finalPrompt: prompts.finalPrompt,
+      mood,
+      palette,
+      composition,
+      parameters,
+      bookTitle,
+      bookAuthor,
+      bookSubtitle,
+      remixedFromVersionId
+    });
+    res.status(201).json({ version, traceId: result.traceId });
+  } catch (error) {
+    await cleanUpPersistedImage(persisted);
+    sendRouteError(res, error, '封面生成失败');
+  }
+});
+
 app.post('/api/ai/paragraph-image', optionalAuth, async (req, res) => {
   try {
     const { chapterId, paragraphIndex, targetSegment } = req.body;
@@ -1766,6 +2041,10 @@ app.post('/api/ai/voice-design', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Immersive reader API running at http://localhost:${port}`);
+});
+
+process.on('SIGTERM', () => {
+  server.close();
 });

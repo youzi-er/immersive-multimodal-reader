@@ -9,6 +9,12 @@ import {
   type SelectionLayout,
   type TextRange
 } from './readerTextSelection';
+import {
+  CoverArtwork,
+  CoverStudio,
+  type CoverDraft,
+  type CoverVersion
+} from './cover';
 import './styles.css';
 
 type Page = 'home' | 'bookshelf' | 'reader' | 'community' | 'login' | 'register' | 'profile' | 'speech-debug';
@@ -90,13 +96,6 @@ type ClueImage = {
 type ChatMessage = {
   role: 'reader' | 'assistant';
   content: string;
-};
-
-type GeneratedSceneImage = {
-  imageUrl: string;
-  prompt: string;
-  mediaAssetId?: string | null;
-  cacheHit?: boolean;
 };
 
 type ParagraphImage = {
@@ -452,10 +451,9 @@ type SelectedParagraph = {
   range: TextRange;
 };
 
-type ContextTab = 'scene' | 'ai' | 'bag';
+type ContextTab = 'cover' | 'ai' | 'bag';
 type ReadingTheme = 'light' | 'paper' | 'night';
 type ReadingWidth = 'narrow' | 'standard' | 'wide';
-type SceneDiagram = 'layout' | 'positions' | 'clues';
 
 const TOKEN_KEY = 'immersive-reader-token';
 const USER_KEY = 'immersive-reader-user';
@@ -563,11 +561,56 @@ const api = {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
-  image: async (chapterId: string) =>
-    requestJson<GeneratedSceneImage>('/api/ai/image', {
+  currentCover: (articleId: string) =>
+    requestJson<{ version: CoverVersion | null }>(
+      `/api/covers/current?articleId=${encodeURIComponent(articleId)}`
+    ),
+  coverHistory: (articleId: string) =>
+    requestJson<{ versions: CoverVersion[] }>(
+      `/api/covers/history?articleId=${encodeURIComponent(articleId)}`
+    ),
+  coverCommunity: (
+    articleId: string,
+    sort: 'popular' | 'newest',
+    scope: 'all' | 'mine' | 'collected' = 'all'
+  ) => requestJson<{ versions: CoverVersion[] }>(
+    `/api/covers/community?articleId=${encodeURIComponent(articleId)}&sort=${encodeURIComponent(sort)}&scope=${encodeURIComponent(scope)}`
+  ),
+  createCover: (payload: CoverDraft) =>
+    requestJson<{ version: CoverVersion }>('/api/ai/cover', {
       method: 'POST',
-      body: JSON.stringify({ chapterId })
+      body: JSON.stringify(payload)
     }),
+  setCurrentCover: (articleId: string, versionId: string) =>
+    requestJson<{ version: CoverVersion }>('/api/covers/current', {
+      method: 'PUT',
+      body: JSON.stringify({ articleId, versionId })
+    }),
+  restoreOfficialCover: (articleId: string) =>
+    requestJson<{ ok: true; version: null }>(
+      `/api/covers/current?articleId=${encodeURIComponent(articleId)}`,
+      { method: 'DELETE' }
+    ),
+  setCoverStatus: (versionId: string, status: 'public' | 'withdrawn' | 'deleted') =>
+    requestJson<{ version: CoverVersion }>(
+      `/api/covers/versions/${encodeURIComponent(versionId)}/status`,
+      { method: 'PATCH', body: JSON.stringify({ status }) }
+    ),
+  likeCover: (versionId: string, liked: boolean) =>
+    requestJson<{ version: CoverVersion }>(
+      `/api/covers/versions/${encodeURIComponent(versionId)}/like`,
+      { method: liked ? 'POST' : 'DELETE' }
+    ),
+  collectCover: (versionId: string, collected: boolean) =>
+    requestJson<{ version: CoverVersion }>(
+      `/api/covers/versions/${encodeURIComponent(versionId)}/collection`,
+      { method: collected ? 'POST' : 'DELETE' }
+    ),
+  reportCover: (versionId: string, reason: string) =>
+    requestJson<{ report: { status: 'open' } }>(
+      `/api/covers/versions/${encodeURIComponent(versionId)}/reports`,
+      { method: 'POST', body: JSON.stringify({ reason }) }
+    ),
   paragraphImage: async (payload: {
     chapterId: string;
     paragraphIndex: number;
@@ -761,6 +804,9 @@ function App() {
   });
   const [clueImages, setClueImages] = useState<Record<string, ClueImage>>({});
   const [chapterId, setChapterId] = useState('speckled-band-1');
+  const [activeCover, setActiveCover] = useState<CoverVersion | null>(null);
+  const [coverInspiration, setCoverInspiration] = useState<CoverVersion | null>(null);
+  const [communitySection, setCommunitySection] = useState<'dubbing' | 'cover'>('dubbing');
   const [notice, setNotice] = useState('');
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -784,6 +830,24 @@ function App() {
       );
     });
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setActiveCover(null);
+      return;
+    }
+    api.currentCover('speckled-band')
+      .then(({ version }) => {
+        if (!cancelled) setActiveCover(version);
+      })
+      .catch(() => {
+        if (!cancelled) setActiveCover(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     window.localStorage.setItem(clueCollectionKey(user?.id), JSON.stringify(collectedClues));
@@ -829,6 +893,8 @@ function App() {
     setUser(null);
     setCollectedClues([]);
     setClueImages({});
+    setActiveCover(null);
+    setCoverInspiration(null);
     setPage('home');
   }
 
@@ -836,9 +902,19 @@ function App() {
     <main>
       <TopNav page={page} user={user} setPage={setPage} logout={logout} />
 
-      {page === 'home' && <HomePage user={user} setPage={setPage} />}
+      {page === 'home' && <HomePage user={user} setPage={setPage} activeCover={activeCover} />}
       {page === 'community' && (
-        <CommunityPage user={user} setPage={setPage} setChapterId={setChapterId} />
+        <CommunityPage
+          user={user}
+          setPage={setPage}
+          setChapterId={setChapterId}
+          initialSection={communitySection}
+          onCoverRemix={(version) => {
+            setCoverInspiration(version);
+            setChapterId('speckled-band-1');
+            setPage('reader');
+          }}
+        />
       )}
       {page === 'login' && <AuthPage mode="login" saveSession={saveSession} setPage={setPage} />}
       {page === 'register' && <AuthPage mode="register" saveSession={saveSession} setPage={setPage} />}
@@ -848,6 +924,7 @@ function App() {
             user={user}
             chapters={chapters}
             collectedClueCount={collectedClues.length}
+            activeCover={activeCover}
             setChapterId={setChapterId}
             setPage={setPage}
           />
@@ -862,6 +939,7 @@ function App() {
             collectedClues={collectedClues}
             clues={clues}
             clueImages={clueImages}
+            activeCover={activeCover}
           />
         ) : (
           <AuthPage mode="login" saveSession={saveSession} setPage={setPage} />
@@ -887,6 +965,14 @@ function App() {
             messages={messages}
             setMessages={setMessages}
             setPage={setPage}
+            activeCover={activeCover}
+            setActiveCover={setActiveCover}
+            coverInspiration={coverInspiration}
+            clearCoverInspiration={() => setCoverInspiration(null)}
+            openCoverCommunity={() => {
+              setCommunitySection('cover');
+              setPage('community');
+            }}
           />
         ) : (
           <AuthPage mode="login" saveSession={saveSession} setPage={setPage} />
@@ -950,7 +1036,15 @@ function TopNav({
   );
 }
 
-function HomePage({ user, setPage }: { user: User | null; setPage: (page: Page) => void }) {
+function HomePage({
+  user,
+  setPage,
+  activeCover
+}: {
+  user: User | null;
+  setPage: (page: Page) => void;
+  activeCover: CoverVersion | null;
+}) {
   return (
     <section className="home-page">
       <section className="home-hero">
@@ -970,11 +1064,7 @@ function HomePage({ user, setPage }: { user: User | null; setPage: (page: Page) 
           </div>
         </div>
         <div className="home-reading-card">
-          <div className="book-cover">
-            <span>Arthur Conan Doyle</span>
-            <h2>斑点带子案</h2>
-            <p>The Speckled Band</p>
-          </div>
+          <CoverArtwork version={activeCover} className="book-cover" />
           <div className="reading-card-meta">
             <span>当前章节</span>
             <strong>贝克街的求助</strong>
@@ -996,7 +1086,7 @@ function HomePage({ user, setPage }: { user: User | null; setPage: (page: Page) 
           <div className="preview-context">
             <span>系统状态</span>
             <h2>正文优先，辅助按需出现</h2>
-            <p>对白配音、现场图和证物袋都隐藏在阅读流程中，读者主动需要时才展开。</p>
+            <p>对白配音、封面设计和证物袋都隐藏在阅读流程中，读者主动需要时才展开。</p>
           </div>
         </div>
       </section>
@@ -1008,9 +1098,9 @@ function HomePage({ user, setPage }: { user: User | null; setPage: (page: Page) 
           <p>点击人物对白后出现播放控件，声音不会主动打断阅读。</p>
         </article>
         <article>
-          <span>Scene</span>
-          <h2>现场图</h2>
-          <p>按需生成房间布局、人物站位和证物位置，帮助理解推理空间。</p>
+          <span>Cover</span>
+          <h2>封面设计</h2>
+          <p>用自己的提示词创作电影海报式封面，并从社区作品继续衍生灵感。</p>
         </article>
         <article>
           <span>Evidence</span>
@@ -1023,6 +1113,44 @@ function HomePage({ user, setPage }: { user: User | null; setPage: (page: Page) 
 }
 
 function CommunityPage({
+  user,
+  setPage,
+  setChapterId,
+  initialSection,
+  onCoverRemix
+}: {
+  user: User | null;
+  setPage: (page: Page) => void;
+  setChapterId: (chapterId: string) => void;
+  initialSection: 'dubbing' | 'cover';
+  onCoverRemix: (version: CoverVersion) => void;
+}) {
+  const [section, setSection] = useState<'dubbing' | 'cover'>(initialSection);
+
+  useEffect(() => {
+    setSection(initialSection);
+  }, [initialSection]);
+
+  return (
+    <>
+      <nav className="community-content-switch" aria-label="创作类型">
+        <button type="button" className={section === 'dubbing' ? 'active' : ''} onClick={() => setSection('dubbing')}>
+          <span>VOICE WORKS</span><strong>配音创作</strong>
+        </button>
+        <button type="button" className={section === 'cover' ? 'active' : ''} onClick={() => setSection('cover')}>
+          <span>POSTER GALLERY</span><strong>封面创作</strong>
+        </button>
+      </nav>
+      {section === 'dubbing' ? (
+        <DubbingCommunityPage user={user} setPage={setPage} setChapterId={setChapterId} />
+      ) : (
+        <CoverCommunityPage user={user} setPage={setPage} onRemix={onCoverRemix} />
+      )}
+    </>
+  );
+}
+
+function DubbingCommunityPage({
   user,
   setPage,
   setChapterId
@@ -1191,6 +1319,150 @@ function CommunityPage({
   );
 }
 
+function CoverCommunityPage({
+  user,
+  setPage,
+  onRemix
+}: {
+  user: User | null;
+  setPage: (page: Page) => void;
+  onRemix: (version: CoverVersion) => void;
+}) {
+  const [tab, setTab] = useState<'all' | 'mine' | 'collected'>('all');
+  const [sort, setSort] = useState<'popular' | 'newest'>('popular');
+  const [versions, setVersions] = useState<CoverVersion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadVersions = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await api.coverCommunity('', sort, tab);
+      setVersions(result.versions);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '封面社区加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [sort, tab]);
+
+  useEffect(() => {
+    void loadVersions();
+  }, [loadVersions]);
+
+  function requireLogin() {
+    if (user) return true;
+    setPage('login');
+    return false;
+  }
+
+  function replaceVersion(version: CoverVersion) {
+    setVersions((current) => current.map((item) => item.id === version.id ? version : item));
+  }
+
+  async function toggleLike(version: CoverVersion) {
+    if (!requireLogin()) return;
+    try {
+      replaceVersion((await api.likeCover(version.id, !version.likedByMe)).version);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '点赞失败');
+    }
+  }
+
+  async function toggleCollection(version: CoverVersion) {
+    if (!requireLogin()) return;
+    try {
+      replaceVersion((await api.collectCover(version.id, !version.collectedByMe)).version);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '收藏失败');
+    }
+  }
+
+  async function report(version: CoverVersion) {
+    if (!requireLogin()) return;
+    const reason = window.prompt('请简要说明举报原因（3—500 字）');
+    if (!reason) return;
+    try {
+      await api.reportCover(version.id, reason);
+      window.alert('举报已提交');
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '举报失败');
+    }
+  }
+
+  async function withdraw(version: CoverVersion) {
+    if (!user || version.ownerUserId !== user.id) return;
+    if (!window.confirm('确定将这张封面从创作广场撤回吗？你的版本历史不会删除。')) return;
+    try {
+      await api.setCoverStatus(version.id, 'withdrawn');
+      setVersions((current) => current.filter((item) => item.id !== version.id));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '撤回失败');
+    }
+  }
+
+  return (
+    <section className="community-page cover-square-page">
+      <header className="community-hero cover-square-hero">
+        <div>
+          <p className="eyebrow">POSTER GALLERY</p>
+          <h1>封面创作社区</h1>
+          <p>同一本书可以有很多张脸。查看完整提示词，收藏喜欢的方向，再把它变成自己的新版本。</p>
+        </div>
+        <div className="community-hero-stat"><strong>{versions.length}</strong><span>公开封面</span></div>
+      </header>
+
+      <div className="community-toolbar">
+        <div className="community-tabs">
+          <button type="button" className={tab === 'all' ? 'active' : ''} onClick={() => setTab('all')}>全部封面</button>
+          {user && <button type="button" className={tab === 'collected' ? 'active' : ''} onClick={() => setTab('collected')}>我的收藏</button>}
+          {user && <button type="button" className={tab === 'mine' ? 'active' : ''} onClick={() => setTab('mine')}>我的发布</button>}
+        </div>
+        <label>排序<select value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}><option value="popular">热门优先</option><option value="newest">最新发布</option></select></label>
+      </div>
+
+      {error && <p className="community-error">{error}</p>}
+      {loading ? <p className="community-empty">正在载入封面作品…</p> : versions.length === 0 ? (
+        <p className="community-empty">这个分类暂时还没有公开封面。</p>
+      ) : (
+        <div className="community-cover-grid">
+          {versions.map((version) => (
+            <article key={version.id} className="community-cover-card">
+              <CoverArtwork version={version} />
+              <div className="community-cover-card-copy">
+                <header><span className="community-kind cover">电影海报封面</span><small>V{version.versionNumber}</small></header>
+                <div className="community-creator">
+                  <span className="community-avatar">{(version.displayName || version.username).slice(0, 1)}</span>
+                  <div><strong>{version.displayName || version.username}</strong><small>《{version.bookTitle}》· {version.mode === 'guided' ? '官方电影底模' : '高级自由模式'}</small></div>
+                </div>
+                <div className="cover-community-metrics">赞 {version.likeCount} · 收藏 {version.collectionCount} · 二创 {version.remixCount}</div>
+                <div className="cover-community-tags">{[version.mood, version.palette, version.composition].filter(Boolean).map((tag) => <span key={tag}>{tag}</span>)}</div>
+                <details className="cover-full-prompt"><summary>查看完整提示词</summary><p>{version.finalPrompt}</p></details>
+                <footer>
+                  {version.ownerUserId === user?.id ? (
+                    <button type="button" onClick={() => void withdraw(version)}>撤回发布</button>
+                  ) : (
+                    <>
+                      <button type="button" className={version.likedByMe ? 'active' : ''} onClick={() => void toggleLike(version)}>{version.likedByMe ? '已赞' : '点赞'}</button>
+                      <button type="button" className={version.collectedByMe ? 'active' : ''} onClick={() => void toggleCollection(version)}>{version.collectedByMe ? '已收藏' : '收藏'}</button>
+                      {user && <button type="button" onClick={() => void report(version)}>举报</button>}
+                    </>
+                  )}
+                  <button type="button" className="cover-remix-cta" onClick={() => {
+                    if (!requireLogin()) return;
+                    onRemix(version);
+                  }}>以此为灵感</button>
+                </footer>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function VoiceLibrary({
   compact = false,
   onCreated
@@ -1297,12 +1569,14 @@ function BookshelfPage({
   user,
   chapters,
   collectedClueCount,
+  activeCover,
   setChapterId,
   setPage
 }: {
   user: User;
   chapters: Chapter[];
   collectedClueCount: number;
+  activeCover: CoverVersion | null;
   setChapterId: (id: string) => void;
   setPage: (page: Page) => void;
 }) {
@@ -1371,10 +1645,7 @@ function BookshelfPage({
       </header>
 
       <section className="continue-card">
-        <div className="mini-cover">
-          <span>Case</span>
-          <strong>斑点带子案</strong>
-        </div>
+        <CoverArtwork version={activeCover} className="mini-cover" />
         <div>
           <p className="eyebrow">最近阅读</p>
           <h2>《斑点带子案》</h2>
@@ -1398,10 +1669,14 @@ function BookshelfPage({
               type="button"
             >
               <span className="book-spine">{book.category}</span>
-              <span className="book-cover-tile">
-                <small>{book.author}</small>
-                <strong>{book.title}</strong>
-              </span>
+              {available ? (
+                <CoverArtwork version={activeCover} className="book-cover-tile" />
+              ) : (
+                <span className="book-cover-tile">
+                  <small>{book.author}</small>
+                  <strong>{book.title}</strong>
+                </span>
+              )}
               <span className="book-info">
                 <strong>{book.title}</strong>
                 <small>{book.lastRead}</small>
@@ -1508,13 +1783,15 @@ function ProfilePage({
   setPage,
   collectedClues,
   clues,
-  clueImages
+  clueImages,
+  activeCover
 }: {
   user: User | null;
   setPage: (page: Page) => void;
   collectedClues: CollectedClueRecord[];
   clues: Clue[];
   clueImages: Record<string, ClueImage>;
+  activeCover: CoverVersion | null;
 }) {
   const collectedEntries = collectedClues.flatMap((record) => {
     const clue = clues.find((item) => item.id === record.clueId);
@@ -1580,6 +1857,16 @@ function ProfilePage({
             })}
           </div>
         )}
+      </div>
+
+      <div className="profile-card profile-cover-card">
+        <CoverArtwork version={activeCover} />
+        <div>
+          <p className="eyebrow">Current Cover</p>
+          <h2>{activeCover ? `我的封面 V${activeCover.versionNumber}` : '官方封面'}</h2>
+          <p>{activeCover ? '这张封面已经同步到首页、书架和阅读档案。' : '进入阅读器右侧的封面设计，创作属于你的电影海报。'}</p>
+          <button type="button" onClick={() => setPage('reader')}>去设计封面</button>
+        </div>
       </div>
 
       <div className="profile-card voice-profile-card">
@@ -1893,7 +2180,12 @@ function ReaderPage({
   setQuestion,
   messages,
   setMessages,
-  setPage
+  setPage,
+  activeCover,
+  setActiveCover,
+  coverInspiration,
+  clearCoverInspiration,
+  openCoverCommunity
 }: {
   user: User | null;
   chapters: Chapter[];
@@ -1911,6 +2203,11 @@ function ReaderPage({
   messages: ChatMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   setPage: (page: Page) => void;
+  activeCover: CoverVersion | null;
+  setActiveCover: (cover: CoverVersion | null) => void;
+  coverInspiration: CoverVersion | null;
+  clearCoverInspiration: () => void;
+  openCoverCommunity: () => void;
 }) {
   const chapter = useMemo(
     () => chapters.find((item) => item.id === chapterId) ?? chapters[0],
@@ -1949,16 +2246,12 @@ function ReaderPage({
     });
     return clues.filter((clue) => clueIds.has(clue.id));
   }, [chapter, clues]);
-  const [contextTab, setContextTab] = useState<ContextTab>('scene');
+  const [contextTab, setContextTab] = useState<ContextTab>('cover');
   const [contextOpen, setContextOpen] = useState(false);
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>('light');
   const [readingWidth, setReadingWidth] = useState<ReadingWidth>('standard');
   const [fontSize, setFontSize] = useState(19);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sceneGenerated, setSceneGenerated] = useState(false);
-  const [sceneLoading, setSceneLoading] = useState(false);
-  const [generatedSceneImage, setGeneratedSceneImage] = useState<GeneratedSceneImage | null>(null);
-  const [sceneDiagram, setSceneDiagram] = useState<SceneDiagram>('layout');
   const [bagPulse, setBagPulse] = useState(false);
   const [activeClueId, setActiveClueId] = useState<string | null>(null);
   const clueGenerationRunningRef = useRef(false);
@@ -1980,6 +2273,12 @@ function ReaderPage({
     },
     [contextTab]
   );
+
+  useEffect(() => {
+    if (!coverInspiration) return;
+    setContextTab('cover');
+    setContextOpen(true);
+  }, [coverInspiration]);
   const [paragraphAudios, setParagraphAudios] = useState<Record<string, RangeMedia<ParagraphSpeech>>>({});
   const [platformParagraphAudios, setPlatformParagraphAudios] = useState<
     Record<string, RangeMedia<ParagraphSpeech>>
@@ -2022,9 +2321,6 @@ function ReaderPage({
   const recordingChunksRef = useRef<Blob[]>([]);
   const recordingStreamRef = useRef<MediaStream | null>(null);
   const longPressTimer = useRef<number | null>(null);
-  const sceneVariant =
-    chapter?.id === 'speckled-band-2' ? 'manor' : chapter?.id === 'speckled-band-3' ? 'night' : 'baker';
-
   useEffect(() => {
     if (!chapter) return;
     let cancelled = false;
@@ -2118,23 +2414,6 @@ function ReaderPage({
     };
   }
 
-  function sceneImageFromAsset(asset: MediaLibraryAsset): GeneratedSceneImage | null {
-    if (asset.mediaType !== 'image' || asset.range) {
-      return null;
-    }
-
-    if (asset.metadata?.generationType !== 'scene') {
-      return null;
-    }
-
-    return {
-      imageUrl: asset.url,
-      prompt: asset.prompt || '',
-      mediaAssetId: asset.id,
-      cacheHit: true
-    };
-  }
-
   function audioFromAsset(asset: MediaLibraryAsset): RangeMedia<ParagraphSpeech> | null {
     const key = mediaAssetPositionKey(asset);
     if (!key || asset.mediaType !== 'audio' || !asset.chapterId || !asset.range) {
@@ -2196,9 +2475,6 @@ function ReaderPage({
   }
 
   useEffect(() => {
-    setSceneGenerated(false);
-    setGeneratedSceneImage(null);
-    setSceneDiagram('layout');
     setSelectedParagraph(null);
     stopParagraphAudio();
   }, [chapterId]);
@@ -2221,13 +2497,7 @@ function ReaderPage({
 
         const nextImages: Record<string, RangeMedia<ParagraphImage>> = {};
         const nextAudios: Record<string, RangeMedia<ParagraphSpeech>> = {};
-        let nextSceneImage: GeneratedSceneImage | null = null;
-
         assets.forEach((asset) => {
-          if (!nextSceneImage) {
-            nextSceneImage = sceneImageFromAsset(asset);
-          }
-
           const key = mediaAssetPositionKey(asset);
           if (!key) {
             return;
@@ -2254,10 +2524,6 @@ function ReaderPage({
         setParagraphImages(nextImages);
         setPlatformParagraphAudios(nextAudios);
         setParagraphAudios(resolvedAudios);
-        if (nextSceneImage) {
-          setGeneratedSceneImage(nextSceneImage);
-          setSceneGenerated(true);
-        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -3179,29 +3445,6 @@ function ReaderPage({
       answer = await api.chat(currentQuestion, chapter.id, collectedClueIds);
     }
     setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
-  }
-
-  async function generateSceneImage() {
-    if (!chapter) return;
-    if (generatedSceneImage) {
-      setSceneGenerated(true);
-      setNotice('已调用媒体库现场图');
-      window.setTimeout(() => setNotice(''), 1800);
-      return;
-    }
-
-    setSceneLoading(true);
-    try {
-      const result = await api.image(chapter.id);
-      setGeneratedSceneImage(result);
-      setSceneGenerated(true);
-    } catch (error) {
-      setSceneGenerated(true);
-      setNotice('MiniMax 生图失败，已显示本地示意图兜底');
-      window.setTimeout(() => setNotice(''), 2200);
-    } finally {
-      setSceneLoading(false);
-    }
   }
 
   async function generateQueuedClueImages(initial: {
@@ -4523,11 +4766,11 @@ function ReaderPage({
           <button
             type="button"
             role="tab"
-            className={contextOpen && contextTab === 'scene' ? 'active' : ''}
-            aria-expanded={contextOpen && contextTab === 'scene'}
-            onClick={() => toggleContextPanel('scene')}
+            className={contextOpen && contextTab === 'cover' ? 'active' : ''}
+            aria-expanded={contextOpen && contextTab === 'cover'}
+            onClick={() => toggleContextPanel('cover')}
           >
-            现场
+            封面设计
           </button>
           <button
             type="button"
@@ -4552,105 +4795,23 @@ function ReaderPage({
         {contextOpen && (
           <div className="context-popover">
             <div className="context-popover-header">
-              <strong>{contextTab === 'scene' ? '现场' : contextTab === 'ai' ? '助手' : '证物袋'}</strong>
+              <strong>{contextTab === 'cover' ? '封面设计' : contextTab === 'ai' ? '助手' : '证物袋'}</strong>
               <button type="button" onClick={() => setContextOpen(false)} aria-label="关闭阅读辅助浮窗">
                 关闭
               </button>
             </div>
 
-            {contextTab === 'scene' && (
-          <section className="scene-card context-card">
-            <div className="context-heading">
-              <h2>现场图</h2>
-              <span>{sceneGenerated ? '已生成' : '按需生成'}</span>
-            </div>
-
-            {!sceneGenerated ? (
-              <div className="scene-generator-empty">
-                <p>根据当前章节生成一张帮助理解空间关系的现场示意图。</p>
-                <button type="button" onClick={generateSceneImage} disabled={sceneLoading}>
-                  {sceneLoading ? '生成中...' : '生成场景图'}
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="scene-mode-tabs">
-                  {[
-                    ['layout', '房间布局'],
-                    ['positions', '人物站位'],
-                    ['clues', '证物位置']
-                  ].map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      className={sceneDiagram === value ? 'active' : ''}
-                      onClick={() => setSceneDiagram(value as SceneDiagram)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {generatedSceneImage ? (
-                  <div className="scene-ai-image">
-                    <img src={generatedSceneImage.imageUrl} alt={chapter.scene.title} />
-                  </div>
-                ) : (
-                  <div
-                    className={`scene-visual ${sceneVariant} diagram-${sceneDiagram}`}
-                    aria-label={chapter.scene.title}
-                  >
-                    <div className="scene-sky" />
-                    <div className="scene-window">
-                      <span />
-                      <span />
-                    </div>
-                    <div className="scene-floor" />
-                    <div className="scene-bed" />
-                    <div className="scene-desk" />
-                    <div className="scene-fireplace" />
-                    <div className="scene-vent" />
-                    <div className="scene-rope" />
-                    <div className="scene-match" />
-                    <div className="scene-figure figure-one" />
-                    <div className="scene-figure figure-two" />
-                    <div className="scene-clue clue-one">1</div>
-                    <div className="scene-clue clue-two">2</div>
-                    <div className="scene-caption">
-                      <strong>{chapter.scene.title}</strong>
-                      <span>
-                        {sceneVariant === 'manor' ? '现场结构' : sceneVariant === 'night' ? '夜间守候' : '清晨会面'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                <div className="scene-prompt">
-                  <span>Prompt</span>
-                  <p>{generatedSceneImage?.prompt || chapter.scene.imagePrompt}</p>
-                  <button type="button" onClick={generateSceneImage} disabled={sceneLoading}>
-                    重新生成
-                  </button>
-                </div>
-              </>
+            {contextTab === 'cover' && (
+              <CoverStudio
+                articleId="speckled-band"
+                api={api}
+                activeCover={activeCover}
+                onActiveCoverChange={setActiveCover}
+                onOpenFullCommunity={openCoverCommunity}
+                inspiration={coverInspiration}
+                onInspirationHandled={clearCoverInspiration}
+              />
             )}
-            <div className="diagram-legend">
-              <span>1 空间结构</span>
-              <span>2 可疑物件</span>
-              <span>3 行动路径</span>
-            </div>
-            <h2>{chapter.scene.title}</h2>
-            <p>{chapter.scene.imagePrompt}</p>
-            <dl className="scene-notes">
-              <div>
-                <dt>氛围</dt>
-                <dd>{chapter.scene.mood}</dd>
-              </div>
-              <div>
-                <dt>环境音</dt>
-                <dd>{chapter.scene.soundscape}</dd>
-              </div>
-            </dl>
-          </section>
-        )}
 
             {contextTab === 'ai' && (
           <section className="chat-card context-card">
