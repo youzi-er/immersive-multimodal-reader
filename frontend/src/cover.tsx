@@ -33,6 +33,7 @@ export type CoverVersion = {
 };
 
 export type CoverParameters = {
+  focus: string;
   cast: string;
   relationship: string;
   storyBeat: string;
@@ -78,8 +79,9 @@ export type CoverApi = {
 };
 
 const PARAMETER_OPTIONS: Record<keyof CoverParameters, string[]> = {
+  focus: ['福尔摩斯', '华生', '女委托人（海伦）', '罗伊洛特博士'],
   cast: ['单主角', '双人主导', '三人群像', '主角与威胁'],
-  relationship: ['并肩侦查', '前后守望', '紧张对峙', '同望画外'],
+  relationship: [],
   storyBeat: ['初见委托', '发现线索', '危险前一秒', '真相揭开'],
   performance: ['克制不安', '冷静推理', '高度警觉', '惊恐爆发'],
   shotSize: ['面部特写', '半身近景', '中景群像', '环境全景'],
@@ -89,7 +91,15 @@ const PARAMETER_OPTIONS: Record<keyof CoverParameters, string[]> = {
   texture: ['插图原貌', '更写实', '油画笔触', '胶片颗粒']
 };
 
+const SOLO_RELATIONSHIPS = ['望向画外', '直视镜头', '侧身思考', '凝视线索'];
+const MULTI_RELATIONSHIPS = ['并肩侦查', '前后守望', '紧张对峙', '同望画外'];
+
+function relationshipOptions(cast: string) {
+  return cast === '单主角' ? SOLO_RELATIONSHIPS : MULTI_RELATIONSHIPS;
+}
+
 const DEFAULT_PARAMETERS: CoverParameters = {
+  focus: '福尔摩斯',
   cast: '三人群像',
   relationship: '同望画外',
   storyBeat: '危险前一秒',
@@ -100,6 +110,16 @@ const DEFAULT_PARAMETERS: CoverParameters = {
   colorGrade: '书籍默认',
   texture: '插图原貌'
 };
+
+function normalizeParameters(value?: Partial<CoverParameters>): CoverParameters {
+  const next = { ...DEFAULT_PARAMETERS, ...(value || {}) };
+  const availableRelationships = relationshipOptions(next.cast);
+  if (!availableRelationships.includes(next.relationship)) {
+    next.relationship = availableRelationships[0];
+  }
+  if (!PARAMETER_OPTIONS.focus.includes(next.focus)) next.focus = DEFAULT_PARAMETERS.focus;
+  return next;
+}
 
 function updateVersion(list: CoverVersion[], version: CoverVersion) {
   return list.map((item) => item.id === version.id ? version : item);
@@ -156,7 +176,7 @@ export function CoverStudio({
   const [tab, setTab] = useState<'studio' | 'community'>('studio');
   const [studioStep, setStudioStep] = useState<'editor' | 'generating' | 'result'>('editor');
   const [mode, setMode] = useState<'guided' | 'advanced'>('guided');
-  const [prompt, setPrompt] = useState('雨夜的维多利亚庄园内，福尔摩斯举着油灯侧身察看铃绳，华生警觉地回头，年轻女继承人在他们身后惊恐凝望黑暗；三个人的目光都引向画外的危险，像故事高潮前一秒');
+  const [prompt, setPrompt] = useState('维多利亚时代英格兰，保留与案件有关的真实场景、服装和道具；人物数量、主体、戏剧节点和镜头景别严格以导演参数为准');
   const [parameters, setParameters] = useState<CoverParameters>(DEFAULT_PARAMETERS);
   const [bookTitle, setBookTitle] = useState('斑点带子案');
   const [bookAuthor, setBookAuthor] = useState('Arthur Conan Doyle');
@@ -176,6 +196,21 @@ export function CoverStudio({
     () => history.find((item) => item.id === selectedId) || history[0] || activeCover,
     [activeCover, history, selectedId]
   );
+  const availableRelationships = relationshipOptions(parameters.cast);
+  const visibleCount = parameters.cast === '单主角' ? 1 : parameters.cast === '三人群像' ? 3 : 2;
+
+  function selectCast(cast: string) {
+    setParameters((current) => {
+      const nextRelationships = relationshipOptions(cast);
+      return {
+        ...current,
+        cast,
+        relationship: nextRelationships.includes(current.relationship)
+          ? current.relationship
+          : nextRelationships[0]
+      };
+    });
+  }
 
   const loadHistory = useCallback(async () => {
     setLoading(true);
@@ -213,7 +248,7 @@ export function CoverStudio({
   function useAsInspiration(version: CoverVersion) {
     setMode(version.mode);
     setPrompt(version.prompt);
-    setParameters({ ...DEFAULT_PARAMETERS, ...(version.parameters || {}) });
+    setParameters(normalizeParameters(version.parameters));
     setBookTitle(version.bookTitle);
     setBookAuthor(version.bookAuthor);
     setBookSubtitle(version.bookSubtitle);
@@ -364,7 +399,7 @@ export function CoverStudio({
             <h2>正在制作新封面</h2>
             <p>MiniMax 正在根据人物关系、戏剧节点和摄影参数生成 2:3 画面，完成后会自动进入结果确认页。</p>
             <div className="cover-generating-summary">
-              <span>{parameters.cast}</span><span>{parameters.relationship}</span><span>{parameters.storyBeat}</span>
+              <span>{parameters.focus}</span><span>{parameters.cast}</span><span>{parameters.relationship}</span><span>{parameters.storyBeat}</span>
               <span>{parameters.shotSize}</span><span>{parameters.cameraAngle}</span><span>{parameters.lighting}</span>
             </div>
           </section>
@@ -452,7 +487,7 @@ export function CoverStudio({
                 onChange={(event) => setPrompt(event.target.value)}
                 maxLength={mode === 'guided' ? 180 : 900}
                 rows={5}
-                placeholder={mode === 'guided' ? '例如：福尔摩斯举灯检查铃绳，华生突然回头，女继承人在门边惊恐屏息；像危险发生前一秒的电影剧照…' : '直接输入最终发送给生图模型的完整提示词…'}
+                placeholder={mode === 'guided' ? '补充地点、天气、道具或动作即可；若与导演参数冲突，会以导演参数为准…' : '直接输入最终发送给生图模型的完整提示词…'}
               />
               <small>{prompt.length}/{mode === 'guided' ? 180 : 900}</small>
             </label>
@@ -469,8 +504,9 @@ export function CoverStudio({
                     <em>01</em><div><strong>人物与戏剧</strong><small>先确定谁在演、关系是什么、此刻发生了什么</small></div>
                   </div>
                   <div className="cover-direction-grid">
-                    <TagGroup label="人物阵容" hint="决定视觉主体" values={PARAMETER_OPTIONS.cast} selected={parameters.cast} onSelect={(value) => setParameters((current) => ({ ...current, cast: value }))} />
-                    <TagGroup label="关系调度" hint="决定人物站位与视线" values={PARAMETER_OPTIONS.relationship} selected={parameters.relationship} onSelect={(value) => setParameters((current) => ({ ...current, relationship: value }))} />
+                    <TagGroup label="主体角色" hint="决定谁是画面第一主角" values={PARAMETER_OPTIONS.focus} selected={parameters.focus} onSelect={(value) => setParameters((current) => ({ ...current, focus: value }))} />
+                    <TagGroup label="人物阵容" hint="严格限制可见人物数量" values={PARAMETER_OPTIONS.cast} selected={parameters.cast} onSelect={selectCast} />
+                    <TagGroup label={parameters.cast === '单主角' ? '单人调度' : '关系调度'} hint={parameters.cast === '单主角' ? '只控制主角视线与动作' : '决定人物站位与视线'} values={availableRelationships} selected={parameters.relationship} onSelect={(value) => setParameters((current) => ({ ...current, relationship: value }))} />
                     <TagGroup label="戏剧节点" hint="决定截图发生在哪一秒" values={PARAMETER_OPTIONS.storyBeat} selected={parameters.storyBeat} onSelect={(value) => setParameters((current) => ({ ...current, storyBeat: value }))} />
                     <TagGroup label="表演强度" hint="决定演员的情绪状态" values={PARAMETER_OPTIONS.performance} selected={parameters.performance} onSelect={(value) => setParameters((current) => ({ ...current, performance: value }))} />
                   </div>
@@ -489,7 +525,12 @@ export function CoverStudio({
                   </div>
                 </details>
 
-                <p className="cover-director-note">生成优先级：人物关系 → 戏剧节点 → 景别与机位 → 光色。上面的描述框只需要补充本书独有的场景和动作。</p>
+                <div className="cover-hard-constraint">
+                  <span>本次硬约束</span>
+                  <strong>{visibleCount === 1 ? '仅 1 位可见人物、仅 1 张脸' : `严格 ${visibleCount} 位可见人物、${visibleCount} 张脸`}</strong>
+                  <p>{parameters.focus}为视觉主体 · {parameters.storyBeat} · {parameters.shotSize}。描述框中与这些设置冲突的人物、剧情时刻和景别会被忽略。</p>
+                </div>
+                <p className="cover-director-note">生成优先级：人物数量与主体 → 戏剧节点 → 景别与机位 → 场景补充 → 光色。快捷生成会把前四项写成 MiniMax 必须优先遵守的硬约束。</p>
               </div>
             )}
 

@@ -1714,7 +1714,7 @@ app.post('/api/ai/cover', requireAuth, async (req, res) => {
       : {};
     const parameters = Object.fromEntries(
       [
-        'cast', 'relationship', 'storyBeat', 'performance', 'shotSize',
+        'focus', 'cast', 'relationship', 'storyBeat', 'performance', 'shotSize',
         'cameraAngle', 'lighting', 'colorGrade', 'texture'
       ].map((key) => [key, String(requestedParameters[key] || '').trim().slice(0, 64)])
         .filter(([, value]) => value)
