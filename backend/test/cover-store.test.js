@@ -80,8 +80,13 @@ test('cover store supports history, activation and community interactions', asyn
 
     const published = await store.setVersionStatus(first.id, authorId, 'public');
     assert.equal(published.status, 'public');
-    const liked = await store.setLike(first.id, readerId, true);
-    assert.equal(liked.likeCount, 1);
+    const duplicateLikes = await Promise.all([
+      store.setLike(first.id, readerId, true),
+      store.setLike(first.id, readerId, true)
+    ]);
+    assert.equal(duplicateLikes[0].likeCount, 1);
+    assert.equal(duplicateLikes[1].likeCount, 1);
+    await assert.rejects(store.setLike(first.id, authorId, true), /Creators cannot like their own cover/);
     const collected = await store.setCollection(first.id, readerId, true);
     assert.equal(collected.collectionCount, 1);
     assert.equal(collected.collectedByMe, true);

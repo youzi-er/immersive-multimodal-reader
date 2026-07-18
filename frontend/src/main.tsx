@@ -11,6 +11,7 @@ import {
 } from './readerTextSelection';
 import {
   CoverArtwork,
+  CoverLikeButton,
   CoverStudio,
   type CoverDraft,
   type CoverVersion
@@ -1333,6 +1334,7 @@ function CoverCommunityPage({
   const [versions, setVersions] = useState<CoverVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [likingIds, setLikingIds] = useState<Set<string>>(() => new Set());
 
   const loadVersions = useCallback(async () => {
     setLoading(true);
@@ -1363,10 +1365,19 @@ function CoverCommunityPage({
 
   async function toggleLike(version: CoverVersion) {
     if (!requireLogin()) return;
+    if (likingIds.has(version.id)) return;
+    setLikingIds((current) => new Set(current).add(version.id));
+    setError('');
     try {
       replaceVersion((await api.likeCover(version.id, !version.likedByMe)).version);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : '点赞失败');
+    } finally {
+      setLikingIds((current) => {
+        const next = new Set(current);
+        next.delete(version.id);
+        return next;
+      });
     }
   }
 
@@ -1436,15 +1447,20 @@ function CoverCommunityPage({
                   <span className="community-avatar">{(version.displayName || version.username).slice(0, 1)}</span>
                   <div><strong>{version.displayName || version.username}</strong><small>《{version.bookTitle}》· {version.mode === 'guided' ? '官方电影底模' : '高级自由模式'}</small></div>
                 </div>
-                <div className="cover-community-metrics">赞 {version.likeCount} · 收藏 {version.collectionCount} · 二创 {version.remixCount}</div>
+                <div className="cover-community-metrics">收藏 {version.collectionCount} · 二创 {version.remixCount}</div>
                 <div className="cover-community-tags">{[version.mood, version.palette, version.composition].filter(Boolean).map((tag) => <span key={tag}>{tag}</span>)}</div>
                 <details className="cover-full-prompt"><summary>查看完整提示词</summary><p>{version.finalPrompt}</p></details>
                 <footer>
+                  <CoverLikeButton
+                    version={version}
+                    ownedByMe={version.ownerUserId === user?.id}
+                    pending={likingIds.has(version.id)}
+                    onToggle={() => void toggleLike(version)}
+                  />
                   {version.ownerUserId === user?.id ? (
                     <button type="button" onClick={() => void withdraw(version)}>撤回发布</button>
                   ) : (
                     <>
-                      <button type="button" className={version.likedByMe ? 'active' : ''} onClick={() => void toggleLike(version)}>{version.likedByMe ? '已赞' : '点赞'}</button>
                       <button type="button" className={version.collectedByMe ? 'active' : ''} onClick={() => void toggleCollection(version)}>{version.collectedByMe ? '已收藏' : '收藏'}</button>
                       {user && <button type="button" onClick={() => void report(version)}>举报</button>}
                     </>

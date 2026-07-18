@@ -4346,6 +4346,20 @@ button:disabled {
 .cover-community-card-body button { border: 1px solid rgba(36,81,89,.13); border-radius: 7px; background: white; padding: 5px 6px; color: #53616a; font-size: 9px; }
 .cover-community-card-body button.active { background: #245159; color: white; }
 .cover-community-card-body button.remix { margin-left: auto; background: #8f6a3a; color: white; }
+.community-cover-card-copy footer .cover-like-button,
+.cover-community-card-body .cover-like-button { display: inline-flex; align-items: center; gap: 5px; border-color: rgba(173,69,64,.22); background: rgba(173,69,64,.06); color: #914743; }
+.community-cover-card-copy footer .cover-like-button span,
+.cover-community-card-body .cover-like-button span { font-size: 1.15em; line-height: 1; }
+.community-cover-card-copy footer .cover-like-button em,
+.cover-community-card-body .cover-like-button em { font-style: normal; font-weight: 800; }
+.community-cover-card-copy footer .cover-like-button strong,
+.cover-community-card-body .cover-like-button strong { min-width: 1.4em; border-radius: 999px; background: rgba(173,69,64,.12); padding: 1px 5px; text-align: center; }
+.community-cover-card-copy footer .cover-like-button.active,
+.cover-community-card-body .cover-like-button.active { border-color: #ad4540; background: #ad4540; color: white; }
+.community-cover-card-copy footer .cover-like-button.active strong,
+.cover-community-card-body .cover-like-button.active strong { background: rgba(255,255,255,.2); }
+.community-cover-card-copy footer .cover-like-button.owner,
+.cover-community-card-body .cover-like-button.owner { cursor: not-allowed; opacity: .68; }
 .cover-open-square { border: 0; border-radius: 10px; background: #18363d; padding: 11px; color: white; font-weight: 800; }
 
 @media (max-width: 900px) {

@@ -156,6 +156,35 @@ export function CoverArtwork({
   );
 }
 
+export function CoverLikeButton({
+  version,
+  ownedByMe = false,
+  pending = false,
+  onToggle
+}: {
+  version: CoverVersion;
+  ownedByMe?: boolean;
+  pending?: boolean;
+  onToggle: () => void;
+}) {
+  const label = ownedByMe ? '自己的作品不可点赞' : version.likedByMe ? '取消点赞' : '点赞';
+  return (
+    <button
+      type="button"
+      className={`cover-like-button${version.likedByMe ? ' active' : ''}${ownedByMe ? ' owner' : ''}`}
+      disabled={ownedByMe || pending}
+      aria-label={`${label}，当前 ${version.likeCount} 个赞`}
+      aria-pressed={ownedByMe ? undefined : version.likedByMe}
+      title={ownedByMe ? '作者不能给自己的作品点赞' : label}
+      onClick={onToggle}
+    >
+      <span aria-hidden="true">{version.likedByMe ? '♥' : '♡'}</span>
+      <em>{pending ? '处理中' : ownedByMe ? '赞' : version.likedByMe ? '已赞' : '点赞'}</em>
+      <strong>{version.likeCount}</strong>
+    </button>
+  );
+}
+
 export function CoverStudio({
   articleId,
   api,
@@ -188,6 +217,7 @@ export function CoverStudio({
   const [sort, setSort] = useState<'popular' | 'newest'>('popular');
   const [loading, setLoading] = useState(true);
   const [communityLoading, setCommunityLoading] = useState(false);
+  const [likingIds, setLikingIds] = useState<Set<string>>(() => new Set());
   const [generating, setGenerating] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -353,11 +383,20 @@ export function CoverStudio({
   }
 
   async function toggleLike(version: CoverVersion) {
+    if (likingIds.has(version.id)) return;
+    setLikingIds((current) => new Set(current).add(version.id));
+    setError('');
     try {
       const result = await api.likeCover(version.id, !version.likedByMe);
       setCommunity((current) => updateVersion(current, result.version));
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : '点赞失败');
+    } finally {
+      setLikingIds((current) => {
+        const next = new Set(current);
+        next.delete(version.id);
+        return next;
+      });
     }
   }
 
@@ -589,14 +628,19 @@ export function CoverStudio({
                   <CoverArtwork version={version} />
                   <div className="cover-community-card-body">
                     <strong>{version.displayName || version.username}</strong>
-                    <small>赞 {version.likeCount} · 收藏 {version.collectionCount} · 二创 {version.remixCount}</small>
+                    <small>收藏 {version.collectionCount} · 二创 {version.remixCount}</small>
                     <details><summary>完整提示词</summary><p>{version.finalPrompt}</p></details>
                     <div>
+                      <CoverLikeButton
+                        version={version}
+                        ownedByMe={version.ownedByMe}
+                        pending={likingIds.has(version.id)}
+                        onToggle={() => void toggleLike(version)}
+                      />
                       {version.ownedByMe ? (
                         <button type="button" onClick={() => void setStatus(version, 'withdrawn')}>撤回</button>
                       ) : (
                         <>
-                          <button type="button" className={version.likedByMe ? 'active' : ''} onClick={() => void toggleLike(version)}>{version.likedByMe ? '已赞' : '点赞'}</button>
                           <button type="button" className={version.collectedByMe ? 'active' : ''} onClick={() => void toggleCollection(version)}>{version.collectedByMe ? '已收藏' : '收藏'}</button>
                           <button type="button" onClick={() => void report(version)}>举报</button>
                         </>
