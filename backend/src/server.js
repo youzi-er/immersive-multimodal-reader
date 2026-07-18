@@ -774,6 +774,12 @@ function versionVisibility(value) {
   return value === 'public' ? 'public' : 'private';
 }
 
+function toClientVoiceDesign(version) {
+  if (!version) return null;
+  const { voiceId: _privateVoiceId, previewMediaAssetId: _privateAssetId, ...safeVersion } = version;
+  return safeVersion;
+}
+
 function sendRouteError(res, error, fallback) {
   const candidate = Number(error?.statusCode);
   const status = Number.isInteger(candidate) && candidate >= 400 && candidate <= 599 ? candidate : 500;
@@ -797,6 +803,21 @@ app.get('/api/dubbing/units', optionalAuth, (req, res) => {
   const chapterId = req.query.chapterId ? String(req.query.chapterId) : undefined;
   const units = listContentUnits({ articleId, chapterId }).map(toPublicContentUnit);
   res.json({ units });
+});
+
+app.get('/api/dubbing/community', optionalAuth, async (req, res) => {
+  try {
+    const versions = await communityStore.listCommunityVersions({
+      currentUserId: req.user?.id || '',
+      kind: String(req.query.kind || ''),
+      sort: String(req.query.sort || 'popular'),
+      limit: normalizeInteger(req.query.limit) || 60,
+      offset: normalizeInteger(req.query.offset) || 0
+    });
+    res.json({ versions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to load the creation square');
+  }
 });
 
 app.get('/api/dubbing/unit-at-position', optionalAuth, async (req, res) => {
@@ -844,14 +865,13 @@ app.get('/api/dubbing/adoptions', optionalAuth, async (req, res) => {
 
 app.get('/api/dubbing/voice-designs', requireAuth, async (req, res) => {
   try {
-    const versions = await communityStore.listVoiceDesignVersions({
-      ownerUserId: req.user.id,
-      articleId: String(req.query.articleId || 'speckled-band'),
-      characterCode: req.query.characterCode ? String(req.query.characterCode) : undefined
-    });
-    res.json({ versions });
+    const scope = String(req.query.scope || 'mine');
+    const versions = scope === 'shared'
+      ? await communityStore.listSharedVoiceDesignVersions({ excludeOwnerUserId: req.user.id })
+      : await communityStore.listVoiceDesignVersions({ ownerUserId: req.user.id });
+    res.json({ versions: versions.map(toClientVoiceDesign) });
   } catch (error) {
-    sendRouteError(res, error, 'Failed to list character voice designs');
+    sendRouteError(res, error, 'Failed to list voice designs');
   }
 });
 
@@ -859,9 +879,9 @@ app.post('/api/dubbing/voice-designs', requireAuth, async (req, res) => {
   let savedPreview = null;
   let previewAsset = null;
   try {
-    const articleId = String(req.body.articleId || 'speckled-band');
-    const characterCode = String(req.body.characterCode || '').trim();
-    const characterName = String(req.body.characterName || '').trim();
+    const articleId = 'global';
+    const characterCode = String(req.body.voiceKey || req.body.characterCode || `voice_${crypto.randomUUID().replaceAll('-', '')}`).trim();
+    const characterName = String(req.body.voiceName || req.body.characterName || '').trim();
     const prompt = String(req.body.prompt || '').trim();
     const previewText = String(req.body.previewText || '').trim();
 
@@ -922,7 +942,7 @@ app.post('/api/dubbing/voice-designs', requireAuth, async (req, res) => {
       previewAudioUrl: savedPreview?.url || null,
       previewMediaAssetId: previewAsset?.id || null
     });
-    res.status(201).json({ version });
+    res.status(201).json({ version: toClientVoiceDesign(version) });
   } catch (error) {
     if (previewAsset) {
       await deleteMediaAsset(previewAsset.id).catch(() => null);
@@ -967,10 +987,17 @@ app.post('/api/dubbing/units/:unitId/ai-versions', requireAuth, async (req, res)
         : {};
     const voiceOverrides = {};
     const voiceDesigns = {};
+    const requestedSharedIds = new Set(
+      Array.isArray(req.body.sharedVoiceDesignVersionIds)
+        ? req.body.sharedVoiceDesignVersionIds.map((value) => String(value))
+        : []
+    );
+    const usedDesignIds = new Set(Object.values(designIds).map((value) => String(value)));
+    const sharedVoiceDesignVersionIds = [];
 
     for (const [speakerCode, versionId] of Object.entries(designIds)) {
-      const design = await communityStore.getVoiceDesignVersion(String(versionId), req.user.id);
-      if (!design || design.articleId !== unit.articleId || design.characterCode !== speakerCode) {
+      const design = await communityStore.getUsableVoiceDesignVersion(String(versionId), req.user.id);
+      if (!design) {
         res.status(400).json({ error: `Invalid voice design for speaker ${speakerCode}` });
         return;
       }
@@ -983,8 +1010,23 @@ app.post('/api/dubbing/units/:unitId/ai-versions', requireAuth, async (req, res)
         characterName: design.characterName,
         prompt: design.prompt,
         previewText: design.previewText,
-        versionNumber: design.versionNumber
+        versionNumber: design.versionNumber,
+        ownerDisplayName: design.ownerDisplayName,
+        shared: requestedSharedIds.has(design.id) && design.ownerUserId === req.user.id
       };
+    }
+
+    for (const versionId of requestedSharedIds) {
+      if (!usedDesignIds.has(versionId)) {
+        res.status(400).json({ error: 'Only voices used by this dubbing can be shared' });
+        return;
+      }
+      const design = await communityStore.getVoiceDesignVersion(versionId, req.user.id);
+      if (!design) {
+        res.status(400).json({ error: 'Only your own voice designs can be shared' });
+        return;
+      }
+      sharedVoiceDesignVersionIds.push(versionId);
     }
 
     const result = await synthesizePlannedParagraphSpeech({
@@ -1044,7 +1086,8 @@ app.post('/api/dubbing/units/:unitId/ai-versions', requireAuth, async (req, res)
         generationSettings: result.generationSettings,
         ttsRequests: result.ttsRequests
       },
-      segments: result.planSegments
+      segments: result.planSegments,
+      sharedVoiceDesignVersionIds
     });
     res.status(201).json({ unit: toPublicContentUnit(unit), version });
   } catch (error) {

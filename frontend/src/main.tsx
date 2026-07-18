@@ -11,7 +11,7 @@ import {
 } from './readerTextSelection';
 import './styles.css';
 
-type Page = 'home' | 'bookshelf' | 'reader' | 'login' | 'register' | 'profile' | 'speech-debug';
+type Page = 'home' | 'bookshelf' | 'reader' | 'community' | 'login' | 'register' | 'profile' | 'speech-debug';
 
 type User = {
   id: string;
@@ -280,10 +280,13 @@ type VoiceDesignVersion = {
   characterCode: string;
   characterName: string;
   ownerUserId: string;
+  ownerUsername: string;
+  ownerDisplayName: string;
   versionNumber: number;
   prompt: string;
   previewText: string;
   previewAudioUrl: string | null;
+  shared: boolean;
   createdAt: string;
 };
 
@@ -312,6 +315,8 @@ type DubbingVersion = {
       prompt: string;
       previewText: string;
       versionNumber: number;
+      ownerDisplayName?: string;
+      shared?: boolean;
     }>;
     performanceSegments?: DubbingPlanSegment[];
     generationSettings?: MiniMaxGenerationSettings;
@@ -600,6 +605,10 @@ const api = {
         chapterId
       )}&paragraphIndex=${paragraphIndex}`
     ),
+  communityDubbingVersions: (kind: '' | DubbingKind, sort: 'popular' | 'newest') =>
+    requestJson<{ versions: DubbingVersion[] }>(
+      `/api/dubbing/community?kind=${encodeURIComponent(kind)}&sort=${encodeURIComponent(sort)}`
+    ),
   adoptedDubbingVersions: (articleId: string, chapterId: string) =>
     requestJson<{ versions: DubbingVersion[] }>(
       `/api/dubbing/adoptions?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(chapterId)}`
@@ -609,10 +618,12 @@ const api = {
       `/api/dubbing/units/${encodeURIComponent(unitId)}/ai-plan`,
       { method: 'POST' }
     ),
+  voiceDesigns: (scope: 'mine' | 'shared' = 'mine') =>
+    requestJson<{ versions: VoiceDesignVersion[] }>(
+      `/api/dubbing/voice-designs?scope=${encodeURIComponent(scope)}`
+    ),
   createVoiceDesign: (payload: {
-    articleId: string;
-    characterCode: string;
-    characterName: string;
+    voiceName: string;
     prompt: string;
     previewText: string;
   }) =>
@@ -625,6 +636,7 @@ const api = {
     payload: {
       segments: DubbingPlanSegment[];
       voiceDesignVersionIdsBySpeaker: Record<string, string>;
+      sharedVoiceDesignVersionIds: string[];
       generationSettings: MiniMaxGenerationSettings;
       visibility: 'private' | 'public';
     }
@@ -825,6 +837,9 @@ function App() {
       <TopNav page={page} user={user} setPage={setPage} logout={logout} />
 
       {page === 'home' && <HomePage user={user} setPage={setPage} />}
+      {page === 'community' && (
+        <CommunityPage user={user} setPage={setPage} setChapterId={setChapterId} />
+      )}
       {page === 'login' && <AuthPage mode="login" saveSession={saveSession} setPage={setPage} />}
       {page === 'register' && <AuthPage mode="register" saveSession={saveSession} setPage={setPage} />}
       {page === 'bookshelf' &&
@@ -900,6 +915,9 @@ function TopNav({
       <nav>
         <button className={page === 'home' ? 'active' : ''} onClick={() => setPage('home')}>
           首页
+        </button>
+        <button className={page === 'community' ? 'active' : ''} onClick={() => setPage('community')}>
+          创作广场
         </button>
         {user ? (
           <>
@@ -999,6 +1017,277 @@ function HomePage({ user, setPage }: { user: User | null; setPage: (page: Page) 
           <h2>证物整理</h2>
           <p>收集关键物件、地点和人物信息，为后续非剧透推理提供上下文。</p>
         </article>
+      </div>
+    </section>
+  );
+}
+
+function CommunityPage({
+  user,
+  setPage,
+  setChapterId
+}: {
+  user: User | null;
+  setPage: (page: Page) => void;
+  setChapterId: (chapterId: string) => void;
+}) {
+  const [tab, setTab] = useState<'all' | 'ai' | 'human' | 'mine'>('all');
+  const [sort, setSort] = useState<'popular' | 'newest'>('popular');
+  const [versions, setVersions] = useState<DubbingVersion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadVersions = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const kind = tab === 'ai' || tab === 'human' ? tab : '';
+      const result = await api.communityDubbingVersions(kind, sort);
+      setVersions(tab === 'mine' ? result.versions.filter((version) => version.ownerUserId === user?.id) : result.versions);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '创作广场加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [sort, tab, user?.id]);
+
+  useEffect(() => {
+    void loadVersions();
+  }, [loadVersions]);
+
+  function requireLogin() {
+    if (user) return true;
+    setPage('login');
+    return false;
+  }
+
+  async function toggleLike(version: DubbingVersion) {
+    if (!requireLogin()) return;
+    try {
+      const { version: updated } = await api.likeDubbingVersion(version.id, !version.likedByMe);
+      setVersions((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '点赞失败');
+    }
+  }
+
+  async function adopt(version: DubbingVersion) {
+    if (!requireLogin()) return;
+    try {
+      const { version: updated } = await api.adoptDubbingVersion(version.unitId, version.id);
+      setVersions((current) => current.map((item) =>
+        item.unitId === version.unitId ? { ...item, adoptedByMe: item.id === updated.id } : item
+      ));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '采用失败');
+    }
+  }
+
+  async function report(version: DubbingVersion) {
+    if (!requireLogin()) return;
+    const reason = window.prompt('请简要说明举报原因（3—500 字）');
+    if (!reason) return;
+    try {
+      await api.reportDubbingVersion(version.id, reason);
+      window.alert('举报已提交');
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '举报失败');
+    }
+  }
+
+  async function withdraw(version: DubbingVersion) {
+    if (!user || version.ownerUserId !== user.id) return;
+    if (!window.confirm('撤回后作品将从创作广场消失，已采用的读者仍可继续播放。确定撤回吗？')) return;
+    try {
+      await api.setDubbingStatus(version.id, 'withdrawn');
+      setVersions((current) => current.filter((item) => item.id !== version.id));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '作品撤回失败');
+    }
+  }
+
+  return (
+    <section className="community-page">
+      <header className="community-hero">
+        <div>
+          <p className="eyebrow">CREATION SQUARE</p>
+          <h1>创作广场</h1>
+          <p>听见不同读者对同一段故事的理解。这里集中展示公开的真人演绎与 AI 配音。</p>
+        </div>
+        <div className="community-hero-stat">
+          <strong>{versions.length}</strong>
+          <span>公开作品</span>
+        </div>
+      </header>
+
+      <div className="community-toolbar">
+        <div className="community-tabs">
+          {([['all', '全部作品'], ['ai', 'AI 配音'], ['human', '真人配音'], ...(user ? [['mine', '我的发布']] : [])] as Array<[typeof tab, string]>).map(([value, label]) => (
+            <button key={value} type="button" className={tab === value ? 'active' : ''} onClick={() => setTab(value)}>{label}</button>
+          ))}
+        </div>
+        <label>
+          排序
+          <select value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}>
+            <option value="popular">热门优先</option>
+            <option value="newest">最新发布</option>
+          </select>
+        </label>
+      </div>
+
+      {error && <p className="community-error">{error}</p>}
+      {loading ? (
+        <p className="community-empty">正在载入创作...</p>
+      ) : versions.length === 0 ? (
+        <p className="community-empty">这个分类暂时还没有公开作品。</p>
+      ) : (
+        <div className="community-grid">
+          {versions.map((version) => {
+            const sharedVoices = Object.values(version.promptSnapshot?.voiceDesigns || {}).filter((voice) => voice.shared);
+            return (
+              <article key={version.id} className="community-work-card">
+                <header>
+                  <div className={`community-kind ${version.kind}`}>{version.kind === 'ai' ? 'AI 配音' : '真人配音'}</div>
+                  <span>V{version.versionNumber}</span>
+                </header>
+                <div className="community-creator">
+                  <span className="community-avatar">{(version.displayName || version.username).slice(0, 1)}</span>
+                  <div>
+                    <strong>{version.displayName || version.username}</strong>
+                    <small>《斑点带子案》· {version.chapterId} · 第 {version.paragraphIndex + 1} 段</small>
+                  </div>
+                </div>
+                <blockquote>{version.sourceText}</blockquote>
+                <audio controls preload="none" src={version.audioUrl}>你的浏览器不支持音频播放。</audio>
+                {sharedVoices.length > 0 && (
+                  <div className="shared-voice-tags">
+                    {sharedVoices.map((voice) => <span key={voice.versionId}>可用音色 · {voice.characterName}</span>)}
+                  </div>
+                )}
+                <footer>
+                  <span>赞 {version.likeCount} · 采用 {version.adoptionCount}</span>
+                  <div>
+                    {version.ownerUserId !== user?.id && (
+                      <button type="button" onClick={() => void toggleLike(version)}>{version.likedByMe ? '已赞' : '点赞'}</button>
+                    )}
+                    <button type="button" className={version.adoptedByMe ? 'active' : ''} onClick={() => void adopt(version)}>
+                      {version.adoptedByMe ? '已设为播放版本' : '采用播放'}
+                    </button>
+                    {user && version.ownerUserId !== user.id && <button type="button" onClick={() => void report(version)}>举报</button>}
+                    {user && version.ownerUserId === user.id && <button type="button" onClick={() => void withdraw(version)}>撤回</button>}
+                    <button type="button" onClick={() => {
+                      if (!requireLogin()) return;
+                      setChapterId(version.chapterId);
+                      setPage('reader');
+                    }}>查看原文</button>
+                  </div>
+                </footer>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function VoiceLibrary({
+  compact = false,
+  onCreated
+}: {
+  compact?: boolean;
+  onCreated?: (version: VoiceDesignVersion) => void;
+}) {
+  const [voices, setVoices] = useState<VoiceDesignVersion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [voiceName, setVoiceName] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [previewText, setPreviewText] = useState('');
+
+  const loadVoices = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await api.voiceDesigns('mine');
+      setVoices(result.versions);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '音色库加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadVoices();
+  }, [loadVoices]);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (voiceName.trim().length < 2 || prompt.trim().length < 5 || previewText.trim().length < 5) {
+      setError('请填写音色名称，并为音色描述和试听文本各输入至少 5 个字');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const { version } = await api.createVoiceDesign({
+        voiceName: voiceName.trim(),
+        prompt: prompt.trim(),
+        previewText: previewText.trim()
+      });
+      setVoices((current) => [version, ...current]);
+      setVoiceName('');
+      setPrompt('');
+      setPreviewText('');
+      onCreated?.(version);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '音色创建失败');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className={compact ? 'voice-library compact' : 'voice-library'}>
+      <div className="voice-library-heading">
+        <div>
+          <p className="eyebrow">MY VOICE LIBRARY</p>
+          <h2>我的音色库</h2>
+          <p>音色创建后可跨作品、跨角色使用，默认仅自己可见。</p>
+        </div>
+        <span>{voices.length} 个音色版本</span>
+      </div>
+
+      <form className="voice-design-form" onSubmit={submit}>
+        <label>
+          音色名称
+          <input value={voiceName} maxLength={80} placeholder="例如：冷静的青年侦探" onChange={(event) => setVoiceName(event.target.value)} />
+        </label>
+        <label>
+          音色描述
+          <textarea value={prompt} maxLength={500} rows={3} placeholder="描述年龄、质感、语气、节奏与听感" onChange={(event) => setPrompt(event.target.value)} />
+        </label>
+        <label>
+          试听文本
+          <textarea value={previewText} maxLength={200} rows={2} placeholder="输入一段最能体现该音色特点的文本" onChange={(event) => setPreviewText(event.target.value)} />
+        </label>
+        {error && <p className="form-error">{error}</p>}
+        <button type="submit" disabled={saving}>{saving ? '正在生成试听...' : '生成并保存音色'}</button>
+      </form>
+
+      <div className="voice-library-list">
+        {loading ? <p>正在读取我的音色...</p> : voices.length === 0 ? <p>还没有自创音色，可以先从上面的描述开始。</p> : voices.map((voice) => (
+          <article key={voice.id} className="voice-library-card">
+            <div>
+              <strong>{voice.characterName}</strong>
+              <small>V{voice.versionNumber} · {voice.shared ? '已随公开作品共享' : '仅自己可用'}</small>
+              <p>{voice.prompt}</p>
+              <span>试听文本：{voice.previewText}</span>
+            </div>
+            {voice.previewAudioUrl && <audio controls preload="none" src={voice.previewAudioUrl} />}
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -1291,6 +1580,10 @@ function ProfilePage({
             })}
           </div>
         )}
+      </div>
+
+      <div className="profile-card voice-profile-card">
+        <VoiceLibrary />
       </div>
     </section>
   );
@@ -1695,7 +1988,8 @@ function ReaderPage({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [paragraphSpeechLoadingKey, setParagraphSpeechLoadingKey] = useState<string | null>(null);
   const [voicePanelOpen, setVoicePanelOpen] = useState(false);
-  const [voicePanelTab, setVoicePanelTab] = useState<'all' | 'ai' | 'human' | 'mine'>('all');
+  const [voiceDesignerOpen, setVoiceDesignerOpen] = useState(false);
+  const [voiceDesignerSpeaker, setVoiceDesignerSpeaker] = useState<string | null>(null);
   const [dubbingBundles, setDubbingBundles] = useState<Record<string, DubbingUnitBundle>>({});
   const [voiceLoadingKey, setVoiceLoadingKey] = useState<string | null>(null);
   const [voiceSaving, setVoiceSaving] = useState(false);
@@ -1705,11 +1999,10 @@ function ReaderPage({
   const [aiPlanning, setAiPlanning] = useState(false);
   const aiComposerRequestRef = useRef(0);
   const selectedDubbingKeyRef = useRef<string | null>(null);
-  const [selectedVoiceSpeaker, setSelectedVoiceSpeaker] = useState('');
-  const [voicePrompt, setVoicePrompt] = useState('');
-  const [voicePreviewText, setVoicePreviewText] = useState('');
   const [voiceDesignsBySpeaker, setVoiceDesignsBySpeaker] = useState<Record<string, VoiceDesignVersion>>({});
-  const [voiceDesignSaving, setVoiceDesignSaving] = useState(false);
+  const [myVoiceDesigns, setMyVoiceDesigns] = useState<VoiceDesignVersion[]>([]);
+  const [sharedVoiceDesigns, setSharedVoiceDesigns] = useState<VoiceDesignVersion[]>([]);
+  const [sharedVoiceDesignIds, setSharedVoiceDesignIds] = useState<string[]>([]);
   const [annotationCursorBySegment, setAnnotationCursorBySegment] = useState<Record<string, number>>({});
   const [pauseSecondsBySegment, setPauseSecondsBySegment] = useState<Record<string, number>>({});
   const [vocalTagBySegment, setVocalTagBySegment] = useState<Record<string, string>>({});
@@ -2070,14 +2363,11 @@ function ReaderPage({
     }
     setAiPlanning(false);
     setVoiceSaving(false);
-    setVoiceDesignSaving(false);
     setAiComposerOpen(false);
     setAiPlan(null);
     setAiComposerBinding(null);
-    setSelectedVoiceSpeaker('');
-    setVoicePrompt('');
-    setVoicePreviewText('');
     setVoiceDesignsBySpeaker({});
+    setSharedVoiceDesignIds([]);
     setAnnotationCursorBySegment({});
     setPauseSecondsBySegment({});
     setVocalTagBySegment({});
@@ -2149,7 +2439,11 @@ function ReaderPage({
       if (!bundle.unit.hasDialogue) {
         throw new Error('这个段落没有角色对白，不需要创建配音');
       }
-      const { unit, plan } = await api.planAiDubbing(bundle.unit.id);
+      const [{ unit, plan }, myVoices, sharedVoices] = await Promise.all([
+        api.planAiDubbing(bundle.unit.id),
+        api.voiceDesigns('mine'),
+        api.voiceDesigns('shared')
+      ]);
       if (
         aiComposerRequestRef.current !== requestId ||
         selectedDubbingKeyRef.current !== requestedSelectionKey
@@ -2162,7 +2456,6 @@ function ReaderPage({
       if (!plan.segments.length) {
         throw new Error('没有从这个段落识别出可配音的角色对白');
       }
-      const firstSpeaker = plan.segments.find((segment) => segment.speakerCode)?.speakerCode || '';
       setAiComposerBinding({
         unitId: unit.id,
         sourceHash: unit.sourceHash,
@@ -2182,13 +2475,10 @@ function ReaderPage({
         segment.segmentId,
         plan.capabilities.vocalTags[0]?.value || 'breath'
       ])));
-      setSelectedVoiceSpeaker(firstSpeaker);
-      setVoicePreviewText(
-        plan.segments.find((segment) => segment.speakerCode === firstSpeaker)?.text || plan.segments[0].text
-      );
-      setVoicePrompt('');
       setVoiceDesignsBySpeaker({});
-      setVoicePanelTab('mine');
+      setMyVoiceDesigns(myVoices.versions);
+      setSharedVoiceDesigns(sharedVoices.versions);
+      setSharedVoiceDesignIds([]);
     } catch (error) {
       if (aiComposerRequestRef.current !== requestId) {
         return;
@@ -2261,58 +2551,6 @@ function ReaderPage({
     setAiPlan((current) => current ? { ...current, generationSettings: updater(current.generationSettings) } : current);
   }
 
-  function setRecipeVoiceSourceMode(segmentId: string, mode: MiniMaxSegmentRecipe['voiceSource']['mode']) {
-    updateAiSegmentRecipe(segmentId, (recipe) => ({
-      ...recipe,
-      voiceSource: {
-        ...recipe.voiceSource,
-        mode,
-        timbreWeights: mode === 'blend' && recipe.voiceSource.timbreWeights.length < 2
-          ? [{ voiceId: '', weight: 50 }, { voiceId: '', weight: 50 }]
-          : recipe.voiceSource.timbreWeights
-      }
-    }));
-  }
-
-  function updateTimbreWeight(
-    segmentId: string,
-    index: number,
-    patch: Partial<{ voiceId: string; weight: number }>
-  ) {
-    updateAiSegmentRecipe(segmentId, (recipe) => ({
-      ...recipe,
-      voiceSource: {
-        ...recipe.voiceSource,
-        timbreWeights: recipe.voiceSource.timbreWeights.map((item, itemIndex) =>
-          itemIndex === index ? { ...item, ...patch } : item
-        )
-      }
-    }));
-  }
-
-  function addTimbreWeight(segmentId: string) {
-    if (!aiPlan) return;
-    updateAiSegmentRecipe(segmentId, (recipe) => ({
-      ...recipe,
-      voiceSource: {
-        ...recipe.voiceSource,
-        timbreWeights: recipe.voiceSource.timbreWeights.length >= aiPlan.capabilities.maxTimbreWeights
-          ? recipe.voiceSource.timbreWeights
-          : [...recipe.voiceSource.timbreWeights, { voiceId: '', weight: 50 }]
-      }
-    }));
-  }
-
-  function removeTimbreWeight(segmentId: string, index: number) {
-    updateAiSegmentRecipe(segmentId, (recipe) => ({
-      ...recipe,
-      voiceSource: {
-        ...recipe.voiceSource,
-        timbreWeights: recipe.voiceSource.timbreWeights.filter((_, itemIndex) => itemIndex !== index)
-      }
-    }));
-  }
-
   function addSegmentAnnotation(segment: DubbingPlanSegment, type: MiniMaxAnnotation['type']) {
     if (!aiPlan || !segment.recipe) return;
     const offset = annotationCursorBySegment[segment.segmentId];
@@ -2357,46 +2595,6 @@ function ReaderPage({
     }));
   }
 
-  async function saveCharacterVoiceDesign() {
-    if (!aiPlan || !aiComposerBinding || !selectedVoiceSpeaker || voiceDesignSaving) return;
-    if (selectedDubbingKeyRef.current !== aiComposerBinding.selectionKey) return;
-    const requestId = aiComposerRequestRef.current;
-    const prompt = voicePrompt.trim();
-    const previewText = voicePreviewText.trim();
-    if (prompt.length < 5 || previewText.length < 5) {
-      setNotice('请填写至少 5 个字的音色提示词和试听文本');
-      window.setTimeout(() => setNotice(''), 2200);
-      return;
-    }
-    const role = aiPlan.roles.find((item) => item.code === selectedVoiceSpeaker);
-    setVoiceDesignSaving(true);
-    try {
-      const { version } = await api.createVoiceDesign({
-        articleId: 'speckled-band',
-        characterCode: selectedVoiceSpeaker,
-        characterName: role?.label || selectedVoiceSpeaker,
-        prompt,
-        previewText
-      });
-      if (aiComposerRequestRef.current !== requestId) {
-        return;
-      }
-      setVoiceDesignsBySpeaker((current) => ({ ...current, [selectedVoiceSpeaker]: version }));
-      setNotice(`${version.characterName}声线 V${version.versionNumber} 已保存`);
-      window.setTimeout(() => setNotice(''), 1800);
-    } catch (error) {
-      if (aiComposerRequestRef.current !== requestId) {
-        return;
-      }
-      setNotice(error instanceof Error ? error.message : '角色声线生成失败');
-      window.setTimeout(() => setNotice(''), 2600);
-    } finally {
-      if (aiComposerRequestRef.current === requestId) {
-        setVoiceDesignSaving(false);
-      }
-    }
-  }
-
   async function saveAiDubbingVersion(visibility: 'private' | 'public') {
     if (!selectedParagraph || !aiPlan || voiceSaving) return;
     const selectionKey = dubbingBundleKey(selectedParagraph);
@@ -2419,6 +2617,7 @@ function ReaderPage({
       await api.createAiDubbingVersion(bundle.unit.id, {
         segments: aiPlan.segments,
         voiceDesignVersionIdsBySpeaker,
+        sharedVoiceDesignVersionIds: sharedVoiceDesignIds,
         generationSettings: aiPlan.generationSettings,
         visibility
       });
@@ -3339,6 +3538,41 @@ function ReaderPage({
     );
   }
 
+  function assignVoiceToSpeaker(speakerCode: string, versionId: string) {
+    if (!versionId) {
+      setVoiceDesignsBySpeaker((current) => {
+        const next = { ...current };
+        delete next[speakerCode];
+        return next;
+      });
+      return;
+    }
+    const version = [...myVoiceDesigns, ...sharedVoiceDesigns].find((item) => item.id === versionId);
+    if (version) {
+      setVoiceDesignsBySpeaker((current) => ({ ...current, [speakerCode]: version }));
+    }
+  }
+
+  function openVoiceDesigner(speakerCode: string | null = null) {
+    setVoiceDesignerSpeaker(speakerCode);
+    setVoiceDesignerOpen(true);
+  }
+
+  function closeVoiceDesigner() {
+    setVoiceDesignerOpen(false);
+    setVoiceDesignerSpeaker(null);
+  }
+
+  function handleVoiceCreated(version: VoiceDesignVersion) {
+    setMyVoiceDesigns((current) => [version, ...current.filter((item) => item.id !== version.id)]);
+    if (voiceDesignerSpeaker) {
+      setVoiceDesignsBySpeaker((current) => ({ ...current, [voiceDesignerSpeaker]: version }));
+      setNotice(`已为当前角色选用“${version.characterName}”`);
+      window.setTimeout(() => setNotice(''), 1800);
+      closeVoiceDesigner();
+    }
+  }
+
   function renderAiComposer(bundle: DubbingUnitBundle) {
     if (!aiComposerOpen) return null;
     if (aiPlanning) {
@@ -3346,15 +3580,46 @@ function ReaderPage({
     }
     if (!aiPlan || !aiComposerMatchesUnit(aiComposerBinding, bundle.unit)) return null;
     const capabilities = aiPlan.capabilities;
+    const activeRoles = aiPlan.roles.filter((role) => aiPlan.segments.some((segment) => segment.speakerCode === role.code));
+    const selectedOwnVoices = Array.from(new Map(
+      Object.values(voiceDesignsBySpeaker)
+        .filter((voice) => voice.ownerUserId === user?.id)
+        .map((voice) => [voice.id, voice])
+    ).values());
 
     return (
       <section className="ai-dubbing-composer">
         <div className="ai-voice-lock">
           <div>
             <span className="ai-voice-lock-dot" aria-hidden="true" />
-            <strong>角色音色已锁定</strong>
+            <strong>为角色分配音色</strong>
           </div>
-          <small>这里只调整台词的停顿、情绪与节奏，不创建或更换角色声线。</small>
+          <small>可以使用平台默认音色、我的自创音色，或创作者公开共享的音色。</small>
+        </div>
+
+        <div className="role-voice-assignments">
+          {activeRoles.map((role) => (
+            <label key={role.code}>
+              <span>{role.label}</span>
+              <select
+                value={voiceDesignsBySpeaker[role.code]?.id || ''}
+                onChange={(event) => assignVoiceToSpeaker(role.code, event.target.value)}
+              >
+                <option value="">平台默认音色</option>
+                {myVoiceDesigns.length > 0 && (
+                  <optgroup label="我的音色">
+                    {myVoiceDesigns.map((voice) => <option key={voice.id} value={voice.id}>{voice.characterName} · V{voice.versionNumber}</option>)}
+                  </optgroup>
+                )}
+                {sharedVoiceDesigns.length > 0 && (
+                  <optgroup label="创作广场共享音色">
+                    {sharedVoiceDesigns.map((voice) => <option key={voice.id} value={voice.id}>{voice.characterName} · {voice.ownerDisplayName}</option>)}
+                  </optgroup>
+                )}
+              </select>
+              <button type="button" onClick={() => openVoiceDesigner(role.code)}>为这个角色设计新音色</button>
+            </label>
+          ))}
         </div>
 
         <details className="minimax-global-settings">
@@ -3555,8 +3820,10 @@ function ReaderPage({
                     />
                   </label>
                   <div className="locked-setting">
-                    <span>角色音色与基础音调</span>
-                    <strong>平台锁定</strong>
+                    <span>当前角色音色</span>
+                    <strong>{segment.speakerCode && voiceDesignsBySpeaker[segment.speakerCode]
+                      ? voiceDesignsBySpeaker[segment.speakerCode].characterName
+                      : '平台默认'}</strong>
                   </div>
                 </div>
 
@@ -3589,14 +3856,54 @@ function ReaderPage({
             );
           })}
         </div>
+        {selectedOwnVoices.length > 0 && (
+          <div className="voice-share-options">
+            <strong>发布时共享音色（可选）</strong>
+            <p>勾选后，其他创作者可以在自己的 AI 配音中使用该音色；系统不会展示原始音色 ID。</p>
+            {selectedOwnVoices.map((voice) => (
+              <label key={voice.id}>
+                <input
+                  type="checkbox"
+                  checked={sharedVoiceDesignIds.includes(voice.id)}
+                  onChange={(event) => setSharedVoiceDesignIds((current) => event.target.checked
+                    ? [...new Set([...current, voice.id])]
+                    : current.filter((id) => id !== voice.id))}
+                />
+                同时公开“{voice.characterName}”，允许其他创作者使用
+              </label>
+            ))}
+          </div>
+        )}
         <div className="ai-composer-actions">
           <button className="ai-secondary-action" type="button" onClick={() => void saveAiDubbingVersion('private')} disabled={voiceSaving}>保存私密</button>
           <button className="ai-primary-action" type="button" onClick={() => void saveAiDubbingVersion('public')} disabled={voiceSaving}>
             {voiceSaving ? '生成中...' : '生成并公开新版本'}
           </button>
         </div>
-        <small>角色声线由平台统一锁定。当前单元：{bundle.unit.sourceText.slice(0, 46)}...</small>
+        <small>未指定自创音色的角色继续使用平台默认音色。当前单元：{bundle.unit.sourceText.slice(0, 46)}...</small>
       </section>
+    );
+  }
+
+  function renderVoiceDesignerPanel() {
+    return (
+      <div
+        className="selection-voice-panel ai-design-panel voice-designer-panel"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="ai-design-panel-header">
+          <div>
+            <span>VOICE DESIGN</span>
+            <strong>我来设计音色</strong>
+            <p>{voiceDesignerSpeaker ? '创建完成后会自动返回，并为当前角色选中新音色。' : '创建可跨作品、跨角色使用的个人音色。'}</p>
+          </div>
+          <button type="button" className="ai-design-close" onClick={closeVoiceDesigner} aria-label="关闭音色设计">×</button>
+        </header>
+        <div className="ai-design-panel-body">
+          <VoiceLibrary compact onCreated={handleVoiceCreated} />
+        </div>
+      </div>
     );
   }
 
@@ -3608,13 +3915,7 @@ function ReaderPage({
     const key = dubbingBundleKey(selectedParagraph);
     const bundle = dubbingBundles[key];
     const loading = voiceLoadingKey === key;
-    const versions = (bundle?.versions || []).filter((version) => {
-      if (voicePanelTab === 'ai') return version.kind === 'ai';
-      if (voicePanelTab === 'human') return version.kind === 'human';
-      if (voicePanelTab === 'mine') return version.ownerUserId === user?.id;
-      return true;
-    });
-
+    const myVersions = (bundle?.versions || []).filter((version) => version.ownerUserId === user?.id);
     return (
       <div
         className="selection-voice-panel ai-design-panel"
@@ -3647,57 +3948,20 @@ function ReaderPage({
             </div>
 
             {renderAiComposer(bundle)}
-
-            <details className="ai-design-library">
-              <summary>
-                <div>
-                  <strong>已有配音版本</strong>
-                  <small>{bundle.versions.length} 个社区版本</small>
+            {myVersions.length > 0 && (
+              <details className="ai-design-library my-dubbing-library">
+                <summary>
+                  <div>
+                    <strong>我的配音版本</strong>
+                    <small>{myVersions.length} 个私密或公开版本</small>
+                  </div>
+                  <span>管理</span>
+                </summary>
+                <div className="ai-design-library-content voice-panel-section">
+                  {myVersions.map((version) => renderDubbingVersionCard(version, bundle.unit))}
                 </div>
-                <span>查看</span>
-              </summary>
-              <div className="ai-design-library-content">
-                <div className="voice-panel-tabs">
-                  {([['all', '全部'], ['ai', 'AI 配音'], ['human', '真人配音'], ['mine', '我的作品']] as const).map(([value, label]) => (
-                    <button key={value} type="button" className={voicePanelTab === value ? 'active' : ''} onClick={() => setVoicePanelTab(value)}>{label}</button>
-                  ))}
-                </div>
-                <div className="voice-panel-section">
-                  {platformParagraphAudios[rangeKey(bundle.unit.chapterId, bundle.unit.range)] && (
-                    <article className={`voice-recording-row dubbing-version-card${bundle.versions.some((version) => version.adoptedByMe) ? '' : ' adopted'}`}>
-                      <div className="dubbing-version-summary">
-                        <strong>平台默认配音</strong>
-                        <small>{bundle.versions.some((version) => version.adoptedByMe) ? '可恢复' : '当前使用'}</small>
-                        <span>平台统一选角与表演导演</span>
-                      </div>
-                      <div className="voice-recording-actions">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggleParagraphAudio(
-                              `platform-${bundle.unit.id}`,
-                              platformParagraphAudios[rangeKey(bundle.unit.chapterId, bundle.unit.range)].audioUrl
-                            )
-                          }
-                        >
-                          播放
-                        </button>
-                        {bundle.versions.some((version) => version.adoptedByMe) && (
-                          <button type="button" onClick={() => void cancelDubbingAdoption(bundle.unit)}>
-                            恢复平台默认
-                          </button>
-                        )}
-                      </div>
-                    </article>
-                  )}
-                  {versions.length ? (
-                    versions.map((version) => renderDubbingVersionCard(version, bundle.unit))
-                  ) : (
-                    <p className="voice-panel-empty">这个分类下还没有配音版本。</p>
-                  )}
-                </div>
-              </div>
-            </details>
+              </details>
+            )}
           </div>
         )}
       </div>
@@ -4092,6 +4356,23 @@ function ReaderPage({
                   </button>
                   <button
                     type="button"
+                    className={voiceDesignerOpen ? 'selection-menu-button active' : 'selection-menu-button'}
+                    aria-expanded={voiceDesignerOpen}
+                    onClick={() => {
+                      if (voiceDesignerOpen) {
+                        closeVoiceDesigner();
+                        return;
+                      }
+                      setVoicePanelOpen(false);
+                      openVoiceDesigner();
+                    }}
+                    disabled={imageGenerating || speechGenerating}
+                  >
+                    <span>我来设计音色</span>
+                    <span className="selection-menu-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button
+                    type="button"
                     className={voicePanelOpen ? 'selection-menu-button active' : 'selection-menu-button'}
                     aria-expanded={voicePanelOpen}
                     onClick={() => {
@@ -4099,6 +4380,7 @@ function ReaderPage({
                         closeAiDesignMenu();
                         return;
                       }
+                      closeVoiceDesigner();
                       void startAiDubbingCreation();
                     }}
                     disabled={imageGenerating || speechGenerating}
@@ -4106,7 +4388,7 @@ function ReaderPage({
                     <span>我来设计 AI 配音</span>
                     <span className="selection-menu-chevron" aria-hidden="true">›</span>
                   </button>
-                  {voicePanelOpen && renderVoicePanel()}
+                  {voiceDesignerOpen ? renderVoiceDesignerPanel() : voicePanelOpen && renderVoicePanel()}
                 </div>
               )}
             </div>

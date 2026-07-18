@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
-import { ensureSchema, getPool } from './db.js';
+import { getPool } from './db.js';
+import { ensureCommunitySchema } from './community-schema.js';
 
 const VERSION_STATUSES = new Set(['private', 'public', 'withdrawn', 'moderated', 'deleted']);
 const DUBBING_KINDS = new Set(['ai', 'human']);
@@ -18,6 +19,38 @@ function booleanValue(value) {
   return Number(value || 0) > 0;
 }
 
+function sanitizeRecipe(recipe) {
+  if (!recipe || typeof recipe !== 'object') return recipe;
+  const voiceSource = recipe.voiceSource && typeof recipe.voiceSource === 'object'
+    ? {
+        ...recipe.voiceSource,
+        voiceId: recipe.voiceSource.voiceId ? '[private]' : '',
+        timbreWeights: Array.isArray(recipe.voiceSource.timbreWeights)
+          ? recipe.voiceSource.timbreWeights.map((item) => ({ ...item, voiceId: '[private]' }))
+          : []
+      }
+    : recipe.voiceSource;
+  return { ...recipe, voiceSource };
+}
+
+function sanitizeSegment(segment) {
+  return segment && typeof segment === 'object'
+    ? { ...segment, recipe: sanitizeRecipe(segment.recipe) }
+    : segment;
+}
+
+function sanitizePromptSnapshot(value) {
+  const snapshot = parseJson(value, null);
+  if (!snapshot || typeof snapshot !== 'object') return null;
+  return {
+    ...snapshot,
+    performanceSegments: Array.isArray(snapshot.performanceSegments)
+      ? snapshot.performanceSegments.map(sanitizeSegment)
+      : [],
+    ttsRequests: undefined
+  };
+}
+
 function mapVoiceDesignVersion(row) {
   if (!row) return null;
   return {
@@ -33,6 +66,9 @@ function mapVoiceDesignVersion(row) {
     voiceId: row.voice_id,
     previewAudioUrl: row.preview_audio_url,
     previewMediaAssetId: row.preview_media_asset_id,
+    ownerUsername: row.owner_username || '',
+    ownerDisplayName: row.owner_display_name || '',
+    shared: booleanValue(row.shared),
     createdAt: row.created_at
   };
 }
@@ -57,8 +93,8 @@ function mapDubbingVersion(row) {
     sourceText: row.source_text,
     sourceHash: row.source_hash,
     durationMs: row.duration_ms === null ? null : Number(row.duration_ms),
-    promptSnapshot: parseJson(row.prompt_snapshot_json, null),
-    segments: parseJson(row.segments_json, []),
+    promptSnapshot: sanitizePromptSnapshot(row.prompt_snapshot_json),
+    segments: parseJson(row.segments_json, []).map(sanitizeSegment),
     likeCount: Number(row.like_count || 0),
     adoptionCount: Number(row.adoption_count || 0),
     likedByMe: booleanValue(row.liked_by_me),
@@ -139,7 +175,7 @@ async function inTransaction(pool, work) {
   }
 }
 
-export function createCommunityStore({ pool, ensureReady = ensureSchema } = {}) {
+export function createCommunityStore({ pool, ensureReady = ensureCommunitySchema } = {}) {
   let activePool = pool;
   let readyPromise;
   const database = () => {
@@ -184,6 +220,31 @@ export function createCommunityStore({ pool, ensureReady = ensureSchema } = {}) 
          dv.created_at DESC,
          dv.id DESC`,
       { unitId, currentUserId }
+    );
+    return rows.map(mapDubbingVersion);
+  }
+
+  async function listCommunityVersions({ currentUserId = '', kind, sort = 'popular', limit = 60, offset = 0 } = {}) {
+    await ready();
+    const conditions = ["dv.status = 'public'"];
+    const safeLimit = Math.min(Math.max(Math.trunc(Number(limit) || 60), 1), 100);
+    const safeOffset = Math.max(Math.trunc(Number(offset) || 0), 0);
+    const params = { currentUserId };
+    if (DUBBING_KINDS.has(kind)) {
+      conditions.push('dv.kind = :kind');
+      params.kind = kind;
+    }
+    const orderBy = sort === 'newest'
+      ? 'dv.created_at DESC, dv.id DESC'
+      : 'like_count DESC, adoption_count DESC, dv.created_at DESC, dv.id DESC';
+    const [rows] = await database().execute(
+      `SELECT ${versionSelect}
+       FROM dubbing_versions dv
+       ${versionJoins}
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY ${orderBy}
+       LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+      params
     );
     return rows.map(mapDubbingVersion);
   }
@@ -273,15 +334,28 @@ export function createCommunityStore({ pool, ensureReady = ensureSchema } = {}) 
       `SELECT
          v.id AS version_id, v.design_id, v.version_number, v.prompt, v.preview_text,
          v.voice_id, v.preview_audio_url, v.preview_media_asset_id, v.created_at,
-         d.owner_user_id, d.article_id, d.character_code, d.character_name
+         d.owner_user_id, d.article_id, d.character_code, d.character_name,
+         u.username AS owner_username, u.display_name AS owner_display_name,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM dubbing_version_shared_voice_designs shared_voice
+           JOIN dubbing_versions shared_dubbing ON shared_dubbing.id = shared_voice.dubbing_version_id
+           WHERE shared_voice.voice_design_version_id = v.id AND shared_dubbing.status = 'public'
+         ) THEN 1 ELSE 0 END AS shared
        FROM character_voice_design_versions v
        JOIN character_voice_designs d ON d.id = v.design_id
+       JOIN users u ON u.id = d.owner_user_id
        WHERE v.id = :versionId
          AND (:ownerUserId = '' OR d.owner_user_id = :ownerUserId)
        LIMIT 1`,
       { versionId, ownerUserId }
     );
     return mapVoiceDesignVersion(rows[0]);
+  }
+
+  async function getUsableVoiceDesignVersion(versionId, userId) {
+    const version = await getVoiceDesignVersion(versionId);
+    if (!version) return null;
+    return version.ownerUserId === userId || version.shared ? version : null;
   }
 
   async function listVoiceDesignVersions({ ownerUserId, articleId, characterCode } = {}) {
@@ -304,12 +378,40 @@ export function createCommunityStore({ pool, ensureReady = ensureSchema } = {}) 
       `SELECT
          v.id AS version_id, v.design_id, v.version_number, v.prompt, v.preview_text,
          v.voice_id, v.preview_audio_url, v.preview_media_asset_id, v.created_at,
-         d.owner_user_id, d.article_id, d.character_code, d.character_name
+         d.owner_user_id, d.article_id, d.character_code, d.character_name,
+         u.username AS owner_username, u.display_name AS owner_display_name,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM dubbing_version_shared_voice_designs shared_voice
+           JOIN dubbing_versions shared_dubbing ON shared_dubbing.id = shared_voice.dubbing_version_id
+           WHERE shared_voice.voice_design_version_id = v.id AND shared_dubbing.status = 'public'
+         ) THEN 1 ELSE 0 END AS shared
        FROM character_voice_design_versions v
        JOIN character_voice_designs d ON d.id = v.design_id
+       JOIN users u ON u.id = d.owner_user_id
        ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
        ORDER BY d.character_name ASC, v.version_number DESC`,
       params
+    );
+    return rows.map(mapVoiceDesignVersion);
+  }
+
+  async function listSharedVoiceDesignVersions({ excludeOwnerUserId = '' } = {}) {
+    await ready();
+    const [rows] = await database().execute(
+      `SELECT DISTINCT
+         v.id AS version_id, v.design_id, v.version_number, v.prompt, v.preview_text,
+         v.voice_id, v.preview_audio_url, v.preview_media_asset_id, v.created_at,
+         d.owner_user_id, d.article_id, d.character_code, d.character_name,
+         u.username AS owner_username, u.display_name AS owner_display_name,
+         1 AS shared
+       FROM dubbing_version_shared_voice_designs shared_voice
+       JOIN dubbing_versions dv ON dv.id = shared_voice.dubbing_version_id AND dv.status = 'public'
+       JOIN character_voice_design_versions v ON v.id = shared_voice.voice_design_version_id
+       JOIN character_voice_designs d ON d.id = v.design_id
+       JOIN users u ON u.id = d.owner_user_id
+       WHERE (:excludeOwnerUserId = '' OR d.owner_user_id <> :excludeOwnerUserId)
+       ORDER BY v.created_at DESC`,
+      { excludeOwnerUserId }
     );
     return rows.map(mapVoiceDesignVersion);
   }
@@ -366,6 +468,14 @@ export function createCommunityStore({ pool, ensureReady = ensureSchema } = {}) 
           segmentsJson: JSON.stringify(input.segments ?? [])
         }
       );
+      for (const voiceDesignVersionId of input.sharedVoiceDesignVersionIds || []) {
+        await connection.execute(
+          `INSERT IGNORE INTO dubbing_version_shared_voice_designs (
+             dubbing_version_id, voice_design_version_id
+           ) VALUES (:dubbingVersionId, :voiceDesignVersionId)`,
+          { dubbingVersionId: versionId, voiceDesignVersionId }
+        );
+      }
     });
     return getVersion(versionId, input.ownerUserId);
   }
@@ -462,7 +572,10 @@ export function createCommunityStore({ pool, ensureReady = ensureSchema } = {}) 
     createDubbingVersion,
     getVersion,
     listVersionsForUnit,
+    listCommunityVersions,
     listAdoptedVersions,
+    getUsableVoiceDesignVersion,
+    listSharedVoiceDesignVersions,
     setVersionStatus,
     setLike,
     adoptVersion,

@@ -112,6 +112,30 @@ test('MySQL community store preserves immutable versions and adoption access', a
       assert.equal(first.versionNumber, 1);
       assert.equal(second.versionNumber, 2);
     });
+
+    await t.test('published dubbing can share a voice without exposing it through unrelated private work', async () => {
+      const voice = await store.createVoiceDesignVersion({
+        ownerUserId: authorId,
+        articleId: 'global',
+        characterCode: `voice_${suffix}`,
+        characterName: 'Global detective voice',
+        prompt: 'A restrained, thoughtful adult voice',
+        previewText: 'Every detail deserves a second look.',
+        voiceId: 'provider-private-voice-id'
+      });
+      const privateVersion = await store.createDubbingVersion({
+        ...baseVersion,
+        status: 'private',
+        sharedVoiceDesignVersionIds: [voice.id]
+      });
+      assert.equal((await store.listSharedVoiceDesignVersions()).some((item) => item.id === voice.id), false);
+
+      await store.setVersionStatus(privateVersion.id, authorId, 'public');
+      const shared = await store.listSharedVoiceDesignVersions({ excludeOwnerUserId: readerId });
+      assert.equal(shared.some((item) => item.id === voice.id), true);
+      assert.equal((await store.getUsableVoiceDesignVersion(voice.id, readerId))?.id, voice.id);
+      assert.equal((await store.listCommunityVersions({ currentUserId: readerId })).some((item) => item.id === privateVersion.id), true);
+    });
   } finally {
     await getPool().execute('DELETE FROM dubbing_adoptions WHERE user_id = :readerId', { readerId });
     await getPool().execute('DELETE FROM users WHERE id IN (:authorId, :readerId)', { authorId, readerId });
