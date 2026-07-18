@@ -784,6 +784,11 @@ const api = {
       method: 'POST',
       body: JSON.stringify(form)
     }),
+  updateProfile: (form: { displayName: string }) =>
+    requestJson<{ user: User }>('/api/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(form)
+    }),
   logout: () =>
     requestJson<{ ok: true }>('/api/auth/logout', {
       method: 'POST'
@@ -883,6 +888,11 @@ function App() {
     setPage('bookshelf');
   }
 
+  function updateCurrentUser(nextUser: User) {
+    window.localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+    setUser(nextUser);
+  }
+
   async function logout() {
     try {
       await api.logout();
@@ -941,6 +951,7 @@ function App() {
             clues={clues}
             clueImages={clueImages}
             activeCover={activeCover}
+            updateUser={updateCurrentUser}
           />
         ) : (
           <AuthPage mode="login" saveSession={saveSession} setPage={setPage} />
@@ -1800,7 +1811,8 @@ function ProfilePage({
   collectedClues,
   clues,
   clueImages,
-  activeCover
+  activeCover,
+  updateUser
 }: {
   user: User | null;
   setPage: (page: Page) => void;
@@ -1808,7 +1820,12 @@ function ProfilePage({
   clues: Clue[];
   clueImages: Record<string, ClueImage>;
   activeCover: CoverVersion | null;
+  updateUser: (user: User) => void;
 }) {
+  const [editingName, setEditingName] = useState(false);
+  const [draftDisplayName, setDraftDisplayName] = useState(user?.displayName ?? '');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState('');
   const collectedEntries = collectedClues.flatMap((record) => {
     const clue = clues.find((item) => item.id === record.clueId);
     return clue ? [{ clue, record }] : [];
@@ -1826,13 +1843,73 @@ function ProfilePage({
     );
   }
 
+  async function saveDisplayName() {
+    const displayName = draftDisplayName.trim();
+    if (!displayName) {
+      setProfileError('昵称不能为空');
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileError('');
+    try {
+      const { user: nextUser } = await api.updateProfile({ displayName });
+      updateUser(nextUser);
+      setDraftDisplayName(nextUser.displayName);
+      setEditingName(false);
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : '昵称保存失败');
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
   return (
     <section className="profile-page">
       <div className="profile-card">
         <div className="avatar">{user.displayName.slice(0, 1).toUpperCase()}</div>
-        <h1>{user.displayName}</h1>
+        {editingName ? (
+          <div className="profile-name-editor">
+            <input
+              value={draftDisplayName}
+              maxLength={40}
+              onChange={(event) => setDraftDisplayName(event.target.value)}
+              aria-label="昵称"
+            />
+            <button type="button" onClick={saveDisplayName} disabled={profileSaving}>
+              {profileSaving ? '保存中' : '保存'}
+            </button>
+            <button
+              className="secondary"
+              type="button"
+              onClick={() => {
+                setDraftDisplayName(user.displayName);
+                setEditingName(false);
+                setProfileError('');
+              }}
+              disabled={profileSaving}
+            >
+              取消
+            </button>
+          </div>
+        ) : (
+          <>
+            <h1>{user.displayName}</h1>
+            <button
+              className="profile-edit-name"
+              type="button"
+              onClick={() => {
+                setDraftDisplayName(user.displayName);
+                setEditingName(true);
+              }}
+            >
+              修改昵称
+            </button>
+          </>
+        )}
         <p>@{user.username}</p>
         <p>{user.bio}</p>
+        {profileError && <p className="profile-error">{profileError}</p>}
       </div>
 
       <div className="profile-stats">
@@ -2282,6 +2359,7 @@ function ReaderPage({
   const bookPageRef = useRef<HTMLElement | null>(null);
   const [paragraphImageLoadingKey, setParagraphImageLoadingKey] = useState<string | null>(null);
   const [paragraphImages, setParagraphImages] = useState<Record<string, RangeMedia<ParagraphImage>>>({});
+  const [collapsedParagraphImages, setCollapsedParagraphImages] = useState<Record<string, RangeMedia<ParagraphImage>>>({});
   const toggleContextPanel = useCallback(
     (tab: ContextTab) => {
       setContextOpen((open) => (open && contextTab === tab ? false : true));
@@ -2493,6 +2571,7 @@ function ReaderPage({
   useEffect(() => {
     setSelectedParagraph(null);
     stopParagraphAudio();
+    setCollapsedParagraphImages({});
   }, [chapterId]);
 
   useEffect(() => {
@@ -3383,8 +3462,12 @@ function ReaderPage({
     const savedChapterId = selectedParagraph.chapterId;
     const savedParagraphIndex = selectedParagraph.paragraphIndex;
     const existingImage = paragraphImages[key];
+    const collapsedImage = collapsedParagraphImages[key];
 
-    if (existingImage) {
+    if (existingImage || collapsedImage) {
+      if (collapsedImage) {
+        expandParagraphImage(key);
+      }
       setSelectedParagraph(null);
       setNotice('已调用媒体库插图');
       window.setTimeout(() => setNotice(''), 1800);
@@ -3415,7 +3498,11 @@ function ReaderPage({
     }
   }
 
-  function hideParagraphImage(key: string) {
+  function hideParagraphImage(key: string, image: RangeMedia<ParagraphImage>) {
+    setCollapsedParagraphImages((prev) => ({
+      ...prev,
+      [key]: image
+    }));
     setParagraphImages((prev) => {
       const next = { ...prev };
       delete next[key];
@@ -3423,6 +3510,23 @@ function ReaderPage({
     });
     setNotice('插图已收起');
     window.setTimeout(() => setNotice(''), 1600);
+  }
+
+  function expandParagraphImage(key: string) {
+    const image = collapsedParagraphImages[key];
+    if (!image) {
+      return;
+    }
+
+    setParagraphImages((prev) => ({
+      ...prev,
+      [key]: image
+    }));
+    setCollapsedParagraphImages((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }
 
   async function deleteParagraphImage(key: string, image: RangeMedia<ParagraphImage>) {
@@ -3436,6 +3540,11 @@ function ReaderPage({
         await api.deleteMediaAsset(image.mediaAssetId);
       }
 
+      setCollapsedParagraphImages((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
       setParagraphImages((prev) => {
         const next = { ...prev };
         delete next[key];
@@ -4308,7 +4417,8 @@ function ReaderPage({
   function renderParagraphWithMedia(paragraph: TextSegment[], paragraphIndex: number) {
     type ParagraphInjection =
       | { kind: 'audio'; offset: number; key: string; audio: RangeMedia<ParagraphSpeech> }
-      | { kind: 'image'; offset: number; key: string; image: RangeMedia<ParagraphImage> };
+      | { kind: 'image'; offset: number; key: string; image: RangeMedia<ParagraphImage> }
+      | { kind: 'collapsed-image'; offset: number; key: string; image: RangeMedia<ParagraphImage> };
 
     const injections: ParagraphInjection[] = [];
 
@@ -4324,11 +4434,18 @@ function ReaderPage({
       }
     });
 
+    Object.entries(collapsedParagraphImages).forEach(([key, entry]) => {
+      if (entry.chapterId === chapter.id && entry.range.endParagraphIndex === paragraphIndex) {
+        injections.push({ kind: 'collapsed-image', offset: entry.range.endOffset, key, image: entry });
+      }
+    });
+
     injections.sort((left, right) => {
       if (left.offset !== right.offset) {
         return left.offset - right.offset;
       }
-      return left.kind === 'audio' ? -1 : 1;
+      const order = { audio: 0, image: 1, 'collapsed-image': 1 };
+      return order[left.kind] - order[right.kind];
     });
 
     const nodes: React.ReactNode[] = [];
@@ -4344,6 +4461,27 @@ function ReaderPage({
         return;
       }
 
+      if (injection.kind === 'collapsed-image') {
+        nodes.push(
+          <span
+            key={`collapsed-image-${injection.key}`}
+            className={`inline-image-placeholder${injection.image.fromLibrary ? ' library-media' : ''}`}
+          >
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                expandParagraphImage(injection.key);
+              }}
+            >
+              展开插图
+            </button>
+          </span>
+        );
+        position = injection.offset;
+        return;
+      }
+
       nodes.push(
         <span
           key={`image-${injection.key}`}
@@ -4354,7 +4492,7 @@ function ReaderPage({
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
-                hideParagraphImage(injection.key);
+                hideParagraphImage(injection.key, injection.image);
               }}
             >
               收起

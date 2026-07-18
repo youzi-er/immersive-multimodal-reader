@@ -26,6 +26,7 @@ import {
   listParagraphComments,
   listVoiceRecordings,
   setVoiceRecordingLike,
+  updateUserDisplayName,
   updateVoiceRecordingVisibility
 } from './db.js';
 import {
@@ -585,6 +586,27 @@ app.post('/api/auth/login', async (req, res, next) => {
 
 app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json({ user: publicUser(req.user) });
+});
+
+app.patch('/api/auth/me', requireAuth, async (req, res, next) => {
+  try {
+    const displayName = String(req.body.displayName ?? '').trim();
+
+    if (displayName.length < 1) {
+      res.status(400).json({ error: 'Display name cannot be empty' });
+      return;
+    }
+
+    if (displayName.length > 40) {
+      res.status(400).json({ error: 'Display name must be 40 characters or fewer' });
+      return;
+    }
+
+    const user = await updateUserDisplayName(req.user.id, displayName);
+    res.json({ user: publicUser(user) });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post('/api/auth/logout', requireAuth, (_req, res) => {

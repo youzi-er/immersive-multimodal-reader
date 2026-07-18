@@ -407,6 +407,21 @@ export async function getUserByUsername(username) {
   return toCamelUser(rows[0]);
 }
 
+export async function updateUserDisplayName(id, displayName) {
+  await ensureSchema();
+
+  await getPool().execute(
+    `
+      UPDATE users
+      SET display_name = :displayName
+      WHERE id = :id
+    `,
+    { id, displayName }
+  );
+
+  return getUserById(id);
+}
+
 export async function ensureUser(user) {
   await ensureSchema();
 
