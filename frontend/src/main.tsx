@@ -1990,6 +1990,8 @@ function ReaderPage({
   const [voicePanelOpen, setVoicePanelOpen] = useState(false);
   const [voiceDesignerOpen, setVoiceDesignerOpen] = useState(false);
   const [voiceDesignerSpeaker, setVoiceDesignerSpeaker] = useState<string | null>(null);
+  const [paragraphCommunityOpen, setParagraphCommunityOpen] = useState(false);
+  const [paragraphCommunityTab, setParagraphCommunityTab] = useState<'all' | 'ai' | 'human'>('all');
   const [dubbingBundles, setDubbingBundles] = useState<Record<string, DubbingUnitBundle>>({});
   const [voiceLoadingKey, setVoiceLoadingKey] = useState<string | null>(null);
   const [voiceSaving, setVoiceSaving] = useState(false);
@@ -2993,13 +2995,14 @@ function ReaderPage({
   useEffect(() => {
     if (!selectedParagraph) {
       setVoicePanelOpen(false);
+      setParagraphCommunityOpen(false);
       return;
     }
 
-    if (voicePanelOpen) {
+    if (voicePanelOpen || paragraphCommunityOpen) {
       void loadDubbingBundle(selectedParagraph);
     }
-  }, [selectedParagraph?.chapterId, selectedParagraph?.paragraphIndex, voicePanelOpen]);
+  }, [selectedParagraph?.chapterId, selectedParagraph?.paragraphIndex, voicePanelOpen, paragraphCommunityOpen]);
 
   function selectParagraph(paragraph: TextSegment[], paragraphIndex: number) {
     clearLongPressTimer();
@@ -3907,6 +3910,81 @@ function ReaderPage({
     );
   }
 
+  function renderParagraphCommunityPanel() {
+    if (!selectedParagraph) return null;
+    const key = dubbingBundleKey(selectedParagraph);
+    const bundle = dubbingBundles[key];
+    const loading = voiceLoadingKey === key;
+    const publicVersions = (bundle?.versions || []).filter((version) =>
+      version.status === 'public' &&
+      (paragraphCommunityTab === 'all' || version.kind === paragraphCommunityTab)
+    );
+
+    return (
+      <div
+        className="selection-voice-panel ai-design-panel paragraph-community-panel"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="ai-design-panel-header">
+          <div>
+            <span>CREATION SQUARE</span>
+            <strong>当前段落的创作广场</strong>
+            <p>试听其他创作者为这段原文公开的真人演绎和 AI 配音。</p>
+          </div>
+          <button
+            type="button"
+            className="ai-design-close"
+            onClick={() => setParagraphCommunityOpen(false)}
+            aria-label="关闭当前段落创作广场"
+          >
+            ×
+          </button>
+        </header>
+
+        <div className="ai-design-panel-body">
+          {loading ? (
+            <div className="ai-design-loading">
+              <span aria-hidden="true" />
+              <p>正在读取这段原文的公开创作...</p>
+            </div>
+          ) : !bundle ? (
+            <p className="voice-panel-empty">暂时无法读取这个段落的创作。</p>
+          ) : (
+            <>
+              <div className="ai-design-source paragraph-community-source">
+                <span>当前段落</span>
+                <p>{bundle.unit.sourceText}</p>
+              </div>
+              <div className="voice-panel-tabs paragraph-community-tabs">
+                {([['all', '全部'], ['ai', 'AI 配音'], ['human', '真人配音']] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={paragraphCommunityTab === value ? 'active' : ''}
+                    onClick={() => setParagraphCommunityTab(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="voice-panel-section paragraph-community-list">
+                {publicVersions.length > 0 ? (
+                  publicVersions.map((version) => renderDubbingVersionCard(version, bundle.unit))
+                ) : (
+                  <div className="paragraph-community-empty">
+                    <strong>这个分类还没有公开作品</strong>
+                    <p>你可以关闭广场，使用“我来配音”或“我来设计 AI 配音”发布第一份创作。</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   function renderVoicePanel() {
     if (!selectedParagraph) {
       return null;
@@ -4347,6 +4425,25 @@ function ReaderPage({
                   </button>
                   <button
                     type="button"
+                    className={paragraphCommunityOpen ? 'selection-menu-button active' : 'selection-menu-button'}
+                    aria-expanded={paragraphCommunityOpen}
+                    onClick={() => {
+                      if (paragraphCommunityOpen) {
+                        setParagraphCommunityOpen(false);
+                        return;
+                      }
+                      closeVoiceDesigner();
+                      closeAiDesignMenu();
+                      setParagraphCommunityTab('all');
+                      setParagraphCommunityOpen(true);
+                    }}
+                    disabled={imageGenerating || speechGenerating}
+                  >
+                    <span>创作广场</span>
+                    <span className="selection-menu-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button
+                    type="button"
                     className="selection-menu-button"
                     onClick={openHumanDubbingPlaceholder}
                     disabled={imageGenerating || speechGenerating}
@@ -4363,6 +4460,7 @@ function ReaderPage({
                         closeVoiceDesigner();
                         return;
                       }
+                      setParagraphCommunityOpen(false);
                       setVoicePanelOpen(false);
                       openVoiceDesigner();
                     }}
@@ -4381,6 +4479,7 @@ function ReaderPage({
                         return;
                       }
                       closeVoiceDesigner();
+                      setParagraphCommunityOpen(false);
                       void startAiDubbingCreation();
                     }}
                     disabled={imageGenerating || speechGenerating}
@@ -4388,7 +4487,11 @@ function ReaderPage({
                     <span>我来设计 AI 配音</span>
                     <span className="selection-menu-chevron" aria-hidden="true">›</span>
                   </button>
-                  {voiceDesignerOpen ? renderVoiceDesignerPanel() : voicePanelOpen && renderVoicePanel()}
+                  {paragraphCommunityOpen
+                    ? renderParagraphCommunityPanel()
+                    : voiceDesignerOpen
+                      ? renderVoiceDesignerPanel()
+                      : voicePanelOpen && renderVoicePanel()}
                 </div>
               )}
             </div>

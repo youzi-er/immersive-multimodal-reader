@@ -1838,6 +1838,47 @@ button:disabled {
   width: auto;
 }
 
+.paragraph-community-panel {
+  width: min(820px, calc(100vw - 32px));
+}
+
+.paragraph-community-source {
+  margin-bottom: 0;
+}
+
+.paragraph-community-tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.paragraph-community-list {
+  display: grid;
+  gap: 10px;
+}
+
+.paragraph-community-list .dubbing-version-card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  background: #fbfbfd;
+  padding: 14px;
+}
+
+.paragraph-community-empty {
+  display: grid;
+  gap: 6px;
+  border: 1px dashed #d2d2d7;
+  border-radius: 14px;
+  padding: 26px 20px;
+  color: #3a3a3c;
+  text-align: center;
+}
+
+.paragraph-community-empty p {
+  margin: 0;
+  color: #86868b;
+  font-size: 13px;
+}
+
 @media (max-width: 820px) {
   .community-grid,
   .role-voice-assignments {
