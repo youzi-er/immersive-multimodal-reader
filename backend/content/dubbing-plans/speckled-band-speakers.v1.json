@@ -2,55 +2,63 @@
   "schemaVersion": 1,
   "articleId": "speckled-band",
   "assignments": {
-    "cu_64be552013ccbcb7c36d841d": {
+    "cu_e17ca764a5a98cd3a6d2f63a": {
       "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_64be552013ccbcb7c36d841d": {
+      "speakerCode": "char_watson",
       "templateCode": null
     },
     "cu_367c16376b8a301b105c0bb5": {
-      "speakerCode": "char_watson",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_c3de0382e676e3ac49fbeb68": {
-      "speakerCode": "char_holmes",
-      "templateCode": null
-    },
-    "cu_7e50317d1a540466e4c2b036": {
       "speakerCode": "char_watson",
       "templateCode": null
     },
-    "cu_f66938c33a24d5f7d2c79a75": {
+    "cu_6c0113c7e570ffd0485540aa": {
       "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_f66938c33a24d5f7d2c79a75": {
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_04d1d5c028f79a2b2bd8632c": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_7cb17ced73c9643dbd123a0e": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_d33642478045c2c6f90c56fc": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_676dad23014ddf8ac3bf29f7": {
-      "speakerCode": "char_holmes",
-      "templateCode": null
-    },
-    "cu_4f058e9e9eb033afbbefcb6f": {
       "speakerCode": "char_helen",
       "templateCode": null
     },
-    "cu_7a044ad8760b06853d73cb4c": {
+    "cu_4f058e9e9eb033afbbefcb6f": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_fa5ad3495e69c718b86ccbb5": {
+    "cu_dac6676ace981aadeba4e1b2": {
       "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_f8ba73198c6ec2172b6f55a4": {
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_712dd7a2a6f0c41c4553d471": {
+      "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_e9c90ee77d189b3dcad589d2": {
       "speakerCode": "char_helen",
       "templateCode": null
     },
@@ -71,10 +79,14 @@
       "templateCode": null
     },
     "cu_ea7f5cb254c5489003b9faa2": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_0f600e0262d8a53d12b632fe": {
+      "speakerCode": "char_helen",
+      "templateCode": null
+    },
+    "cu_21a140ad87b2afceef22f85a": {
       "speakerCode": "char_helen",
       "templateCode": null
     },
@@ -83,14 +95,10 @@
       "templateCode": null
     },
     "cu_193051df49d0ba4c7446f87f": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_f22832d089d722a98ef76110": {
-      "speakerCode": "char_helen",
-      "templateCode": null
-    },
-    "cu_a9c898df476e0872354510f0": {
       "speakerCode": "char_helen",
       "templateCode": null
     },
@@ -102,8 +110,12 @@
       "speakerCode": "char_helen",
       "templateCode": null
     },
-    "cu_c5cb0b50057321d2fe1152e9": {
+    "cu_20dc46fa42b80b87e110cfa5": {
       "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_c5cb0b50057321d2fe1152e9": {
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_64ae0ee6ec80f23e4cecffd9": {
@@ -111,7 +123,7 @@
       "templateCode": null
     },
     "cu_ffe51f5d122e265acea6b990": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_62500ec3d68e65e1ac2b1b7b": {
@@ -143,7 +155,7 @@
       "templateCode": null
     },
     "cu_ec96ec8d913f2c3cfced114c": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_fb634967dc400a150cea9230": {
@@ -151,78 +163,74 @@
       "templateCode": null
     },
     "cu_1aae0f3e784fe5d2edb98183": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_d3a91834cb366e9bd4b89d27": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_dba012d2b15cafac8fbbcc00": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_21f4412d59a539b4a354a490": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_00b3d318caafe23e440c11c0": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_4f4cb5db518edb1a805d3dd8": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_62834a535a7595c3d5effb0a": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_4d5b7f5395cb7cb996d38be6": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_da58d212a35b7a55d007d745": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_75d1bf1700633ce6ce5270dd": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_b240436da438fc0b03468769": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_ce679eafc7a993816147d082": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_8555c5d3f12430661a6ead9d": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_3ada9bcaf1e3bd9242ad89ed": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_66dd639cadc25bdb15ffc7b9": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_e78d5b4f7c13b212c0d0d1ec": {
-      "speakerCode": "char_holmes",
-      "templateCode": null
-    },
-    "cu_06662a00199035739a2ac678": {
       "speakerCode": "char_helen",
       "templateCode": null
     },
-    "cu_f2d664df9d4f8bf8c0db7a5a": {
+    "cu_06662a00199035739a2ac678": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_d4b9b618f8dab742fb697cc7": {
+    "cu_f2d664df9d4f8bf8c0db7a5a": {
       "speakerCode": "char_helen",
       "templateCode": null
     },
@@ -235,8 +243,12 @@
       "templateCode": null
     },
     "cu_a38cd7676576edfc3141f0cf": {
-      "speakerCode": null,
-      "templateCode": "tpl_male_middle"
+      "speakerCode": "char_watson",
+      "templateCode": null
+    },
+    "cu_cf455db82e8cc154814e9fe0": {
+      "speakerCode": "char_helen",
+      "templateCode": null
     },
     "cu_d045d2ff56195d2fbb4fb072": {
       "speakerCode": "char_holmes",
@@ -246,28 +258,28 @@
       "speakerCode": "char_helen",
       "templateCode": null
     },
-    "cu_e5e1ddd83873f5968c032f86": {
-      "speakerCode": "char_watson",
-      "templateCode": null
-    },
     "cu_2340c2822dd1bb5a71945c6e": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_3680706217902654facdb0c4": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
-    "cu_8c3d05f64730408f9e61f5df": {
-      "speakerCode": "char_helen",
+    "cu_feac2e386e431fbc43512b62": {
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_84f2b400093ea8882784ff61": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_18533f6888e39cce330126e5": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_63ec72faed7dbf9800d7b1b9": {
+      "speakerCode": "char_watson",
       "templateCode": null
     },
     "cu_a3350af0a6b2216867a561d2": {
@@ -283,7 +295,7 @@
       "templateCode": null
     },
     "cu_0608b94529b12fa6e34461b5": {
-      "speakerCode": "char_watson",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_3e8ca334bd1b05882ba7c907": {
@@ -291,7 +303,7 @@
       "templateCode": null
     },
     "cu_3a3f3db38a7a836d31b85672": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_watson",
       "templateCode": null
     },
     "cu_fa7b51a3b6291141110377e5": {
@@ -299,15 +311,15 @@
       "templateCode": null
     },
     "cu_639459e9ec6d6d3f6210e63f": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_watson",
       "templateCode": null
     },
     "cu_a8c7fee87054bf7be9d2a951": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_watson",
       "templateCode": null
     },
     "cu_b68c46b31b097e861114152f": {
-      "speakerCode": "char_watson",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_5f3d012460e475216e608fc6": {
@@ -319,30 +331,30 @@
       "templateCode": null
     },
     "cu_7bbdc90e79e489c204bf9e87": {
-      "speakerCode": "char_watson",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_74ec1bd7f37463647fe9868a": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_watson",
       "templateCode": null
     },
     "cu_4be1d019cba524623f981271": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_cdfb46926becc0f94d7463ae": {
-      "speakerCode": "char_watson",
-      "templateCode": null
-    },
     "cu_0aaeb4f7fa3010903994b2e9": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_royllott",
       "templateCode": null
     },
     "cu_5f03e1392e61e8e2ddaa2159": {
-      "speakerCode": "char_watson",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_77d71a7467b86e94266688ea": {
+      "speakerCode": "char_royllott",
+      "templateCode": null
+    },
+    "cu_81ee22fc26785a3b419bbd10": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
@@ -366,23 +378,23 @@
       "speakerCode": "char_royllott",
       "templateCode": null
     },
-    "cu_9256bd3d602dceec610457de": {
-      "speakerCode": "char_holmes",
-      "templateCode": null
-    },
     "cu_d6a1e280fbf86404ba60c8d2": {
       "speakerCode": "char_royllott",
-      "templateCode": null
-    },
-    "cu_2b58a9a8d7cde7b0342eba64": {
-      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_408af018c8c60a2b987f8b83": {
       "speakerCode": "char_royllott",
       "templateCode": null
     },
+    "cu_99441a26bae4bc4359c2b73f": {
+      "speakerCode": "char_holmes",
+      "templateCode": null
+    },
     "cu_7ca6a14f81524e9d563541d8": {
+      "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_ca2405a08090970d4fb0f53b": {
       "speakerCode": "char_royllott",
       "templateCode": null
     },
@@ -399,18 +411,10 @@
       "templateCode": null
     },
     "cu_8b9a629ce006c93f015d2472": {
-      "speakerCode": "char_royllott",
-      "templateCode": null
-    },
-    "cu_ed2a8ff5ccfd5f1231cc7aae": {
-      "speakerCode": "char_royllott",
-      "templateCode": null
-    },
-    "cu_0fe46eaaca5275072ff96ef6": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_7ad18a46a8220f44eeb98ed9": {
+    "cu_0fe46eaaca5275072ff96ef6": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
@@ -422,28 +426,36 @@
       "speakerCode": "char_holmes",
       "templateCode": null
     },
+    "cu_344cf64dbee0997dbfcfb379": {
+      "speakerCode": null,
+      "templateCode": "tpl_male_middle"
+    },
     "cu_563c7e70621e8b25b762408d": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
+    "cu_2809bbfddf66ed25ce7a68b7": {
+      "speakerCode": null,
+      "templateCode": "tpl_male_middle"
+    },
     "cu_059297bf10d845147f10aa47": {
       "speakerCode": "char_holmes",
       "templateCode": null
-    },
-    "cu_36798ccff9535bcfc788a36c": {
-      "speakerCode": null,
-      "templateCode": "tpl_male_middle"
     },
     "cu_8c98be9013fef18abd89e2be": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_f3ed6d3934d4e10f8c180006": {
-      "speakerCode": null,
-      "templateCode": "tpl_male_middle"
+      "speakerCode": "char_helen",
+      "templateCode": null
     },
     "cu_5cf888792152994f4ba62c66": {
       "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_f9e5098096c818bac9b6fbe1": {
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_ba018b6f0df01b1d595377ce": {
@@ -458,10 +470,6 @@
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_3de873a328b774396520edce": {
-      "speakerCode": "char_helen",
-      "templateCode": null
-    },
     "cu_c461221220cde513f70ebd09": {
       "speakerCode": "char_holmes",
       "templateCode": null
@@ -472,6 +480,10 @@
     },
     "cu_174ca45c1f5b5463a95c03cc": {
       "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_90a5a88209797e5457d34d06": {
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_bae991300d88ed58867249c8": {
@@ -487,23 +499,23 @@
       "templateCode": null
     },
     "cu_3bfabfbd30711932b8782207": {
-      "speakerCode": "char_helen",
-      "templateCode": null
-    },
-    "cu_e8c073bcff0545fa517e06a1": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_f25f2bf8eb6edcc8288a3518": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_64e81a723fb117521a26ffd1": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_32e20cb33d8bdb442f9adb45": {
       "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_9bfe8e0d114a942cdb2aaa70": {
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_22571ef714888851d32e498b": {
@@ -519,19 +531,19 @@
       "templateCode": null
     },
     "cu_9511a356832a9f1a48fef9d5": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_2e3272b9c39ce15a0de750d6": {
-      "speakerCode": "char_holmes",
-      "templateCode": null
-    },
-    "cu_b0a104e41926de547f786d4e": {
       "speakerCode": "char_helen",
       "templateCode": null
     },
-    "cu_9b59ed07079d8e63829cbb6d": {
+    "cu_b0a104e41926de547f786d4e": {
       "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_9b59ed07079d8e63829cbb6d": {
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_13c267093785936381c7f559": {
@@ -554,10 +566,6 @@
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_d62709ccb4099f2e1d9f2fa3": {
-      "speakerCode": "char_helen",
-      "templateCode": null
-    },
     "cu_72a4e11425160a75fb2771e3": {
       "speakerCode": "char_holmes",
       "templateCode": null
@@ -568,6 +576,10 @@
     },
     "cu_1fdb22d79d8dc86d701d4f49": {
       "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_8b2f71f71d5f2df5029859c3": {
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_c966827acbbad6d7c25c4d44": {
@@ -591,19 +603,15 @@
       "templateCode": null
     },
     "cu_74040524bf4cd32cf9916fcf": {
-      "speakerCode": "char_helen",
-      "templateCode": null
-    },
-    "cu_85ff651416e26fc6dcb8e080": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_129c42d70e7b8b425d448366": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_7469b0c068800e7b1332314f": {
-      "speakerCode": "char_holmes",
+      "speakerCode": "char_watson",
       "templateCode": null
     },
     "cu_8f3f39bf8c6dfcf4eba660e6": {
@@ -615,19 +623,19 @@
       "templateCode": null
     },
     "cu_0ce9b040603427c8cab042e8": {
-      "speakerCode": "char_watson",
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_434599cdd22f3eed1705379c": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_ef5d2791599d09995e12ca0a": {
-      "speakerCode": "char_holmes",
+    "cu_6445327f60efba5b7b6f7190": {
+      "speakerCode": "char_helen",
       "templateCode": null
     },
-    "cu_5f84714804822443a2bf728e": {
-      "speakerCode": "char_helen",
+    "cu_ef5d2791599d09995e12ca0a": {
+      "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_a982026be83e9037c0b723d1": {
@@ -640,6 +648,10 @@
     },
     "cu_888904625f1ec66bf50c801d": {
       "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_3ad0ac40edb8e53c4d068512": {
+      "speakerCode": "char_helen",
       "templateCode": null
     },
     "cu_c54d87961f6eae6f6164c878": {
@@ -686,20 +698,20 @@
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_641fd9b6513f782788cb26a1": {
-      "speakerCode": "char_helen",
-      "templateCode": null
-    },
     "cu_173e0a78942197b9ab44dfea": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
     "cu_1aee5e13d08180fe98a325a4": {
-      "speakerCode": "char_helen",
+      "speakerCode": "char_watson",
       "templateCode": null
     },
     "cu_78b2533eb607f2431f45c220": {
       "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_dc6746baac133c6c4dff8bd2": {
+      "speakerCode": "char_watson",
       "templateCode": null
     },
     "cu_0a519cf3c0639ab64b678702": {
@@ -778,31 +790,23 @@
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_27b8fca63362dcf629c6f5c0": {
-      "speakerCode": "char_watson",
-      "templateCode": null
-    },
     "cu_10bf3857cf1c3c3b5400aa67": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_9dec445aa02e7666a33a573f": {
+    "cu_907ad7ad29e515cf5387ff1c": {
       "speakerCode": "char_watson",
       "templateCode": null
     },
-    "cu_b67774d09e9ea5fedbae1aec": {
+    "cu_236301fdcd9f1ff0f62436ff": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_025db2d64a352ba644c059c3": {
+    "cu_7749c0c175afd394e410ef56": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_9b0a100c0d0bdfeb99959142": {
-      "speakerCode": "char_watson",
-      "templateCode": null
-    },
-    "cu_2ec1b5959a85e0eed1f9f8e6": {
+    "cu_891fc59ca28731135e685328": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
@@ -810,12 +814,12 @@
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_67ae73814ba6afc6525476a0": {
+    "cu_8cdc02338db2393899c5e2b6": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_fbb8bf84e89c9a0044d4fc3f": {
-      "speakerCode": "char_holmes",
+    "cu_5a3a7986113362e67b06b9b4": {
+      "speakerCode": "char_watson",
       "templateCode": null
     },
     "cu_c7d53c2cf3526c8bcee039f1": {
@@ -823,14 +827,14 @@
       "templateCode": null
     },
     "cu_f735e6ed79f807a17b792f77": {
-      "speakerCode": "char_watson",
-      "templateCode": null
-    },
-    "cu_b771c199a45898886053b5ef": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_03925259ee068482baa5133e": {
+    "cu_037cec4244eee1366beafd3e": {
+      "speakerCode": "char_holmes",
+      "templateCode": null
+    },
+    "cu_759b148d757d040ff5950028": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
@@ -838,19 +842,11 @@
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_f1d28112aa6f7f93a60b2d54": {
+    "cu_8251d20c95ddfcbf5c758fab": {
       "speakerCode": "char_holmes",
       "templateCode": null
     },
-    "cu_5412640b2da5aabc3acf57fc": {
-      "speakerCode": "char_holmes",
-      "templateCode": null
-    },
-    "cu_1d409c93dda5964a94c807de": {
-      "speakerCode": "char_holmes",
-      "templateCode": null
-    },
-    "cu_f01f479324129715077d03b7": {
+    "cu_3bbd2d1d26827a6c6cff3677": {
       "speakerCode": "char_holmes",
       "templateCode": null
     }

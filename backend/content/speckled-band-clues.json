@@ -1,7 +1,7 @@
 {
   "version": 1,
   "articleId": "speckled-band",
-  "sourceSha256": "d5c9ffe4338f60919c8812cf37078880697cdafc41a8d6995d755124b9b87b52",
+  "sourceSha256": "18bdffb943a85816c712f354af497bb988445c423dbd9254319dfa13d9b70794",
   "generatedAt": "2026-07-14T12:29:51.729Z",
   "generator": {
     "protocol": "visual-clue-index-v1",
@@ -14,7 +14,7 @@
       "id": "clue-place-stoke-moran-surrey",
       "label": "萨里郡斯托克莫兰",
       "type": "地点",
-      "surfaceDescription": "可是，在所有这些变化多端的案例中，我却回忆不起有哪一例会比萨里郡斯托克莫兰的闻名的罗伊洛特家族①那一例更具有异乎寻常的特色了。",
+      "surfaceDescription": "可是，在所有这些变化多端的案例中，我却回忆不起有哪一例会比萨里郡斯托克莫兰的闻名的罗伊洛特家族那一例更具有异乎寻常的特色了。",
       "occurrences": [
         {
           "id": "occ-2a614c5bb5ab",
@@ -35,9 +35,9 @@
       "occurrences": [
         {
           "id": "occ-056b9e20815f",
-          "globalParagraphIndex": 4,
+          "globalParagraphIndex": 3,
           "chapterId": "speckled-band-1",
-          "paragraphIndex": 4,
+          "paragraphIndex": 3,
           "selectedText": "歇洛克·福尔摩斯穿得整整齐齐",
           "startOffset": 30,
           "endOffset": 44
@@ -52,9 +52,9 @@
       "occurrences": [
         {
           "id": "occ-b19c209dc8ca",
-          "globalParagraphIndex": 4,
+          "globalParagraphIndex": 3,
           "chapterId": "speckled-band-1",
-          "paragraphIndex": 4,
+          "paragraphIndex": 3,
           "selectedText": "壁炉架上的时钟",
           "startOffset": 69,
           "endOffset": 76
@@ -69,9 +69,9 @@
       "occurrences": [
         {
           "id": "occ-c92f7a16fe00",
-          "globalParagraphIndex": 9,
+          "globalParagraphIndex": 8,
           "chapterId": "speckled-band-1",
-          "paragraphIndex": 9,
+          "paragraphIndex": 8,
           "selectedText": "一位女士端坐窗前，她身穿黑色衣服，蒙着厚厚的面纱",
           "startOffset": 124,
           "endOffset": 148
@@ -86,9 +86,9 @@
       "occurrences": [
         {
           "id": "occ-a3e838115fb9",
-          "globalParagraphIndex": 16,
+          "globalParagraphIndex": 15,
           "chapterId": "speckled-band-1",
-          "paragraphIndex": 16,
+          "paragraphIndex": 15,
           "selectedText": "左手的手套里有一张回程车票的后半截",
           "startOffset": 8,
           "endOffset": 25
@@ -103,9 +103,9 @@
       "occurrences": [
         {
           "id": "occ-7b0419f37f27",
-          "globalParagraphIndex": 19,
-          "chapterId": "speckled-band-2",
-          "paragraphIndex": 1,
+          "globalParagraphIndex": 17,
+          "chapterId": "speckled-band-1",
+          "paragraphIndex": 17,
           "selectedText": "你外套的左臂上，至少有七处溅上了泥",
           "startOffset": 24,
           "endOffset": 41
@@ -120,9 +120,9 @@
       "occurrences": [
         {
           "id": "occ-ffaf418587ab",
-          "globalParagraphIndex": 25,
+          "globalParagraphIndex": 23,
           "chapterId": "speckled-band-2",
-          "paragraphIndex": 7,
+          "paragraphIndex": 5,
           "selectedText": "我的名字叫海伦·斯托纳",
           "startOffset": 1,
           "endOffset": 12
@@ -133,22 +133,22 @@
       "id": "clue-place-stoke-moran-manor",
       "label": "斯托克莫兰古老邸宅",
       "type": "地点",
-      "surfaceDescription": "除了几①亩土地和一座二百年的古老邱宅外，其它都已荡然无存，而那座邸宅也已典押得差不多了。",
+      "surfaceDescription": "除了几亩土地和一座二百年的古老邸宅外，其它都已荡然无存，而那座邸宅也已典押得差不多了。",
       "occurrences": [
         {
           "id": "occ-ac9ef972934d",
-          "globalParagraphIndex": 27,
+          "globalParagraphIndex": 25,
           "chapterId": "speckled-band-2",
-          "paragraphIndex": 9,
-          "selectedText": "一座二百年的古老邱宅",
-          "startOffset": 110,
-          "endOffset": 120
+          "paragraphIndex": 7,
+          "selectedText": "一座二百年的古老邸宅",
+          "startOffset": 109,
+          "endOffset": 119
         },
         {
           "id": "occ-dc8d7eb842d1",
-          "globalParagraphIndex": 125,
+          "globalParagraphIndex": 121,
           "chapterId": "speckled-band-7",
-          "paragraphIndex": 17,
+          "paragraphIndex": 13,
           "selectedText": "十分古老的邸宅的灰色山墙和高高的屋顶",
           "startOffset": 47,
           "endOffset": 65
@@ -163,36 +163,36 @@
       "occurrences": [
         {
           "id": "occ-39cea596b054",
-          "globalParagraphIndex": 29,
+          "globalParagraphIndex": 26,
           "chapterId": "speckled-band-2",
-          "paragraphIndex": 11,
+          "paragraphIndex": 8,
           "selectedText": "罗伊洛特医生在印度时娶了我的母亲",
           "startOffset": 1,
           "endOffset": 17
         },
         {
           "id": "occ-d729904a7cac",
-          "globalParagraphIndex": 103,
+          "globalParagraphIndex": 99,
           "chapterId": "speckled-band-6",
-          "paragraphIndex": 13,
+          "paragraphIndex": 9,
           "selectedText": "斯托克莫兰的格里姆斯比·罗伊洛特医生",
           "startOffset": 3,
           "endOffset": 21
         },
         {
           "id": "occ-15f820ee25a4",
-          "globalParagraphIndex": 202,
+          "globalParagraphIndex": 198,
           "chapterId": "speckled-band-12",
-          "paragraphIndex": 4,
+          "paragraphIndex": 0,
           "selectedText": "格里姆斯比·罗伊洛特医生",
           "startOffset": 80,
           "endOffset": 92
         },
         {
           "id": "occ-c2db693117f2",
-          "globalParagraphIndex": 248,
+          "globalParagraphIndex": 244,
           "chapterId": "speckled-band-14",
-          "paragraphIndex": 14,
+          "paragraphIndex": 10,
           "selectedText": "格里姆斯比·罗伊洛特医生",
           "startOffset": 64,
           "endOffset": 76
@@ -207,9 +207,9 @@
       "occurrences": [
         {
           "id": "occ-5f7e989d0171",
-          "globalParagraphIndex": 29,
+          "globalParagraphIndex": 26,
           "chapterId": "speckled-band-2",
-          "paragraphIndex": 11,
+          "paragraphIndex": 8,
           "selectedText": "我和我的姐姐朱莉娅是孪生姐妹",
           "startOffset": 46,
           "endOffset": 60
@@ -224,9 +224,9 @@
       "occurrences": [
         {
           "id": "occ-700e458f5216",
-          "globalParagraphIndex": 31,
+          "globalParagraphIndex": 28,
           "chapterId": "speckled-band-2",
-          "paragraphIndex": 13,
+          "paragraphIndex": 10,
           "selectedText": "一只印度猎豹和一只狒狒",
           "startOffset": 185,
           "endOffset": 196
@@ -241,9 +241,9 @@
       "occurrences": [
         {
           "id": "occ-c24d915f48a8",
-          "globalParagraphIndex": 37,
-          "chapterId": "speckled-band-3",
-          "paragraphIndex": 1,
+          "globalParagraphIndex": 34,
+          "chapterId": "speckled-band-2",
+          "paragraphIndex": 16,
           "selectedText": "耳房",
           "startOffset": 63,
           "endOffset": 65
@@ -258,9 +258,9 @@
       "occurrences": [
         {
           "id": "occ-c6197705dd0e",
-          "globalParagraphIndex": 37,
-          "chapterId": "speckled-band-3",
-          "paragraphIndex": 1,
+          "globalParagraphIndex": 34,
+          "chapterId": "speckled-band-2",
+          "paragraphIndex": 16,
           "selectedText": "卧室",
           "startOffset": 78,
           "endOffset": 80
@@ -275,9 +275,9 @@
       "occurrences": [
         {
           "id": "occ-75a1eb2ef50b",
-          "globalParagraphIndex": 37,
-          "chapterId": "speckled-band-3",
-          "paragraphIndex": 1,
+          "globalParagraphIndex": 34,
+          "chapterId": "speckled-band-2",
+          "paragraphIndex": 16,
           "selectedText": "共同的过道",
           "startOffset": 153,
           "endOffset": 158
@@ -292,9 +292,9 @@
       "occurrences": [
         {
           "id": "occ-610955c901d7",
-          "globalParagraphIndex": 48,
+          "globalParagraphIndex": 45,
           "chapterId": "speckled-band-3",
-          "paragraphIndex": 12,
+          "paragraphIndex": 9,
           "selectedText": "钥匙在门锁里转动",
           "startOffset": 49,
           "endOffset": 57
@@ -309,18 +309,18 @@
       "occurrences": [
         {
           "id": "occ-06d01612a258",
-          "globalParagraphIndex": 52,
+          "globalParagraphIndex": 49,
           "chapterId": "speckled-band-3",
-          "paragraphIndex": 16,
+          "paragraphIndex": 13,
           "selectedText": "印度猎豹",
           "startOffset": 16,
           "endOffset": 20
         },
         {
           "id": "occ-04d9d8e3a987",
-          "globalParagraphIndex": 173,
+          "globalParagraphIndex": 169,
           "chapterId": "speckled-band-10",
-          "paragraphIndex": 11,
+          "paragraphIndex": 7,
           "selectedText": "印度猎豹",
           "startOffset": 14,
           "endOffset": 18
@@ -335,27 +335,27 @@
       "occurrences": [
         {
           "id": "occ-3c9c8af1af73",
-          "globalParagraphIndex": 52,
+          "globalParagraphIndex": 49,
           "chapterId": "speckled-band-3",
-          "paragraphIndex": 16,
+          "paragraphIndex": 13,
           "selectedText": "狒狒",
           "startOffset": 23,
           "endOffset": 25
         },
         {
           "id": "occ-659a9e0e5c12",
-          "globalParagraphIndex": 173,
+          "globalParagraphIndex": 169,
           "chapterId": "speckled-band-10",
-          "paragraphIndex": 11,
+          "paragraphIndex": 7,
           "selectedText": "狒狒",
           "startOffset": 21,
           "endOffset": 23
         },
         {
           "id": "occ-c78174917fdc",
-          "globalParagraphIndex": 229,
+          "globalParagraphIndex": 225,
           "chapterId": "speckled-band-13",
-          "paragraphIndex": 13,
+          "paragraphIndex": 9,
           "selectedText": "状若丑陋畸形的孩子的东西",
           "startOffset": 68,
           "endOffset": 80
@@ -370,9 +370,9 @@
       "occurrences": [
         {
           "id": "occ-492c6bd852ac",
-          "globalParagraphIndex": 58,
+          "globalParagraphIndex": 55,
           "chapterId": "speckled-band-4",
-          "paragraphIndex": 4,
+          "paragraphIndex": 1,
           "selectedText": "穿着睡衣",
           "startOffset": 5,
           "endOffset": 9
@@ -387,9 +387,9 @@
       "occurrences": [
         {
           "id": "occ-761d3e18458a",
-          "globalParagraphIndex": 58,
+          "globalParagraphIndex": 55,
           "chapterId": "speckled-band-4",
-          "paragraphIndex": 4,
+          "paragraphIndex": 1,
           "selectedText": "右手中发现了一根烧焦了的火柴棍",
           "startOffset": 13,
           "endOffset": 28
@@ -404,9 +404,9 @@
       "occurrences": [
         {
           "id": "occ-72a8d08d426d",
-          "globalParagraphIndex": 58,
+          "globalParagraphIndex": 55,
           "chapterId": "speckled-band-4",
-          "paragraphIndex": 4,
+          "paragraphIndex": 1,
           "selectedText": "火柴盒",
           "startOffset": 34,
           "endOffset": 37
@@ -421,9 +421,9 @@
       "occurrences": [
         {
           "id": "occ-aad4ed812a33",
-          "globalParagraphIndex": 60,
+          "globalParagraphIndex": 57,
           "chapterId": "speckled-band-4",
-          "paragraphIndex": 6,
+          "paragraphIndex": 3,
           "selectedText": "室内的门锁",
           "startOffset": 63,
           "endOffset": 68
@@ -438,9 +438,9 @@
       "occurrences": [
         {
           "id": "occ-80b6b7336dca",
-          "globalParagraphIndex": 60,
+          "globalParagraphIndex": 57,
           "chapterId": "speckled-band-4",
-          "paragraphIndex": 6,
+          "paragraphIndex": 3,
           "selectedText": "带有宽铁杠的老式百叶窗",
           "startOffset": 77,
           "endOffset": 88
@@ -455,9 +455,9 @@
       "occurrences": [
         {
           "id": "occ-411a1c254dbc",
-          "globalParagraphIndex": 60,
+          "globalParagraphIndex": 57,
           "chapterId": "speckled-band-4",
-          "paragraphIndex": 6,
+          "paragraphIndex": 3,
           "selectedText": "四个大锁环闩",
           "startOffset": 151,
           "endOffset": 157
@@ -472,12 +472,12 @@
       "occurrences": [
         {
           "id": "occ-166f19019043",
-          "globalParagraphIndex": 68,
+          "globalParagraphIndex": 65,
           "chapterId": "speckled-band-4",
-          "paragraphIndex": 14,
+          "paragraphIndex": 11,
           "selectedText": "带点子的头巾",
-          "startOffset": 69,
-          "endOffset": 75
+          "startOffset": 68,
+          "endOffset": 74
         }
       ]
     },
@@ -489,9 +489,9 @@
       "occurrences": [
         {
           "id": "occ-784ab9eca7ac",
-          "globalParagraphIndex": 72,
-          "chapterId": "speckled-band-5",
-          "paragraphIndex": 0,
+          "globalParagraphIndex": 68,
+          "chapterId": "speckled-band-4",
+          "paragraphIndex": 14,
           "selectedText": "这所房子西边的耳房",
           "startOffset": 134,
           "endOffset": 143
@@ -506,9 +506,9 @@
       "occurrences": [
         {
           "id": "occ-95fd774688ca",
-          "globalParagraphIndex": 72,
-          "chapterId": "speckled-band-5",
-          "paragraphIndex": 0,
+          "globalParagraphIndex": 68,
+          "chapterId": "speckled-band-4",
+          "paragraphIndex": 14,
           "selectedText": "我卧室的墙壁被钻了些洞",
           "startOffset": 150,
           "endOffset": 161
@@ -523,9 +523,9 @@
       "occurrences": [
         {
           "id": "occ-84389af7b897",
-          "globalParagraphIndex": 72,
-          "chapterId": "speckled-band-5",
-          "paragraphIndex": 0,
+          "globalParagraphIndex": 68,
+          "chapterId": "speckled-band-4",
+          "paragraphIndex": 14,
           "selectedText": "我姐姐丧命的那房间",
           "startOffset": 170,
           "endOffset": 179
@@ -540,9 +540,9 @@
       "occurrences": [
         {
           "id": "occ-52e80618e8ce",
-          "globalParagraphIndex": 77,
+          "globalParagraphIndex": 73,
           "chapterId": "speckled-band-5",
-          "paragraphIndex": 5,
+          "paragraphIndex": 1,
           "selectedText": "黑色花边袖口的褶边",
           "startOffset": 30,
           "endOffset": 39
@@ -557,9 +557,9 @@
       "occurrences": [
         {
           "id": "occ-f98dfc9640c5",
-          "globalParagraphIndex": 77,
+          "globalParagraphIndex": 73,
           "chapterId": "speckled-band-5",
-          "paragraphIndex": 5,
+          "paragraphIndex": 1,
           "selectedText": "白皙的手腕上，印有五小块乌青的伤痕",
           "startOffset": 40,
           "endOffset": 57
@@ -574,9 +574,9 @@
       "occurrences": [
         {
           "id": "occ-02e710ef02de",
-          "globalParagraphIndex": 88,
+          "globalParagraphIndex": 84,
           "chapterId": "speckled-band-5",
-          "paragraphIndex": 16,
+          "paragraphIndex": 12,
           "selectedText": "厚厚的黑色面纱",
           "startOffset": 48,
           "endOffset": 55
@@ -591,9 +591,9 @@
       "occurrences": [
         {
           "id": "occ-9a3c35004d3d",
-          "globalParagraphIndex": 100,
+          "globalParagraphIndex": 96,
           "chapterId": "speckled-band-6",
-          "paragraphIndex": 10,
+          "paragraphIndex": 6,
           "selectedText": "一个彪形大汉",
           "startOffset": 27,
           "endOffset": 33
@@ -608,9 +608,9 @@
       "occurrences": [
         {
           "id": "occ-175e7db790e6",
-          "globalParagraphIndex": 100,
+          "globalParagraphIndex": 96,
           "chapterId": "speckled-band-6",
-          "paragraphIndex": 10,
+          "paragraphIndex": 6,
           "selectedText": "黑色大礼帽",
           "startOffset": 65,
           "endOffset": 70
@@ -625,9 +625,9 @@
       "occurrences": [
         {
           "id": "occ-688c7db2e978",
-          "globalParagraphIndex": 100,
+          "globalParagraphIndex": 96,
           "chapterId": "speckled-band-6",
-          "paragraphIndex": 10,
+          "paragraphIndex": 6,
           "selectedText": "一双有绑腿的高统靴",
           "startOffset": 84,
           "endOffset": 93
@@ -642,9 +642,9 @@
       "occurrences": [
         {
           "id": "occ-b51fb1d42aee",
-          "globalParagraphIndex": 100,
+          "globalParagraphIndex": 96,
           "chapterId": "speckled-band-6",
-          "paragraphIndex": 10,
+          "paragraphIndex": 6,
           "selectedText": "一根猎鞭",
           "startOffset": 100,
           "endOffset": 104
@@ -659,9 +659,9 @@
       "occurrences": [
         {
           "id": "occ-e4589eb83271",
-          "globalParagraphIndex": 100,
+          "globalParagraphIndex": 96,
           "chapterId": "speckled-band-6",
-          "paragraphIndex": 10,
+          "paragraphIndex": 6,
           "selectedText": "房门上的横楣",
           "startOffset": 123,
           "endOffset": 129
@@ -676,9 +676,9 @@
       "occurrences": [
         {
           "id": "occ-1e6666353f53",
-          "globalParagraphIndex": 116,
+          "globalParagraphIndex": 112,
           "chapterId": "speckled-band-7",
-          "paragraphIndex": 8,
+          "paragraphIndex": 4,
           "selectedText": "火钳",
           "startOffset": 71,
           "endOffset": 73
@@ -693,9 +693,9 @@
       "occurrences": [
         {
           "id": "occ-0639f61eee5c",
-          "globalParagraphIndex": 121,
+          "globalParagraphIndex": 117,
           "chapterId": "speckled-band-7",
-          "paragraphIndex": 13,
+          "paragraphIndex": 9,
           "selectedText": "蓝纸",
           "startOffset": 25,
           "endOffset": 27
@@ -710,18 +710,18 @@
       "occurrences": [
         {
           "id": "occ-1bc3aad9ba43",
-          "globalParagraphIndex": 130,
+          "globalParagraphIndex": 126,
           "chapterId": "speckled-band-8",
-          "paragraphIndex": 4,
+          "paragraphIndex": 0,
           "selectedText": "那位小姐就是斯托纳小姐",
           "startOffset": 4,
           "endOffset": 15
         },
         {
           "id": "occ-5e84df8f582a",
-          "globalParagraphIndex": 181,
-          "chapterId": "speckled-band-11",
-          "paragraphIndex": 1,
+          "globalParagraphIndex": 177,
+          "chapterId": "speckled-band-10",
+          "paragraphIndex": 15,
           "selectedText": "斯托纳小姐",
           "startOffset": 1,
           "endOffset": 6
@@ -736,9 +736,9 @@
       "occurrences": [
         {
           "id": "occ-fad18fee28ba",
-          "globalParagraphIndex": 139,
+          "globalParagraphIndex": 135,
           "chapterId": "speckled-band-8",
-          "paragraphIndex": 13,
+          "paragraphIndex": 9,
           "selectedText": "这座邸宅是用灰色的石头砌的，石壁上布满了青苔，中央部分高高矗立，两侧是弧形的边房，象一对蟹钳似地向两边延伸",
           "startOffset": 0,
           "endOffset": 53
@@ -753,9 +753,9 @@
       "occurrences": [
         {
           "id": "occ-bac4b20cd680",
-          "globalParagraphIndex": 139,
+          "globalParagraphIndex": 135,
           "chapterId": "speckled-band-8",
-          "paragraphIndex": 13,
+          "paragraphIndex": 9,
           "selectedText": "一侧的边房窗子都已经破碎，用木板堵着，房顶也有一部分坍陷了",
           "startOffset": 54,
           "endOffset": 83
@@ -770,9 +770,9 @@
       "occurrences": [
         {
           "id": "occ-5d9aea2e1fd4",
-          "globalParagraphIndex": 139,
+          "globalParagraphIndex": 135,
           "chapterId": "speckled-band-8",
-          "paragraphIndex": 13,
+          "paragraphIndex": 9,
           "selectedText": "窗子里窗帘低垂，烟囱上蓝烟袅袅",
           "startOffset": 126,
           "endOffset": 141
@@ -787,9 +787,9 @@
       "occurrences": [
         {
           "id": "occ-2272ec44ae36",
-          "globalParagraphIndex": 139,
+          "globalParagraphIndex": 135,
           "chapterId": "speckled-band-8",
-          "paragraphIndex": 13,
+          "paragraphIndex": 9,
           "selectedText": "靠山墙竖着一些脚手架，墙的石头部分已经凿通",
           "startOffset": 156,
           "endOffset": 177
@@ -804,18 +804,18 @@
       "occurrences": [
         {
           "id": "occ-b2f6d3c6c4e3",
-          "globalParagraphIndex": 147,
-          "chapterId": "speckled-band-9",
-          "paragraphIndex": 3,
+          "globalParagraphIndex": 143,
+          "chapterId": "speckled-band-8",
+          "paragraphIndex": 17,
           "selectedText": "百叶窗",
           "startOffset": 41,
           "endOffset": 44
         },
         {
           "id": "occ-92f02aae7c0c",
-          "globalParagraphIndex": 233,
+          "globalParagraphIndex": 229,
           "chapterId": "speckled-band-13",
-          "paragraphIndex": 17,
+          "paragraphIndex": 13,
           "selectedText": "百叶窗",
           "startOffset": 96,
           "endOffset": 99
@@ -830,9 +830,9 @@
       "occurrences": [
         {
           "id": "occ-742673a4e62a",
-          "globalParagraphIndex": 148,
+          "globalParagraphIndex": 144,
           "chapterId": "speckled-band-9",
-          "paragraphIndex": 4,
+          "paragraphIndex": 0,
           "selectedText": "一道小小的侧门通向刷得雪白的过道",
           "startOffset": 0,
           "endOffset": 16
@@ -847,9 +847,9 @@
       "occurrences": [
         {
           "id": "occ-9c4d00ca6b33",
-          "globalParagraphIndex": 148,
+          "globalParagraphIndex": 144,
           "chapterId": "speckled-band-9",
-          "paragraphIndex": 4,
+          "paragraphIndex": 0,
           "selectedText": "第二间，也就是斯托纳小姐现在用作寝室、她的姐姐不幸去世的那个房间",
           "startOffset": 55,
           "endOffset": 87
@@ -864,9 +864,9 @@
       "occurrences": [
         {
           "id": "occ-986252723f29",
-          "globalParagraphIndex": 148,
+          "globalParagraphIndex": 144,
           "chapterId": "speckled-band-9",
-          "paragraphIndex": 4,
+          "paragraphIndex": 0,
           "selectedText": "低低的天花板和一个开口式的壁炉",
           "startOffset": 114,
           "endOffset": 129
@@ -881,9 +881,9 @@
       "occurrences": [
         {
           "id": "occ-089c2f9406ac",
-          "globalParagraphIndex": 148,
+          "globalParagraphIndex": 144,
           "chapterId": "speckled-band-9",
-          "paragraphIndex": 4,
+          "paragraphIndex": 0,
           "selectedText": "一只带抽屉的褐色橱柜",
           "startOffset": 137,
           "endOffset": 147
@@ -898,9 +898,9 @@
       "occurrences": [
         {
           "id": "occ-3be69efcc90b",
-          "globalParagraphIndex": 148,
+          "globalParagraphIndex": 144,
           "chapterId": "speckled-band-9",
-          "paragraphIndex": 4,
+          "paragraphIndex": 0,
           "selectedText": "蛀孔斑斑的棕色栎木",
           "startOffset": 240,
           "endOffset": 249
@@ -915,9 +915,9 @@
       "occurrences": [
         {
           "id": "occ-33f8b2433d28",
-          "globalParagraphIndex": 149,
+          "globalParagraphIndex": 145,
           "chapterId": "speckled-band-9",
-          "paragraphIndex": 5,
+          "paragraphIndex": 1,
           "selectedText": "悬挂在床边的一根粗粗的铃拉绳",
           "startOffset": 6,
           "endOffset": 20
@@ -932,9 +932,9 @@
       "occurrences": [
         {
           "id": "occ-182303c6f3c8",
-          "globalParagraphIndex": 158,
+          "globalParagraphIndex": 154,
           "chapterId": "speckled-band-9",
-          "paragraphIndex": 14,
+          "paragraphIndex": 10,
           "selectedText": "小小的通气孔",
           "startOffset": 34,
           "endOffset": 40
@@ -949,9 +949,9 @@
       "occurrences": [
         {
           "id": "occ-ab579f33fa8c",
-          "globalParagraphIndex": 165,
-          "chapterId": "speckled-band-10",
-          "paragraphIndex": 3,
+          "globalParagraphIndex": 161,
+          "chapterId": "speckled-band-9",
+          "paragraphIndex": 17,
           "selectedText": "格里姆斯比·罗伊洛特医生的房间",
           "startOffset": 0,
           "endOffset": 15
@@ -966,18 +966,18 @@
       "occurrences": [
         {
           "id": "occ-523ee23fce1e",
-          "globalParagraphIndex": 165,
-          "chapterId": "speckled-band-10",
-          "paragraphIndex": 3,
+          "globalParagraphIndex": 161,
+          "chapterId": "speckled-band-9",
+          "paragraphIndex": 17,
           "selectedText": "一只大铁保险柜",
           "startOffset": 96,
           "endOffset": 103
         },
         {
           "id": "occ-4e8c23f577ad",
-          "globalParagraphIndex": 248,
+          "globalParagraphIndex": 244,
           "chapterId": "speckled-band-14",
-          "paragraphIndex": 14,
+          "paragraphIndex": 10,
           "selectedText": "柜门半开的铁保险柜",
           "startOffset": 40,
           "endOffset": 49
@@ -992,9 +992,9 @@
       "occurrences": [
         {
           "id": "occ-dfd809131058",
-          "globalParagraphIndex": 172,
+          "globalParagraphIndex": 168,
           "chapterId": "speckled-band-10",
-          "paragraphIndex": 10,
+          "paragraphIndex": 6,
           "selectedText": "一个盛奶的浅碟",
           "startOffset": 18,
           "endOffset": 25
@@ -1005,13 +1005,13 @@
       "id": "clue-evidence-dog-whip-on-bedhead",
       "label": "打狗鞭",
       "type": "物证",
-      "surfaceDescription": "引其他注意的是挂在床头上的一根小打狗鞭子。",
+      "surfaceDescription": "引起他注意的是挂在床头上的一根小打狗鞭子。",
       "occurrences": [
         {
           "id": "occ-06057c7b0d81",
-          "globalParagraphIndex": 176,
+          "globalParagraphIndex": 172,
           "chapterId": "speckled-band-10",
-          "paragraphIndex": 14,
+          "paragraphIndex": 10,
           "selectedText": "挂在床头上的一根小打狗鞭子",
           "startOffset": 7,
           "endOffset": 20
@@ -1026,9 +1026,9 @@
       "occurrences": [
         {
           "id": "occ-d3901405d73c",
-          "globalParagraphIndex": 176,
+          "globalParagraphIndex": 172,
           "chapterId": "speckled-band-10",
-          "paragraphIndex": 14,
+          "paragraphIndex": 10,
           "selectedText": "卷着的，而且打成结，以使鞭绳盘成一个圈",
           "startOffset": 29,
           "endOffset": 48
@@ -1043,18 +1043,18 @@
       "occurrences": [
         {
           "id": "occ-ef34b23046ac",
-          "globalParagraphIndex": 188,
+          "globalParagraphIndex": 184,
           "chapterId": "speckled-band-11",
-          "paragraphIndex": 8,
+          "paragraphIndex": 4,
           "selectedText": "克朗旅店",
           "startOffset": 6,
           "endOffset": 10
         },
         {
           "id": "occ-7b305d6f62d3",
-          "globalParagraphIndex": 202,
+          "globalParagraphIndex": 198,
           "chapterId": "speckled-band-12",
-          "paragraphIndex": 4,
+          "paragraphIndex": 0,
           "selectedText": "克朗旅店",
           "startOffset": 17,
           "endOffset": 21
@@ -1069,9 +1069,9 @@
       "occurrences": [
         {
           "id": "occ-a348deea0375",
-          "globalParagraphIndex": 191,
+          "globalParagraphIndex": 187,
           "chapterId": "speckled-band-11",
-          "paragraphIndex": 11,
+          "paragraphIndex": 7,
           "selectedText": "窗户的搭扣",
           "startOffset": 58,
           "endOffset": 63
@@ -1086,9 +1086,9 @@
       "occurrences": [
         {
           "id": "occ-10f4274f3685",
-          "globalParagraphIndex": 191,
+          "globalParagraphIndex": 187,
           "chapterId": "speckled-band-11",
-          "paragraphIndex": 11,
+          "paragraphIndex": 7,
           "selectedText": "把灯摆在那儿",
           "startOffset": 64,
           "endOffset": 70
@@ -1103,18 +1103,18 @@
       "occurrences": [
         {
           "id": "occ-c173c3d0f631",
-          "globalParagraphIndex": 195,
+          "globalParagraphIndex": 191,
           "chapterId": "speckled-band-11",
-          "paragraphIndex": 15,
+          "paragraphIndex": 11,
           "selectedText": "你的卧室",
           "startOffset": 5,
           "endOffset": 9
         },
         {
           "id": "occ-fdb05d87cf41",
-          "globalParagraphIndex": 233,
+          "globalParagraphIndex": 229,
           "chapterId": "speckled-band-13",
-          "paragraphIndex": 17,
+          "paragraphIndex": 13,
           "selectedText": "卧室",
           "startOffset": 63,
           "endOffset": 65
@@ -1129,9 +1129,9 @@
       "occurrences": [
         {
           "id": "occ-6fa0e5c76308",
-          "globalParagraphIndex": 202,
+          "globalParagraphIndex": 198,
           "chapterId": "speckled-band-12",
-          "paragraphIndex": 4,
+          "paragraphIndex": 0,
           "selectedText": "二层楼",
           "startOffset": 37,
           "endOffset": 40
@@ -1146,9 +1146,9 @@
       "occurrences": [
         {
           "id": "occ-27264bf0f87b",
-          "globalParagraphIndex": 202,
+          "globalParagraphIndex": 198,
           "chapterId": "speckled-band-12",
-          "paragraphIndex": 4,
+          "paragraphIndex": 0,
           "selectedText": "沉重的大铁门",
           "startOffset": 133,
           "endOffset": 139
@@ -1163,9 +1163,9 @@
       "occurrences": [
         {
           "id": "occ-73f137fe7442",
-          "globalParagraphIndex": 202,
+          "globalParagraphIndex": 198,
           "chapterId": "speckled-band-12",
-          "paragraphIndex": 4,
+          "paragraphIndex": 0,
           "selectedText": "起居室点上了灯",
           "startOffset": 217,
           "endOffset": 224
@@ -1180,36 +1180,36 @@
       "occurrences": [
         {
           "id": "occ-9a88bc4b5404",
-          "globalParagraphIndex": 210,
+          "globalParagraphIndex": 206,
           "chapterId": "speckled-band-12",
-          "paragraphIndex": 12,
+          "paragraphIndex": 8,
           "selectedText": "铃绳",
           "startOffset": 4,
           "endOffset": 6
         },
         {
           "id": "occ-8233d9c170d8",
-          "globalParagraphIndex": 217,
-          "chapterId": "speckled-band-13",
-          "paragraphIndex": 1,
+          "globalParagraphIndex": 213,
+          "chapterId": "speckled-band-12",
+          "paragraphIndex": 15,
           "selectedText": "绳索",
           "startOffset": 29,
           "endOffset": 31
         },
         {
           "id": "occ-131fb43f87a8",
-          "globalParagraphIndex": 241,
+          "globalParagraphIndex": 237,
           "chapterId": "speckled-band-14",
-          "paragraphIndex": 7,
+          "paragraphIndex": 3,
           "selectedText": "铃绳",
           "startOffset": 197,
           "endOffset": 199
         },
         {
           "id": "occ-5fa18ac7a813",
-          "globalParagraphIndex": 254,
-          "chapterId": "speckled-band-15",
-          "paragraphIndex": 2,
+          "globalParagraphIndex": 250,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 16,
           "selectedText": "铃绳",
           "startOffset": 224,
           "endOffset": 226
@@ -1224,27 +1224,27 @@
       "occurrences": [
         {
           "id": "occ-a2b1e27722d1",
-          "globalParagraphIndex": 211,
+          "globalParagraphIndex": 207,
           "chapterId": "speckled-band-12",
-          "paragraphIndex": 13,
+          "paragraphIndex": 9,
           "selectedText": "通气孔",
           "startOffset": 6,
           "endOffset": 9
         },
         {
           "id": "occ-351be46b049c",
-          "globalParagraphIndex": 217,
-          "chapterId": "speckled-band-13",
-          "paragraphIndex": 1,
+          "globalParagraphIndex": 213,
+          "chapterId": "speckled-band-12",
+          "paragraphIndex": 15,
           "selectedText": "通气孔",
           "startOffset": 21,
           "endOffset": 24
         },
         {
           "id": "occ-6340c6cc4530",
-          "globalParagraphIndex": 254,
-          "chapterId": "speckled-band-15",
-          "paragraphIndex": 2,
+          "globalParagraphIndex": 250,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 16,
           "selectedText": "通气孔",
           "startOffset": 212,
           "endOffset": 215
@@ -1259,9 +1259,9 @@
       "occurrences": [
         {
           "id": "occ-2a01cb29af8e",
-          "globalParagraphIndex": 221,
+          "globalParagraphIndex": 217,
           "chapterId": "speckled-band-13",
-          "paragraphIndex": 5,
+          "paragraphIndex": 1,
           "selectedText": "螺钉",
           "startOffset": 4,
           "endOffset": 6
@@ -1276,9 +1276,9 @@
       "occurrences": [
         {
           "id": "occ-15ef6354bc50",
-          "globalParagraphIndex": 221,
+          "globalParagraphIndex": 217,
           "chapterId": "speckled-band-13",
-          "paragraphIndex": 5,
+          "paragraphIndex": 1,
           "selectedText": "固定在地板上",
           "startOffset": 6,
           "endOffset": 12
@@ -1293,9 +1293,9 @@
       "occurrences": [
         {
           "id": "occ-cacb9b5ca81c",
-          "globalParagraphIndex": 229,
+          "globalParagraphIndex": 225,
           "chapterId": "speckled-band-13",
-          "paragraphIndex": 13,
+          "paragraphIndex": 9,
           "selectedText": "由于山墙年久失修",
           "startOffset": 0,
           "endOffset": 8
@@ -1310,9 +1310,9 @@
       "occurrences": [
         {
           "id": "occ-66f634608aed",
-          "globalParagraphIndex": 239,
+          "globalParagraphIndex": 235,
           "chapterId": "speckled-band-14",
-          "paragraphIndex": 5,
+          "paragraphIndex": 1,
           "selectedText": "一根又细又长的藤鞭",
           "startOffset": 7,
           "endOffset": 16
@@ -1327,9 +1327,9 @@
       "occurrences": [
         {
           "id": "occ-21daf7f51b06",
-          "globalParagraphIndex": 248,
+          "globalParagraphIndex": 244,
           "chapterId": "speckled-band-14",
-          "paragraphIndex": 14,
+          "paragraphIndex": 10,
           "selectedText": "红色土耳其无跟拖鞋",
           "startOffset": 111,
           "endOffset": 120
@@ -1344,9 +1344,9 @@
       "occurrences": [
         {
           "id": "occ-e65719305500",
-          "globalParagraphIndex": 248,
+          "globalParagraphIndex": 244,
           "chapterId": "speckled-band-14",
-          "paragraphIndex": 14,
+          "paragraphIndex": 10,
           "selectedText": "那把短柄长鞭子",
           "startOffset": 135,
           "endOffset": 142
@@ -1361,9 +1361,9 @@
       "occurrences": [
         {
           "id": "occ-b610ce87eb79",
-          "globalParagraphIndex": 248,
+          "globalParagraphIndex": 244,
           "chapterId": "speckled-band-14",
-          "paragraphIndex": 14,
+          "paragraphIndex": 10,
           "selectedText": "一条异样的、带有褐色斑点的黄带子",
           "startOffset": 181,
           "endOffset": 197
@@ -1378,9 +1378,9 @@
       "occurrences": [
         {
           "id": "occ-13aefee9aa50",
-          "globalParagraphIndex": 250,
+          "globalParagraphIndex": 246,
           "chapterId": "speckled-band-14",
-          "paragraphIndex": 16,
+          "paragraphIndex": 12,
           "selectedText": "一条又粗又短、长着钻石型的头部和胀鼓鼓的脖子、令人恶心的毒蛇",
           "startOffset": 36,
           "endOffset": 66
@@ -1395,9 +1395,9 @@
       "occurrences": [
         {
           "id": "occ-3f5594cc69a1",
-          "globalParagraphIndex": 252,
-          "chapterId": "speckled-band-15",
-          "paragraphIndex": 0,
+          "globalParagraphIndex": 248,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 14,
           "selectedText": "打狗鞭子",
           "startOffset": 15,
           "endOffset": 19
@@ -1412,9 +1412,9 @@
       "occurrences": [
         {
           "id": "occ-1ab13894d726",
-          "globalParagraphIndex": 253,
-          "chapterId": "speckled-band-15",
-          "paragraphIndex": 1,
+          "globalParagraphIndex": 249,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 15,
           "selectedText": "斯托克莫兰的格里姆斯比·罗伊洛特医生",
           "startOffset": 3,
           "endOffset": 21
@@ -1429,9 +1429,9 @@
       "occurrences": [
         {
           "id": "occ-be8f1352a130",
-          "globalParagraphIndex": 255,
-          "chapterId": "speckled-band-15",
-          "paragraphIndex": 3,
+          "globalParagraphIndex": 251,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 17,
           "selectedText": "保险柜",
           "startOffset": 58,
           "endOffset": 61
@@ -1446,9 +1446,9 @@
       "occurrences": [
         {
           "id": "occ-778b5e1403df",
-          "globalParagraphIndex": 255,
-          "chapterId": "speckled-band-15",
-          "paragraphIndex": 3,
+          "globalParagraphIndex": 251,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 17,
           "selectedText": "一碟牛奶",
           "startOffset": 63,
           "endOffset": 67
@@ -1463,9 +1463,9 @@
       "occurrences": [
         {
           "id": "occ-22bd37896fac",
-          "globalParagraphIndex": 255,
-          "chapterId": "speckled-band-15",
-          "paragraphIndex": 3,
+          "globalParagraphIndex": 251,
+          "chapterId": "speckled-band-14",
+          "paragraphIndex": 17,
           "selectedText": "鞭绳的活结",
           "startOffset": 68,
           "endOffset": 73

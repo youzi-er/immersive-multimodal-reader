@@ -16,7 +16,7 @@ test('splits malformed legacy quotation marks into dialogue without narrator glu
 
 test('versioned manifest covers every dialogue content unit with source-bound segments', () => {
   const dialogueUnits = listContentUnits({ articleId: 'speckled-band' }).filter((unit) => unit.hasDialogue);
-  assert.equal(dialogueUnits.length, 213);
+  assert.equal(dialogueUnits.length, 212);
 
   for (const unit of dialogueUnits) {
     const prepared = getPreparedDubbingPlan(unit);
@@ -34,7 +34,7 @@ test('reviewed first-chapter plan keeps speakers and removes attribution narrati
   const unit = getContentUnitByPosition({
     articleId: 'speckled-band',
     chapterId: 'speckled-band-1',
-    paragraphIndex: 10
+    paragraphIndex: 9
   });
   const prepared = getPreparedDubbingPlan(unit);
 

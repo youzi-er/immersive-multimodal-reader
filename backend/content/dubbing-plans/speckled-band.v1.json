@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "articleId": "speckled-band",
-  "contentVersion": "66e5bcfe242e47135818d59a1d41059dce5e5a360cf373dfa287c399af207658",
+  "contentVersion": "940c7ac53aa40bae79f08e5603d21735d7e4454af51109ba404265387407f185",
   "preparationMode": "deterministic-editorial-v1",
   "entries": [
     {
-      "unitId": "cu_64be552013ccbcb7c36d841d",
+      "unitId": "cu_e17ca764a5a98cd3a6d2f63a",
       "chapterId": "speckled-band-1",
-      "paragraphIndex": 5,
+      "paragraphIndex": 4,
       "sourceHash": "a2926e0fd1d494e542a6353e53b2429b040c959a0a6e1bb69c22504c54a2e608",
       "segments": [
         {
@@ -63,9 +63,9 @@
       ]
     },
     {
-      "unitId": "cu_367c16376b8a301b105c0bb5",
+      "unitId": "cu_64be552013ccbcb7c36d841d",
       "chapterId": "speckled-band-1",
-      "paragraphIndex": 6,
+      "paragraphIndex": 5,
       "sourceHash": "58e5cc8153329b4caebb4e20cf64f00231a10a443febc1f3ff0f4b778dd3a5eb",
       "segments": [
         {
@@ -96,9 +96,9 @@
       ]
     },
     {
-      "unitId": "cu_c3de0382e676e3ac49fbeb68",
+      "unitId": "cu_367c16376b8a301b105c0bb5",
       "chapterId": "speckled-band-1",
-      "paragraphIndex": 7,
+      "paragraphIndex": 6,
       "sourceHash": "f4ef579dad0ad0a388cebf51bf37489f631f850a9e833cb40e564cbc22351cf5",
       "segments": [
         {
@@ -129,9 +129,9 @@
       ]
     },
     {
-      "unitId": "cu_7e50317d1a540466e4c2b036",
+      "unitId": "cu_c3de0382e676e3ac49fbeb68",
       "chapterId": "speckled-band-1",
-      "paragraphIndex": 8,
+      "paragraphIndex": 7,
       "sourceHash": "cd3058db18e2304aeb804d48f21f105c43883363f0c9becec68b1b0d204bc4b9",
       "segments": [
         {
@@ -162,9 +162,9 @@
       ]
     },
     {
-      "unitId": "cu_f66938c33a24d5f7d2c79a75",
+      "unitId": "cu_6c0113c7e570ffd0485540aa",
       "chapterId": "speckled-band-1",
-      "paragraphIndex": 10,
+      "paragraphIndex": 9,
       "sourceHash": "9380dbd987b81f6cddd4bd3664718e2c0232d05a1c2d9ca8da3cffc9f0952a59",
       "segments": [
         {
@@ -224,9 +224,9 @@
       ]
     },
     {
-      "unitId": "cu_04d1d5c028f79a2b2bd8632c",
+      "unitId": "cu_f66938c33a24d5f7d2c79a75",
       "chapterId": "speckled-band-1",
-      "paragraphIndex": 11,
+      "paragraphIndex": 10,
       "sourceHash": "e66827361cb87327364924151678bec1fca6d5d0454af7881b705a1e66da65dc",
       "segments": [
         {
@@ -259,9 +259,9 @@
       ]
     },
     {
-      "unitId": "cu_7cb17ced73c9643dbd123a0e",
+      "unitId": "cu_04d1d5c028f79a2b2bd8632c",
       "chapterId": "speckled-band-1",
-      "paragraphIndex": 12,
+      "paragraphIndex": 11,
       "sourceHash": "e38fe4e0d23e0eac9b4ac433cc71073601754e4b01553c8045f344d4a1c90597",
       "segments": [
         {
@@ -292,10 +292,10 @@
       ]
     },
     {
-      "unitId": "cu_d33642478045c2c6f90c56fc",
+      "unitId": "cu_7cb17ced73c9643dbd123a0e",
       "chapterId": "speckled-band-1",
-      "paragraphIndex": 13,
-      "sourceHash": "bfe01d067fc58764122e3f35a5fd7e5ad17a398b7d1976a93ba672aea40dc361",
+      "paragraphIndex": 12,
+      "sourceHash": "68276e3cc568acc584de1779d13b03fcdbcd32f3ee1d884d7a7c094114b70d67",
       "segments": [
         {
           "segmentId": "s001",
@@ -327,9 +327,9 @@
       ]
     },
     {
-      "unitId": "cu_676dad23014ddf8ac3bf29f7",
+      "unitId": "cu_d33642478045c2c6f90c56fc",
       "chapterId": "speckled-band-1",
-      "paragraphIndex": 14,
+      "paragraphIndex": 13,
       "sourceHash": "f4a9673766d579137b364ab15e52af8edd0e93c5da93a549750bcce64b203adf",
       "segments": [
         {
@@ -389,9 +389,9 @@
       ]
     },
     {
-      "unitId": "cu_4f058e9e9eb033afbbefcb6f",
+      "unitId": "cu_676dad23014ddf8ac3bf29f7",
       "chapterId": "speckled-band-1",
-      "paragraphIndex": 15,
+      "paragraphIndex": 14,
       "sourceHash": "03b3eb7946386d33693df72de9811382bdad47e4438d296def2b2b3a0319069a",
       "segments": [
         {
@@ -422,10 +422,10 @@
       ]
     },
     {
-      "unitId": "cu_7a044ad8760b06853d73cb4c",
+      "unitId": "cu_4f058e9e9eb033afbbefcb6f",
       "chapterId": "speckled-band-1",
-      "paragraphIndex": 16,
-      "sourceHash": "9a608ad00c9bbd8b5be93c2fb8bf9fe149523b3b8d409802aa2a62d22e3cb9a8",
+      "paragraphIndex": 15,
+      "sourceHash": "e250f6b33288ca5062b05d9792925e8cc2109679791ffc88a740f4bc3eedf6ae",
       "segments": [
         {
           "segmentId": "s001",
@@ -455,9 +455,9 @@
       ]
     },
     {
-      "unitId": "cu_fa5ad3495e69c718b86ccbb5",
-      "chapterId": "speckled-band-2",
-      "paragraphIndex": 1,
+      "unitId": "cu_dac6676ace981aadeba4e1b2",
+      "chapterId": "speckled-band-1",
+      "paragraphIndex": 17,
       "sourceHash": "e992104f1c9c1051d588a81ac8850446219874212a77fb59ac80697c703bd51b",
       "segments": [
         {
@@ -513,9 +513,9 @@
       ]
     },
     {
-      "unitId": "cu_712dd7a2a6f0c41c4553d471",
+      "unitId": "cu_f8ba73198c6ec2172b6f55a4",
       "chapterId": "speckled-band-2",
-      "paragraphIndex": 2,
+      "paragraphIndex": 0,
       "sourceHash": "700112bcf10c461dbbe71681a2079580da4286b5bc774635474c96d998beb717",
       "segments": [
         {
@@ -571,9 +571,9 @@
       ]
     },
     {
-      "unitId": "cu_49f5e55620511997617cf551",
+      "unitId": "cu_712dd7a2a6f0c41c4553d471",
       "chapterId": "speckled-band-2",
-      "paragraphIndex": 4,
+      "paragraphIndex": 2,
       "sourceHash": "34ffb5c5e1e47b6ea0c75ac9bd08e261b75227bfb8f5fcbebeb980a82e76ac1a",
       "segments": [
         {
@@ -629,9 +629,9 @@
       ]
     },
     {
-      "unitId": "cu_b0d76a981c36e2546494b183",
+      "unitId": "cu_e9c90ee77d189b3dcad589d2",
       "chapterId": "speckled-band-2",
-      "paragraphIndex": 5,
+      "paragraphIndex": 3,
       "sourceHash": "323b178231ac850bc809d445b14b20d05d3706f0488bea9f32279daac8b5300a",
       "segments": [
         {
@@ -691,9 +691,9 @@
       ]
     },
     {
-      "unitId": "cu_db76f7093e74c2013f6f41cc",
+      "unitId": "cu_49f5e55620511997617cf551",
       "chapterId": "speckled-band-2",
-      "paragraphIndex": 6,
+      "paragraphIndex": 4,
       "sourceHash": "9b0467a7ecc61889763901e3239a3c704b587d2ca3c5b0fa69476ea3d6d1b681",
       "segments": [
         {
@@ -724,9 +724,9 @@
       ]
     },
     {
-      "unitId": "cu_ccf0e9e2c5e92fcfebe64df8",
+      "unitId": "cu_b0d76a981c36e2546494b183",
       "chapterId": "speckled-band-2",
-      "paragraphIndex": 7,
+      "paragraphIndex": 5,
       "sourceHash": "5beb1b78ca6311d9015e638e731d9408a681daf9b2946ab5bd019f67f145125b",
       "segments": [
         {
@@ -757,9 +757,9 @@
       ]
     },
     {
-      "unitId": "cu_ea7f5cb254c5489003b9faa2",
+      "unitId": "cu_db76f7093e74c2013f6f41cc",
       "chapterId": "speckled-band-2",
-      "paragraphIndex": 8,
+      "paragraphIndex": 6,
       "sourceHash": "7cab9179663ad9a7e1d96bc02d7b9296708a7f1108e28800b74d411175d504f7",
       "segments": [
         {
@@ -790,75 +790,75 @@
       ]
     },
     {
+      "unitId": "cu_ccf0e9e2c5e92fcfebe64df8",
+      "chapterId": "speckled-band-2",
+      "paragraphIndex": 7,
+      "sourceHash": "153822cdabc4aec6c412ac60cb67c9aa0adcb25052621eb5b0171c490442d2f9",
+      "segments": [
+        {
+          "segmentId": "s001",
+          "speakerCode": "char_helen",
+          "templateCode": null,
+          "text": "这个家族一度是英伦最富有的家族之一，它的产业占地极广，超出了本郡的边界，北至伯克郡，西至汉普郡。可是到了上个世纪，连续四代子嗣都属生性荒淫浪荡、挥霍无度之辈，到了摄政时期终于被一个赌棍最后搞得倾家荡产。除了几亩土地和一座二百年的古老邸宅外，其它都已荡然无存，而那座邸宅也已典押得差不多了。最后的一位地主在那里苟延残喘地过着落魄王孙的可悲生活。但是他的独生子，我的继父，认识到他必须使自己适应这种新的情况，从一位亲戚那里借到一笔钱，这笔钱使他得到了一个医学学位，并且出国到了加尔各答行医，在那儿凭借他的医术和坚强的个性，业务非常发达。可是，由于家里几次被盗，他在盛怒之下，殴打当地人管家致死，差一点因为这个被判处死刑。就这样，他遭到长期监禁。后来，返回英国，变成一个性格暴躁、失意潦倒的人。",
+          "director": {
+            "场景压力": "编辑部预制对白方案",
+            "表演意图": "忠实原文并根据标点自然表达",
+            "避免": "不要添加原文不存在的台词，不要夸张表演"
+          },
+          "performance": {
+            "语速": "正常",
+            "情绪": "克制",
+            "强度": 2,
+            "停顿": "无",
+            "节奏": "语流自然，不人为切碎",
+            "重读词": [],
+            "语气词标签": {
+              "前": [],
+              "后": [],
+              "句内": []
+            }
+          },
+          "pronunciation": []
+        }
+      ]
+    },
+    {
+      "unitId": "cu_ea7f5cb254c5489003b9faa2",
+      "chapterId": "speckled-band-2",
+      "paragraphIndex": 8,
+      "sourceHash": "2355385c3b03936daa4086b936dcfc2d7cc897a56e1beb78db68740ee9da2963",
+      "segments": [
+        {
+          "segmentId": "s001",
+          "speakerCode": "char_helen",
+          "templateCode": null,
+          "text": "罗伊洛特医生在印度时娶了我的母亲。她当时是孟加拉炮兵司令斯托纳少将的年轻遗孀，斯托纳太太。我和我的姐姐朱莉娅是孪生姐妹，我母亲再婚的时候，我们年仅两岁。她有一笔相当可观的财产，每年的进项不少于一千英镑。我们和罗伊洛特医生住在一起时，她就立下遗嘱把财产全部遗赠给他，但附有一个条件，那就是在我们结婚后，每年要拨给我们一定数目的金钱。我们返回英伦不久，我们的母亲就去世了。她是八年前在克鲁附近一次火车事故中丧生的。在这之后，罗伊洛特医生放弃了重新在伦敦开业的意图，带我们一起到斯托克莫兰祖先留下的古老邸宅里过活。我母亲遗留的钱足够应付我们的一切需要，看来我们的幸福似乎是毫无问题的了。",
+          "director": {
+            "场景压力": "编辑部预制对白方案",
+            "表演意图": "忠实原文并根据标点自然表达",
+            "避免": "不要添加原文不存在的台词，不要夸张表演"
+          },
+          "performance": {
+            "语速": "正常",
+            "情绪": "克制",
+            "强度": 2,
+            "停顿": "无",
+            "节奏": "语流自然，不人为切碎",
+            "重读词": [],
+            "语气词标签": {
+              "前": [],
+              "后": [],
+              "句内": []
+            }
+          },
+          "pronunciation": []
+        }
+      ]
+    },
+    {
       "unitId": "cu_0f600e0262d8a53d12b632fe",
       "chapterId": "speckled-band-2",
       "paragraphIndex": 9,
-      "sourceHash": "5d2bea9466a48aeafef28e007ec5050d8f8674d6dd01c83e5d896e47da667b2a",
-      "segments": [
-        {
-          "segmentId": "s001",
-          "speakerCode": "char_helen",
-          "templateCode": null,
-          "text": "这个家族一度是英伦最富有的家族之一，它的产业占地极广，超出了本郡的边界，北至伯克郡，西至汉普郡。可是到了上个世纪，连续四代子嗣都属生性荒淫浪荡、挥霍无度之辈，到了摄政时期终于被一个赌棍最后搞得倾家荡产。除了几①亩土地和一座二百年的古老邱宅外，其它都已荡然无存，而那座邸宅也已典押得差不多了。最后的一位地主在那里苟延残喘地过着落破王孙的可悲生活。但是他的独生子，我的继父，认识到他必须使自己适应这种新的情况，从一位亲戚那里借到一笔钱，这笔钱使他得到了一个医学学位，并且出国到了加尔各答行医，在那儿凭借他的医术和坚强的个性，业务非常发达。可是，由于家里几次被盗，他在盛怒之下，殴打当地人管家致死，差一点因为这个被判处死刑。就这样，他遭到长期监禁。后来，返回英国，变成一个性格暴躁、失意潦倒的人。",
-          "director": {
-            "场景压力": "编辑部预制对白方案",
-            "表演意图": "忠实原文并根据标点自然表达",
-            "避免": "不要添加原文不存在的台词，不要夸张表演"
-          },
-          "performance": {
-            "语速": "正常",
-            "情绪": "克制",
-            "强度": 2,
-            "停顿": "无",
-            "节奏": "语流自然，不人为切碎",
-            "重读词": [],
-            "语气词标签": {
-              "前": [],
-              "后": [],
-              "句内": []
-            }
-          },
-          "pronunciation": []
-        }
-      ]
-    },
-    {
-      "unitId": "cu_c23b4995f8d3a01e0626ebcf",
-      "chapterId": "speckled-band-2",
-      "paragraphIndex": 11,
-      "sourceHash": "ab34a08aa8c73ed35d92eb697b13ff25cfcae3aaab3fb9165b93528ad395badf",
-      "segments": [
-        {
-          "segmentId": "s001",
-          "speakerCode": "char_helen",
-          "templateCode": null,
-          "text": "罗伊洛特医生在印度时娶了我的母亲。她当时是孟加拉炮兵司令斯托纳少将的年轻遗孀，斯托纳太太。我和我的姐姐朱莉娅是孪生姐妹，我母亲再婚的时候，我们年仅两岁。她有一笔相当可观的财产，每年的进项不少于一千英镑。我们和罗伊洛特医生住在一平时，她就立下遗嘱把财产全部遗赠给他，但附有一个条件，那就是在我们结婚后，每年要拨给我们一定数目的金钱。我们返回英伦不久，我们的母亲就去世了。她是八年前在克鲁附近一次火车事故中丧生的。在这之后，罗伊洛特医生放弃了重新在伦敦开业的意图，带我们一起到斯托克莫兰祖先留下的古老邸宅里过活。我母亲遗留的钱足够应付我们的一切需要，看来我们的幸福似乎是毫无问题的了。",
-          "director": {
-            "场景压力": "编辑部预制对白方案",
-            "表演意图": "忠实原文并根据标点自然表达",
-            "避免": "不要添加原文不存在的台词，不要夸张表演"
-          },
-          "performance": {
-            "语速": "正常",
-            "情绪": "克制",
-            "强度": 2,
-            "停顿": "无",
-            "节奏": "语流自然，不人为切碎",
-            "重读词": [],
-            "语气词标签": {
-              "前": [],
-              "后": [],
-              "句内": []
-            }
-          },
-          "pronunciation": []
-        }
-      ]
-    },
-    {
-      "unitId": "cu_193051df49d0ba4c7446f87f",
-      "chapterId": "speckled-band-2",
-      "paragraphIndex": 12,
       "sourceHash": "d4f2f6b95f1c5fc64df035850e1e1984edb7d0e57ac30a7c974844b73bc2d8b6",
       "segments": [
         {
@@ -889,9 +889,9 @@
       ]
     },
     {
-      "unitId": "cu_f22832d089d722a98ef76110",
+      "unitId": "cu_21a140ad87b2afceef22f85a",
       "chapterId": "speckled-band-2",
-      "paragraphIndex": 13,
+      "paragraphIndex": 10,
       "sourceHash": "299a8b7adcd8b1da0d72b0170f7228d0f10573b6094da0b7a3023b56d94a68c3",
       "segments": [
         {
@@ -924,9 +924,9 @@
       ]
     },
     {
-      "unitId": "cu_a9c898df476e0872354510f0",
+      "unitId": "cu_c23b4995f8d3a01e0626ebcf",
       "chapterId": "speckled-band-2",
-      "paragraphIndex": 14,
+      "paragraphIndex": 11,
       "sourceHash": "653e2da571960ce696614baa5be45b5fc6bfde4d37b6d06254829520ee4849ef",
       "segments": [
         {
@@ -957,9 +957,9 @@
       ]
     },
     {
-      "unitId": "cu_74a97acd7eda0e7b95cb32b0",
+      "unitId": "cu_193051df49d0ba4c7446f87f",
       "chapterId": "speckled-band-2",
-      "paragraphIndex": 15,
+      "paragraphIndex": 12,
       "sourceHash": "b77c6079132b3270b5113336ed218cd8cdb5b22b1920e2e5766d15e0e51176c1",
       "segments": [
         {
@@ -990,9 +990,9 @@
       ]
     },
     {
-      "unitId": "cu_a141ac014880e1eb9a5222c7",
+      "unitId": "cu_f22832d089d722a98ef76110",
       "chapterId": "speckled-band-2",
-      "paragraphIndex": 16,
+      "paragraphIndex": 13,
       "sourceHash": "77475a2a1e8e344e646ef548d6488dc31005fed44aded63e537a4b4f701947a8",
       "segments": [
         {
@@ -1023,9 +1023,9 @@
       ]
     },
     {
-      "unitId": "cu_c5cb0b50057321d2fe1152e9",
-      "chapterId": "speckled-band-3",
-      "paragraphIndex": 0,
+      "unitId": "cu_74a97acd7eda0e7b95cb32b0",
+      "chapterId": "speckled-band-2",
+      "paragraphIndex": 15,
       "sourceHash": "250c026e548defe287c9af6c685d67033a5155c41695b36486e6f702e6b71e3b",
       "segments": [
         {
@@ -1056,9 +1056,9 @@
       ]
     },
     {
-      "unitId": "cu_64ae0ee6ec80f23e4cecffd9",
-      "chapterId": "speckled-band-3",
-      "paragraphIndex": 1,
+      "unitId": "cu_a141ac014880e1eb9a5222c7",
+      "chapterId": "speckled-band-2",
+      "paragraphIndex": 16,
       "sourceHash": "d180ede046ec1c91b6ca5dc6792097d4b364e35c0d4fba7a422009ce62d4d794",
       "segments": [
         {
@@ -1089,9 +1089,9 @@
       ]
     },
     {
-      "unitId": "cu_ffe51f5d122e265acea6b990",
-      "chapterId": "speckled-band-3",
-      "paragraphIndex": 2,
+      "unitId": "cu_20dc46fa42b80b87e110cfa5",
+      "chapterId": "speckled-band-2",
+      "paragraphIndex": 17,
       "sourceHash": "39bb9a59fb62630726bb588b5f44142b92f74e11beaab6d5d74604a6cdcaaee2",
       "segments": [
         {
@@ -1122,9 +1122,9 @@
       ]
     },
     {
-      "unitId": "cu_62500ec3d68e65e1ac2b1b7b",
+      "unitId": "cu_c5cb0b50057321d2fe1152e9",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 3,
+      "paragraphIndex": 0,
       "sourceHash": "6f99ad0fc5c72cb3b9e39ffd8c3bc1f76b7bfd7747843997e28e9bb52b7470f7",
       "segments": [
         {
@@ -1155,9 +1155,9 @@
       ]
     },
     {
-      "unitId": "cu_5135a49623d0483de1c39326",
+      "unitId": "cu_64ae0ee6ec80f23e4cecffd9",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 4,
+      "paragraphIndex": 1,
       "sourceHash": "0adc69cc52c0b2dea37a79a709a6481cb772497870544188da87ea05165d8a20",
       "segments": [
         {
@@ -1188,9 +1188,9 @@
       ]
     },
     {
-      "unitId": "cu_4dacb0aec525f758c801a667",
+      "unitId": "cu_ffe51f5d122e265acea6b990",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 5,
+      "paragraphIndex": 2,
       "sourceHash": "cba2a548e0679eeb91c50f6020a91ff5a0d56d8183fdcd54ff89ed725faa60d8",
       "segments": [
         {
@@ -1221,9 +1221,9 @@
       ]
     },
     {
-      "unitId": "cu_cc38f9c839524a1a7f2f7e07",
+      "unitId": "cu_62500ec3d68e65e1ac2b1b7b",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 6,
+      "paragraphIndex": 3,
       "sourceHash": "5f3ed457abda36e4a6e338b1a4d88e82f21f2dc7fcdbe8efeb4942b6cfd86e00",
       "segments": [
         {
@@ -1254,9 +1254,9 @@
       ]
     },
     {
-      "unitId": "cu_722941c2f69938a3527c897b",
+      "unitId": "cu_5135a49623d0483de1c39326",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 7,
+      "paragraphIndex": 4,
       "sourceHash": "810583357cc11bb567210ae6b721e5c7df6fb444602f135abcbfbf77ffdc232d",
       "segments": [
         {
@@ -1287,9 +1287,9 @@
       ]
     },
     {
-      "unitId": "cu_bd165fdfec88bd560e59fc1d",
+      "unitId": "cu_4dacb0aec525f758c801a667",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 8,
+      "paragraphIndex": 5,
       "sourceHash": "14794fe609220fb1768316604d3499e1215aaf9cf2ca8dce4a5da488545ce777",
       "segments": [
         {
@@ -1320,9 +1320,9 @@
       ]
     },
     {
-      "unitId": "cu_789949d3e87244087c51f902",
+      "unitId": "cu_cc38f9c839524a1a7f2f7e07",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 9,
+      "paragraphIndex": 6,
       "sourceHash": "94c5b1c5828290f87bc9ea5ed82552241a51b6671b04e9b56d6c3ac66fe1f886",
       "segments": [
         {
@@ -1353,9 +1353,9 @@
       ]
     },
     {
-      "unitId": "cu_ec96ec8d913f2c3cfced114c",
+      "unitId": "cu_722941c2f69938a3527c897b",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 10,
+      "paragraphIndex": 7,
       "sourceHash": "97ae1843680ae3d4a57dc1b08047d7ce8696f616aa6c2ef22e5396d806a5c754",
       "segments": [
         {
@@ -1386,9 +1386,9 @@
       ]
     },
     {
-      "unitId": "cu_fb634967dc400a150cea9230",
+      "unitId": "cu_bd165fdfec88bd560e59fc1d",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 11,
+      "paragraphIndex": 8,
       "sourceHash": "e02eb4172fc50c8aa886d676ca0b3e2ff8bef0955b8a1fba73d95e0c8679e6e8",
       "segments": [
         {
@@ -1419,9 +1419,9 @@
       ]
     },
     {
-      "unitId": "cu_1aae0f3e784fe5d2edb98183",
+      "unitId": "cu_789949d3e87244087c51f902",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 12,
+      "paragraphIndex": 9,
       "sourceHash": "65d9eb13616d1c0d72e9fe646d08a764d8c9cb8f113f65aa716589740b20510f",
       "segments": [
         {
@@ -1452,9 +1452,9 @@
       ]
     },
     {
-      "unitId": "cu_d3a91834cb366e9bd4b89d27",
+      "unitId": "cu_ec96ec8d913f2c3cfced114c",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 13,
+      "paragraphIndex": 10,
       "sourceHash": "39d228e02a135bbf493cd183876ef5a852ebaf9b98e71c12ab2b143af790786f",
       "segments": [
         {
@@ -1510,9 +1510,9 @@
       ]
     },
     {
-      "unitId": "cu_dba012d2b15cafac8fbbcc00",
+      "unitId": "cu_fb634967dc400a150cea9230",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 14,
+      "paragraphIndex": 11,
       "sourceHash": "f1ed90d4ba721f24a71b1b7f4f5e29fb76991f968fa2c85c6b55a3f88dd11335",
       "segments": [
         {
@@ -1543,9 +1543,9 @@
       ]
     },
     {
-      "unitId": "cu_21f4412d59a539b4a354a490",
+      "unitId": "cu_1aae0f3e784fe5d2edb98183",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 15,
+      "paragraphIndex": 12,
       "sourceHash": "134ef776217b7edd5d85ce95600ae02f20610f610fac75d9da503341e3e0196f",
       "segments": [
         {
@@ -1576,9 +1576,9 @@
       ]
     },
     {
-      "unitId": "cu_00b3d318caafe23e440c11c0",
+      "unitId": "cu_d3a91834cb366e9bd4b89d27",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 16,
+      "paragraphIndex": 13,
       "sourceHash": "6013ebb88e510585dd2e1cfc7ebf312c3697959e541f518a754954af08ab7a1f",
       "segments": [
         {
@@ -1609,9 +1609,9 @@
       ]
     },
     {
-      "unitId": "cu_4f4cb5db518edb1a805d3dd8",
+      "unitId": "cu_dba012d2b15cafac8fbbcc00",
       "chapterId": "speckled-band-3",
-      "paragraphIndex": 17,
+      "paragraphIndex": 14,
       "sourceHash": "2012dae120e8d31f2892c624b4214ca8c91a15668c39199c46083a647a80e849",
       "segments": [
         {
@@ -1642,9 +1642,9 @@
       ]
     },
     {
-      "unitId": "cu_62834a535a7595c3d5effb0a",
-      "chapterId": "speckled-band-4",
-      "paragraphIndex": 0,
+      "unitId": "cu_21f4412d59a539b4a354a490",
+      "chapterId": "speckled-band-3",
+      "paragraphIndex": 15,
       "sourceHash": "dd99ab340075521f6e64547c8c70055fd394058f5c7516a2d38143ee26855172",
       "segments": [
         {
@@ -1677,9 +1677,9 @@
       ]
     },
     {
-      "unitId": "cu_4d5b7f5395cb7cb996d38be6",
-      "chapterId": "speckled-band-4",
-      "paragraphIndex": 1,
+      "unitId": "cu_00b3d318caafe23e440c11c0",
+      "chapterId": "speckled-band-3",
+      "paragraphIndex": 16,
       "sourceHash": "2f8bca091148e4b4abe2343fe132bb0e37222df11fe426e040ae74ee7d35f3f5",
       "segments": [
         {
@@ -1735,9 +1735,9 @@
       ]
     },
     {
-      "unitId": "cu_da58d212a35b7a55d007d745",
-      "chapterId": "speckled-band-4",
-      "paragraphIndex": 2,
+      "unitId": "cu_4f4cb5db518edb1a805d3dd8",
+      "chapterId": "speckled-band-3",
+      "paragraphIndex": 17,
       "sourceHash": "086bd77bc232039ecdfd504de267c188b8813b2378184915a485d2689ff23f71",
       "segments": [
         {
@@ -1768,9 +1768,9 @@
       ]
     },
     {
-      "unitId": "cu_75d1bf1700633ce6ce5270dd",
+      "unitId": "cu_62834a535a7595c3d5effb0a",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 3,
+      "paragraphIndex": 0,
       "sourceHash": "5ed0b4f24f8fb83a1acd8f215a8ce3231fe9aae07d70fa172eff45d6e5a5d2fc",
       "segments": [
         {
@@ -1801,9 +1801,9 @@
       ]
     },
     {
-      "unitId": "cu_b240436da438fc0b03468769",
+      "unitId": "cu_4d5b7f5395cb7cb996d38be6",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 4,
+      "paragraphIndex": 1,
       "sourceHash": "64b9a885f5f946ac52b7d266c39220cfc363a7dc6c03b0bca72c120437b104f2",
       "segments": [
         {
@@ -1834,9 +1834,9 @@
       ]
     },
     {
-      "unitId": "cu_ce679eafc7a993816147d082",
+      "unitId": "cu_da58d212a35b7a55d007d745",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 5,
+      "paragraphIndex": 2,
       "sourceHash": "84b382bc6675c0a6dfbd1e89993d0f4c6037990eadaa362469a6677ad70631cf",
       "segments": [
         {
@@ -1867,9 +1867,9 @@
       ]
     },
     {
-      "unitId": "cu_8555c5d3f12430661a6ead9d",
+      "unitId": "cu_75d1bf1700633ce6ce5270dd",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 6,
+      "paragraphIndex": 3,
       "sourceHash": "97371b9e2f2058945b239e5e55d00dd6e05c91e45b1898b724268be3b0795b91",
       "segments": [
         {
@@ -1900,9 +1900,9 @@
       ]
     },
     {
-      "unitId": "cu_3ada9bcaf1e3bd9242ad89ed",
+      "unitId": "cu_b240436da438fc0b03468769",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 7,
+      "paragraphIndex": 4,
       "sourceHash": "771f9f5fee96e30c8221ce5707cd82b5327104aec30fe518fa419b4901d48215",
       "segments": [
         {
@@ -1933,9 +1933,9 @@
       ]
     },
     {
-      "unitId": "cu_66dd639cadc25bdb15ffc7b9",
+      "unitId": "cu_ce679eafc7a993816147d082",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 8,
+      "paragraphIndex": 5,
       "sourceHash": "03cf4cd1900b1c80c953ef91451529297ae9396bfaa148635d3a34a5a14949d4",
       "segments": [
         {
@@ -1966,9 +1966,9 @@
       ]
     },
     {
-      "unitId": "cu_e78d5b4f7c13b212c0d0d1ec",
+      "unitId": "cu_8555c5d3f12430661a6ead9d",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 9,
+      "paragraphIndex": 6,
       "sourceHash": "45e10530eca35d5efcbd4f79387e9c53fd52b7bc7479a1e0108fa045dd0deb1f",
       "segments": [
         {
@@ -1999,9 +1999,9 @@
       ]
     },
     {
-      "unitId": "cu_06662a00199035739a2ac678",
+      "unitId": "cu_3ada9bcaf1e3bd9242ad89ed",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 10,
+      "paragraphIndex": 7,
       "sourceHash": "1907ef47b3238025cf9b9b5e7b965835b0a785cfd1f25cca727ace33ac198b73",
       "segments": [
         {
@@ -2034,9 +2034,9 @@
       ]
     },
     {
-      "unitId": "cu_f2d664df9d4f8bf8c0db7a5a",
+      "unitId": "cu_66dd639cadc25bdb15ffc7b9",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 11,
+      "paragraphIndex": 8,
       "sourceHash": "9a86938fe4fd2b0bd8bd7fcd94e27f66318091df246fd5782b07ad7681574114",
       "segments": [
         {
@@ -2067,9 +2067,9 @@
       ]
     },
     {
-      "unitId": "cu_d4b9b618f8dab742fb697cc7",
+      "unitId": "cu_e78d5b4f7c13b212c0d0d1ec",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 12,
+      "paragraphIndex": 9,
       "sourceHash": "951378a9b59005e4933e8123f0e8c56020f0f41e7747685476056a1ae8e348d3",
       "segments": [
         {
@@ -2100,9 +2100,9 @@
       ]
     },
     {
-      "unitId": "cu_18e1f4d64ab60388983005a1",
+      "unitId": "cu_06662a00199035739a2ac678",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 13,
+      "paragraphIndex": 10,
       "sourceHash": "e1d4c6e32627f08cfc66f26366b419926e554735802264bbccde95d0c1b6a599",
       "segments": [
         {
@@ -2133,16 +2133,16 @@
       ]
     },
     {
-      "unitId": "cu_0d0c69bfeb60fd7474ce147c",
+      "unitId": "cu_f2d664df9d4f8bf8c0db7a5a",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 14,
-      "sourceHash": "4f3f9d03ecba2e679c89fdb0394db07e4656ca4a74bb5388d4d8c5641774aeb9",
+      "paragraphIndex": 11,
+      "sourceHash": "2bb8c3d6bb0652eab149b5007048090a2b409094071334f3bc40101550cc31d7",
       "segments": [
         {
           "segmentId": "s001",
           "speakerCode": "char_helen",
           "templateCode": null,
-          "text": "有时我觉得，那只不过是精神错乱时说的胡话，有时又觉得，可能指的是某一帮人。也许指的就是种植园里那些吉①卜赛人。他们当中有那么多人头上戴着带点子的头巾，我不知道这是否可以说明她所使用的那个奇怪的形容词。",
+          "text": "有时我觉得，那只不过是精神错乱时说的胡话，有时又觉得，可能指的是某一帮人。也许指的就是种植园里那些吉卜赛人。他们当中有那么多人头上戴着带点子的头巾，我不知道这是否可以说明她所使用的那个奇怪的形容词。",
           "director": {
             "场景压力": "编辑部预制对白方案",
             "表演意图": "忠实原文并根据标点自然表达",
@@ -2166,67 +2166,9 @@
       ]
     },
     {
-      "unitId": "cu_a38cd7676576edfc3141f0cf",
+      "unitId": "cu_18e1f4d64ab60388983005a1",
       "chapterId": "speckled-band-4",
-      "paragraphIndex": 15,
-      "sourceHash": "b92a1897e555ee233c7b541c2ee7721bf64a7d0c19f10925ec5b9e8256cb246b",
-      "segments": [
-        {
-          "segmentId": "s001",
-          "speakerCode": null,
-          "templateCode": "tpl_male_middle",
-          "text": "带子",
-          "director": {
-            "场景压力": "编辑部预制对白方案",
-            "表演意图": "忠实原文并根据标点自然表达",
-            "避免": "不要添加原文不存在的台词，不要夸张表演"
-          },
-          "performance": {
-            "语速": "正常",
-            "情绪": "克制",
-            "强度": 2,
-            "停顿": "无",
-            "节奏": "语流自然，不人为切碎",
-            "重读词": [],
-            "语气词标签": {
-              "前": [],
-              "后": [],
-              "句内": []
-            }
-          },
-          "pronunciation": []
-        },
-        {
-          "segmentId": "s002",
-          "speakerCode": null,
-          "templateCode": "tpl_male_middle",
-          "text": "一帮",
-          "director": {
-            "场景压力": "编辑部预制对白方案",
-            "表演意图": "忠实原文并根据标点自然表达",
-            "避免": "不要添加原文不存在的台词，不要夸张表演"
-          },
-          "performance": {
-            "语速": "正常",
-            "情绪": "克制",
-            "强度": 2,
-            "停顿": "无",
-            "节奏": "语流自然，不人为切碎",
-            "重读词": [],
-            "语气词标签": {
-              "前": [],
-              "后": [],
-              "句内": []
-            }
-          },
-          "pronunciation": []
-        }
-      ]
-    },
-    {
-      "unitId": "cu_d045d2ff56195d2fbb4fb072",
-      "chapterId": "speckled-band-4",
-      "paragraphIndex": 17,
+      "paragraphIndex": 13,
       "sourceHash": "3f3499437b863eb0754da6a41ed9e8a9727b1016b76d83650a51280993b4fc72",
       "segments": [
         {
@@ -2282,9 +2224,9 @@
       ]
     },
     {
-      "unitId": "cu_163bd6f507dab327fedd2cba",
-      "chapterId": "speckled-band-5",
-      "paragraphIndex": 0,
+      "unitId": "cu_0d0c69bfeb60fd7474ce147c",
+      "chapterId": "speckled-band-4",
+      "paragraphIndex": 14,
       "sourceHash": "de74b6322cea732f315e0e3d4e32e29e0a4ea6d34d48869c4c7329bb814629de",
       "segments": [
         {
@@ -2315,9 +2257,9 @@
       ]
     },
     {
-      "unitId": "cu_e5e1ddd83873f5968c032f86",
-      "chapterId": "speckled-band-5",
-      "paragraphIndex": 1,
+      "unitId": "cu_a38cd7676576edfc3141f0cf",
+      "chapterId": "speckled-band-4",
+      "paragraphIndex": 15,
       "sourceHash": "b0b6a86dfa8164dd5f3df4a7201c6c177480dd30cfd519a9fb4ce498fce21062",
       "segments": [
         {
@@ -2373,9 +2315,9 @@
       ]
     },
     {
-      "unitId": "cu_2340c2822dd1bb5a71945c6e",
-      "chapterId": "speckled-band-5",
-      "paragraphIndex": 2,
+      "unitId": "cu_cf455db82e8cc154814e9fe0",
+      "chapterId": "speckled-band-4",
+      "paragraphIndex": 16,
       "sourceHash": "95b4e18d93e7b742d8a895565c91c1932bf50309e2c2a566cb735075844c5baf",
       "segments": [
         {
@@ -2406,9 +2348,9 @@
       ]
     },
     {
-      "unitId": "cu_3680706217902654facdb0c4",
-      "chapterId": "speckled-band-5",
-      "paragraphIndex": 3,
+      "unitId": "cu_d045d2ff56195d2fbb4fb072",
+      "chapterId": "speckled-band-4",
+      "paragraphIndex": 17,
       "sourceHash": "2fb55e968ce9a2a75fbdd051f6670987273b8f674cfb20184a798ecaad9333ac",
       "segments": [
         {
@@ -2439,9 +2381,9 @@
       ]
     },
     {
-      "unitId": "cu_8c3d05f64730408f9e61f5df",
+      "unitId": "cu_163bd6f507dab327fedd2cba",
       "chapterId": "speckled-band-5",
-      "paragraphIndex": 4,
+      "paragraphIndex": 0,
       "sourceHash": "03ebf52e56726bcec4281a6dfff4e698ed21dbb1a84b480c8db68793aeee4757",
       "segments": [
         {
@@ -2472,9 +2414,9 @@
       ]
     },
     {
-      "unitId": "cu_84f2b400093ea8882784ff61",
+      "unitId": "cu_2340c2822dd1bb5a71945c6e",
       "chapterId": "speckled-band-5",
-      "paragraphIndex": 6,
+      "paragraphIndex": 2,
       "sourceHash": "df5fb7cc8312277c8466ae2a92ff9dcbc6d8678e40c0f25f5d63a62982364689",
       "segments": [
         {
@@ -2505,9 +2447,9 @@
       ]
     },
     {
-      "unitId": "cu_18533f6888e39cce330126e5",
+      "unitId": "cu_3680706217902654facdb0c4",
       "chapterId": "speckled-band-5",
-      "paragraphIndex": 7,
+      "paragraphIndex": 3,
       "sourceHash": "b73a146e8259f07cfeb8e8807e57a919a4458f9c0a5019c629ccaa169782d869",
       "segments": [
         {
@@ -2538,9 +2480,9 @@
       ]
     },
     {
-      "unitId": "cu_a3350af0a6b2216867a561d2",
+      "unitId": "cu_feac2e386e431fbc43512b62",
       "chapterId": "speckled-band-5",
-      "paragraphIndex": 9,
+      "paragraphIndex": 5,
       "sourceHash": "fc0ce49eb2247324b2df5fea2ac1b9faf3bac01ffc0da190086d64643098fb35",
       "segments": [
         {
@@ -2571,9 +2513,9 @@
       ]
     },
     {
-      "unitId": "cu_3b3ed3aee58fabfd3130b3a8",
+      "unitId": "cu_84f2b400093ea8882784ff61",
       "chapterId": "speckled-band-5",
-      "paragraphIndex": 10,
+      "paragraphIndex": 6,
       "sourceHash": "624b5bfcf4fb90893a5f7cec9a6c6e01bcf8fb8c7e5cb507182896a0b817eb57",
       "segments": [
         {
@@ -2604,9 +2546,9 @@
       ]
     },
     {
-      "unitId": "cu_bdfd8e52457fcac685be20bf",
+      "unitId": "cu_18533f6888e39cce330126e5",
       "chapterId": "speckled-band-5",
-      "paragraphIndex": 11,
+      "paragraphIndex": 7,
       "sourceHash": "ee9ef34a8b878030e8699502df178e4da3f79d67a379cad2e4c1008ca8fc485c",
       "segments": [
         {
@@ -2637,9 +2579,9 @@
       ]
     },
     {
-      "unitId": "cu_0608b94529b12fa6e34461b5",
+      "unitId": "cu_63ec72faed7dbf9800d7b1b9",
       "chapterId": "speckled-band-5",
-      "paragraphIndex": 12,
+      "paragraphIndex": 8,
       "sourceHash": "8ae6bf34d498f2533616bb0b3c6d5bfb2c3d01f36a998c881c5f98aa8c8ac727",
       "segments": [
         {
@@ -2670,9 +2612,9 @@
       ]
     },
     {
-      "unitId": "cu_3e8ca334bd1b05882ba7c907",
+      "unitId": "cu_a3350af0a6b2216867a561d2",
       "chapterId": "speckled-band-5",
-      "paragraphIndex": 13,
+      "paragraphIndex": 9,
       "sourceHash": "d48d77c050e4596a9a376878b25283e58ea150a1a529f2956ebbef83c3e94c0b",
       "segments": [
         {
@@ -2703,9 +2645,9 @@
       ]
     },
     {
-      "unitId": "cu_3a3f3db38a7a836d31b85672",
+      "unitId": "cu_3b3ed3aee58fabfd3130b3a8",
       "chapterId": "speckled-band-5",
-      "paragraphIndex": 14,
+      "paragraphIndex": 10,
       "sourceHash": "f4b3c6ea4e98207a7f7faacf4af787c2460b817c6f820b9c813d164140322100",
       "segments": [
         {
@@ -2736,9 +2678,9 @@
       ]
     },
     {
-      "unitId": "cu_fa7b51a3b6291141110377e5",
+      "unitId": "cu_bdfd8e52457fcac685be20bf",
       "chapterId": "speckled-band-5",
-      "paragraphIndex": 15,
+      "paragraphIndex": 11,
       "sourceHash": "5bb56407c395cba4afdc3637d88d629ee1fbdf4543101f2c6093d139018e6b95",
       "segments": [
         {
@@ -2769,9 +2711,9 @@
       ]
     },
     {
-      "unitId": "cu_639459e9ec6d6d3f6210e63f",
+      "unitId": "cu_0608b94529b12fa6e34461b5",
       "chapterId": "speckled-band-5",
-      "paragraphIndex": 16,
+      "paragraphIndex": 12,
       "sourceHash": "caba68497b9189df72619be61d0599e24cc9a36611f84ebb9ef3ba5af77151af",
       "segments": [
         {
@@ -2802,9 +2744,9 @@
       ]
     },
     {
-      "unitId": "cu_a8c7fee87054bf7be9d2a951",
+      "unitId": "cu_3e8ca334bd1b05882ba7c907",
       "chapterId": "speckled-band-5",
-      "paragraphIndex": 17,
+      "paragraphIndex": 13,
       "sourceHash": "d415737c2d8654e1eef9aee9ad5e5af03d159036575098901643e02f9b2c0f05",
       "segments": [
         {
@@ -2835,9 +2777,9 @@
       ]
     },
     {
-      "unitId": "cu_b68c46b31b097e861114152f",
-      "chapterId": "speckled-band-6",
-      "paragraphIndex": 0,
+      "unitId": "cu_3a3f3db38a7a836d31b85672",
+      "chapterId": "speckled-band-5",
+      "paragraphIndex": 14,
       "sourceHash": "c0efc6cb510f4d28129686d9fe6d9bcb51a167a5cf970309f926963d33e68a27",
       "segments": [
         {
@@ -2868,9 +2810,9 @@
       ]
     },
     {
-      "unitId": "cu_5f3d012460e475216e608fc6",
-      "chapterId": "speckled-band-6",
-      "paragraphIndex": 1,
+      "unitId": "cu_fa7b51a3b6291141110377e5",
+      "chapterId": "speckled-band-5",
+      "paragraphIndex": 15,
       "sourceHash": "8f0ee0fede6539cee136275ccece884fc38fd15d0d010aaf5314a5c553ad249e",
       "segments": [
         {
@@ -2901,9 +2843,9 @@
       ]
     },
     {
-      "unitId": "cu_caef4e9b42fd0903115452a5",
-      "chapterId": "speckled-band-6",
-      "paragraphIndex": 2,
+      "unitId": "cu_639459e9ec6d6d3f6210e63f",
+      "chapterId": "speckled-band-5",
+      "paragraphIndex": 16,
       "sourceHash": "4f4f508ff11b82ddc54870258b7e5a2e0ce2df97791eab3796311b7b589ee557",
       "segments": [
         {
@@ -2934,9 +2876,9 @@
       ]
     },
     {
-      "unitId": "cu_7bbdc90e79e489c204bf9e87",
-      "chapterId": "speckled-band-6",
-      "paragraphIndex": 3,
+      "unitId": "cu_a8c7fee87054bf7be9d2a951",
+      "chapterId": "speckled-band-5",
+      "paragraphIndex": 17,
       "sourceHash": "93a947b2a9c95d945c4beec1e2177ad2670dd811b178aae1b56f90aad7c51f70",
       "segments": [
         {
@@ -2967,9 +2909,9 @@
       ]
     },
     {
-      "unitId": "cu_74ec1bd7f37463647fe9868a",
+      "unitId": "cu_b68c46b31b097e861114152f",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 4,
+      "paragraphIndex": 0,
       "sourceHash": "acf34222b5960d97aefa6fe36d6afbba117a49a7dc68bd61dfce56421ce7e327",
       "segments": [
         {
@@ -3000,9 +2942,9 @@
       ]
     },
     {
-      "unitId": "cu_4be1d019cba524623f981271",
+      "unitId": "cu_5f3d012460e475216e608fc6",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 5,
+      "paragraphIndex": 1,
       "sourceHash": "f767c57e9641a2a5968a6e3036fd3686ebb1877135627c9271b8600c6c091814",
       "segments": [
         {
@@ -3033,9 +2975,9 @@
       ]
     },
     {
-      "unitId": "cu_cdfb46926becc0f94d7463ae",
+      "unitId": "cu_caef4e9b42fd0903115452a5",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 6,
+      "paragraphIndex": 2,
       "sourceHash": "18489a6a4edd64f1100b27e8da73dbb9270e04f65fb56129cf97c4fe62e4d01f",
       "segments": [
         {
@@ -3066,9 +3008,9 @@
       ]
     },
     {
-      "unitId": "cu_0aaeb4f7fa3010903994b2e9",
+      "unitId": "cu_7bbdc90e79e489c204bf9e87",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 7,
+      "paragraphIndex": 3,
       "sourceHash": "0cec50ba0f93db7d1d2a5d88a07dbfb0d886b68eac3b22e9e7070ff70eb0413c",
       "segments": [
         {
@@ -3099,9 +3041,9 @@
       ]
     },
     {
-      "unitId": "cu_5f03e1392e61e8e2ddaa2159",
+      "unitId": "cu_74ec1bd7f37463647fe9868a",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 8,
+      "paragraphIndex": 4,
       "sourceHash": "bc2dd739dce2857da43c7bc246f72256fce420ce7eb4deebb5e316eb5cffc529",
       "segments": [
         {
@@ -3132,9 +3074,9 @@
       ]
     },
     {
-      "unitId": "cu_77d71a7467b86e94266688ea",
+      "unitId": "cu_4be1d019cba524623f981271",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 9,
+      "paragraphIndex": 5,
       "sourceHash": "08241df3ef56a235d3ff3d646ed62b00313a60ea3c8873e034246502c076ed08",
       "segments": [
         {
@@ -3165,9 +3107,9 @@
       ]
     },
     {
-      "unitId": "cu_e45e465f7d8f44bf8cb9b3b3",
+      "unitId": "cu_0aaeb4f7fa3010903994b2e9",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 11,
+      "paragraphIndex": 7,
       "sourceHash": "f54f16de112b0920e46e3e6d03bfb3a838ca2e0f40cc07411e987da4c6f174d7",
       "segments": [
         {
@@ -3198,9 +3140,9 @@
       ]
     },
     {
-      "unitId": "cu_e9b9391c678b112d18a94752",
+      "unitId": "cu_5f03e1392e61e8e2ddaa2159",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 12,
+      "paragraphIndex": 8,
       "sourceHash": "ee4bc6b645d374dd3a8b1ee194372b1b6284175ba30480cef7d292e0bb3a77b7",
       "segments": [
         {
@@ -3231,9 +3173,9 @@
       ]
     },
     {
-      "unitId": "cu_ff7dd0d87e149fe15d1dafa4",
+      "unitId": "cu_77d71a7467b86e94266688ea",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 13,
+      "paragraphIndex": 9,
       "sourceHash": "937edd4e652105f930bdeef3b2e7f5490e909755899e69c4c10170c4bf81301f",
       "segments": [
         {
@@ -3264,9 +3206,9 @@
       ]
     },
     {
-      "unitId": "cu_b19ab7214b205f337195403b",
+      "unitId": "cu_81ee22fc26785a3b419bbd10",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 14,
+      "paragraphIndex": 10,
       "sourceHash": "bcd33db9baf31cef7dff09593c6ed0625ade872d41051454f9435795a6b6ca13",
       "segments": [
         {
@@ -3322,9 +3264,9 @@
       ]
     },
     {
-      "unitId": "cu_0fbfd29d9e6577cab30ffa61",
+      "unitId": "cu_e45e465f7d8f44bf8cb9b3b3",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 15,
+      "paragraphIndex": 11,
       "sourceHash": "747cf29e01d326887fb0afdff057d0424ba3de76a1afa4ecec1a0e309e719030",
       "segments": [
         {
@@ -3355,9 +3297,9 @@
       ]
     },
     {
-      "unitId": "cu_9256bd3d602dceec610457de",
+      "unitId": "cu_e9b9391c678b112d18a94752",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 16,
+      "paragraphIndex": 12,
       "sourceHash": "58fef98a75bc2184d56faa995e6fc7d8d8810022203f3c782725e189cbd53997",
       "segments": [
         {
@@ -3388,9 +3330,9 @@
       ]
     },
     {
-      "unitId": "cu_d6a1e280fbf86404ba60c8d2",
+      "unitId": "cu_ff7dd0d87e149fe15d1dafa4",
       "chapterId": "speckled-band-6",
-      "paragraphIndex": 17,
+      "paragraphIndex": 13,
       "sourceHash": "c55ece0cbe88f701d31c4e7be189deec3c6f4f75855509df33fea98ccf7f1f84",
       "segments": [
         {
@@ -3421,9 +3363,9 @@
       ]
     },
     {
-      "unitId": "cu_2b58a9a8d7cde7b0342eba64",
-      "chapterId": "speckled-band-7",
-      "paragraphIndex": 0,
+      "unitId": "cu_b19ab7214b205f337195403b",
+      "chapterId": "speckled-band-6",
+      "paragraphIndex": 14,
       "sourceHash": "54e683368d894d21b382b58a8051530869eac8067317073896d053163273b02c",
       "segments": [
         {
@@ -3454,9 +3396,9 @@
       ]
     },
     {
-      "unitId": "cu_408af018c8c60a2b987f8b83",
-      "chapterId": "speckled-band-7",
-      "paragraphIndex": 1,
+      "unitId": "cu_0fbfd29d9e6577cab30ffa61",
+      "chapterId": "speckled-band-6",
+      "paragraphIndex": 15,
       "sourceHash": "8a8dece09bfc6fef92c2bd0f93f628fd9db1dcd1e4caacd752a031da9363d6e4",
       "segments": [
         {
@@ -3512,9 +3454,9 @@
       ]
     },
     {
-      "unitId": "cu_7ca6a14f81524e9d563541d8",
-      "chapterId": "speckled-band-7",
-      "paragraphIndex": 3,
+      "unitId": "cu_d6a1e280fbf86404ba60c8d2",
+      "chapterId": "speckled-band-6",
+      "paragraphIndex": 17,
       "sourceHash": "94c19ee7619ec051cd3f8a71a95f95112301f6cc1a30453a8ec0878e989df329",
       "segments": [
         {
@@ -3545,9 +3487,9 @@
       ]
     },
     {
-      "unitId": "cu_516b78eecdef33865d477327",
+      "unitId": "cu_408af018c8c60a2b987f8b83",
       "chapterId": "speckled-band-7",
-      "paragraphIndex": 5,
+      "paragraphIndex": 1,
       "sourceHash": "7cede9b5ada3c7668f7cf8e7d0e7eda9c65f49aeb90f0a3b6d4809638175ea06",
       "segments": [
         {
@@ -3578,9 +3520,9 @@
       ]
     },
     {
-      "unitId": "cu_36a72d586895431860bbe1a8",
+      "unitId": "cu_99441a26bae4bc4359c2b73f",
       "chapterId": "speckled-band-7",
-      "paragraphIndex": 6,
+      "paragraphIndex": 2,
       "sourceHash": "4f9a4db9c64c1054a85664b5c98610e27413aff5189d71bd966115e94c43e061",
       "segments": [
         {
@@ -3611,9 +3553,9 @@
       ]
     },
     {
-      "unitId": "cu_01bba9468057bbf1890e8d6f",
+      "unitId": "cu_7ca6a14f81524e9d563541d8",
       "chapterId": "speckled-band-7",
-      "paragraphIndex": 7,
+      "paragraphIndex": 3,
       "sourceHash": "a164c33186ccd0ec95e4c62bc20f7ba8a319bac72e1f8108ed745d1364c26880",
       "segments": [
         {
@@ -3644,9 +3586,9 @@
       ]
     },
     {
-      "unitId": "cu_8b9a629ce006c93f015d2472",
+      "unitId": "cu_ca2405a08090970d4fb0f53b",
       "chapterId": "speckled-band-7",
-      "paragraphIndex": 8,
+      "paragraphIndex": 4,
       "sourceHash": "8fde29a84eec01b16bd13e0a9584c5a92990f78f3b7ffc487169550a80d41f32",
       "segments": [
         {
@@ -3677,9 +3619,9 @@
       ]
     },
     {
-      "unitId": "cu_ed2a8ff5ccfd5f1231cc7aae",
+      "unitId": "cu_516b78eecdef33865d477327",
       "chapterId": "speckled-band-7",
-      "paragraphIndex": 9,
+      "paragraphIndex": 5,
       "sourceHash": "b2a9e272ad91389cea480b74a055bd2cb0145ad5adab186eb79b5fba5c311a24",
       "segments": [
         {
@@ -3710,9 +3652,9 @@
       ]
     },
     {
-      "unitId": "cu_0fe46eaaca5275072ff96ef6",
+      "unitId": "cu_36a72d586895431860bbe1a8",
       "chapterId": "speckled-band-7",
-      "paragraphIndex": 10,
+      "paragraphIndex": 6,
       "sourceHash": "37310920e86362f6dbf4072ac78ec9ddd3570042a9525e2cc1fc69d0d5f96c45",
       "segments": [
         {
@@ -3743,9 +3685,9 @@
       ]
     },
     {
-      "unitId": "cu_7ad18a46a8220f44eeb98ed9",
+      "unitId": "cu_01bba9468057bbf1890e8d6f",
       "chapterId": "speckled-band-7",
-      "paragraphIndex": 11,
+      "paragraphIndex": 7,
       "sourceHash": "8844e6c9f74c78301c37c326ac60b8972d17d9ffa31e4d36549dfa35aced1e57",
       "segments": [
         {
@@ -3776,9 +3718,9 @@
       ]
     },
     {
-      "unitId": "cu_e04a55f50b67575dcf8ee2d3",
+      "unitId": "cu_8b9a629ce006c93f015d2472",
       "chapterId": "speckled-band-7",
-      "paragraphIndex": 12,
+      "paragraphIndex": 8,
       "sourceHash": "bb1d86bddcdb05712c6cef8828272950fed5c723faa2981c7e696c995bca76c4",
       "segments": [
         {
@@ -3809,9 +3751,9 @@
       ]
     },
     {
-      "unitId": "cu_e7160f7e200ed8e345ba707c",
+      "unitId": "cu_0fe46eaaca5275072ff96ef6",
       "chapterId": "speckled-band-7",
-      "paragraphIndex": 14,
+      "paragraphIndex": 10,
       "sourceHash": "47df309d48f3006f22de821cc961c2dacd497a31bd1565effc47c7aa4fa825a2",
       "segments": [
         {
@@ -3867,9 +3809,9 @@
       ]
     },
     {
-      "unitId": "cu_563c7e70621e8b25b762408d",
+      "unitId": "cu_e04a55f50b67575dcf8ee2d3",
       "chapterId": "speckled-band-7",
-      "paragraphIndex": 16,
+      "paragraphIndex": 12,
       "sourceHash": "52b3cb3d357329dcfb0b97754596720901a2902f9d0891314f69aeef633a398b",
       "segments": [
         {
@@ -3900,9 +3842,9 @@
       ]
     },
     {
-      "unitId": "cu_059297bf10d845147f10aa47",
-      "chapterId": "speckled-band-8",
-      "paragraphIndex": 0,
+      "unitId": "cu_e7160f7e200ed8e345ba707c",
+      "chapterId": "speckled-band-7",
+      "paragraphIndex": 14,
       "sourceHash": "c84a707533835a5956b09b0742f5a245cfce473b2634cba70b7a1d0004c20508",
       "segments": [
         {
@@ -3933,9 +3875,9 @@
       ]
     },
     {
-      "unitId": "cu_36798ccff9535bcfc788a36c",
-      "chapterId": "speckled-band-8",
-      "paragraphIndex": 1,
+      "unitId": "cu_344cf64dbee0997dbfcfb379",
+      "chapterId": "speckled-band-7",
+      "paragraphIndex": 15,
       "sourceHash": "c56d2af111cce067bede61b3b4cb26d8f04f23d4c1f063a179d56b63b3e83928",
       "segments": [
         {
@@ -3966,9 +3908,9 @@
       ]
     },
     {
-      "unitId": "cu_8c98be9013fef18abd89e2be",
-      "chapterId": "speckled-band-8",
-      "paragraphIndex": 2,
+      "unitId": "cu_563c7e70621e8b25b762408d",
+      "chapterId": "speckled-band-7",
+      "paragraphIndex": 16,
       "sourceHash": "bef9f20219ead5278b6060900dc3889f4b30ce95102b14971edcfff723087476",
       "segments": [
         {
@@ -4024,9 +3966,9 @@
       ]
     },
     {
-      "unitId": "cu_f3ed6d3934d4e10f8c180006",
-      "chapterId": "speckled-band-8",
-      "paragraphIndex": 3,
+      "unitId": "cu_2809bbfddf66ed25ce7a68b7",
+      "chapterId": "speckled-band-7",
+      "paragraphIndex": 17,
       "sourceHash": "3f26e9a83ec3e80220658e9fd803c3b4ba138f60602b4b8bdcf78ee04571b927",
       "segments": [
         {
@@ -4082,9 +4024,9 @@
       ]
     },
     {
-      "unitId": "cu_5cf888792152994f4ba62c66",
+      "unitId": "cu_059297bf10d845147f10aa47",
       "chapterId": "speckled-band-8",
-      "paragraphIndex": 4,
+      "paragraphIndex": 0,
       "sourceHash": "34bcbd6d236015cced0aea3eb6bc26457e19a6a18ebd7a2d5df74baed6d55800",
       "segments": [
         {
@@ -4140,9 +4082,9 @@
       ]
     },
     {
-      "unitId": "cu_ba018b6f0df01b1d595377ce",
+      "unitId": "cu_8c98be9013fef18abd89e2be",
       "chapterId": "speckled-band-8",
-      "paragraphIndex": 6,
+      "paragraphIndex": 2,
       "sourceHash": "78fba2597e206d4211f878b59a556587dc6205c0b6e774fe3f1e1a013f80b97b",
       "segments": [
         {
@@ -4173,9 +4115,9 @@
       ]
     },
     {
-      "unitId": "cu_8a696848b53d6b95d299834f",
+      "unitId": "cu_f3ed6d3934d4e10f8c180006",
       "chapterId": "speckled-band-8",
-      "paragraphIndex": 7,
+      "paragraphIndex": 3,
       "sourceHash": "b5b821980257808b462e1d314f60bd0ae49e3c50d9c888dd5a6a0d3ceb795e97",
       "segments": [
         {
@@ -4231,9 +4173,9 @@
       ]
     },
     {
-      "unitId": "cu_a66e7d189320ea6b0aeda55c",
+      "unitId": "cu_5cf888792152994f4ba62c66",
       "chapterId": "speckled-band-8",
-      "paragraphIndex": 8,
+      "paragraphIndex": 4,
       "sourceHash": "fbfc65361e34efb2ea0f2d1da9220f0cf75b4ea4a7d1c0099ea644d113a91abe",
       "segments": [
         {
@@ -4264,9 +4206,9 @@
       ]
     },
     {
-      "unitId": "cu_3de873a328b774396520edce",
+      "unitId": "cu_f9e5098096c818bac9b6fbe1",
       "chapterId": "speckled-band-8",
-      "paragraphIndex": 9,
+      "paragraphIndex": 5,
       "sourceHash": "1d54e193d49dc45ed7a50cbd7a7df24193c257d8cd7d7930a9663299cd8b9f04",
       "segments": [
         {
@@ -4322,9 +4264,9 @@
       ]
     },
     {
-      "unitId": "cu_c461221220cde513f70ebd09",
+      "unitId": "cu_ba018b6f0df01b1d595377ce",
       "chapterId": "speckled-band-8",
-      "paragraphIndex": 10,
+      "paragraphIndex": 6,
       "sourceHash": "56baa2e2303f099570de835542e588e33f4b561506216baa077b2c615b885d15",
       "segments": [
         {
@@ -4355,9 +4297,9 @@
       ]
     },
     {
-      "unitId": "cu_82b5a8a6e4fa3456a6f68ed5",
+      "unitId": "cu_8a696848b53d6b95d299834f",
       "chapterId": "speckled-band-8",
-      "paragraphIndex": 11,
+      "paragraphIndex": 7,
       "sourceHash": "8fb35e3554580a43e05c6ee6c3f990b54d963f2ebfc841aafeffae06e608216a",
       "segments": [
         {
@@ -4388,9 +4330,9 @@
       ]
     },
     {
-      "unitId": "cu_174ca45c1f5b5463a95c03cc",
+      "unitId": "cu_a66e7d189320ea6b0aeda55c",
       "chapterId": "speckled-band-8",
-      "paragraphIndex": 12,
+      "paragraphIndex": 8,
       "sourceHash": "41f110ee4ddace9fc31a0c06f11819ad31246733ea22dc5bbeca47874cff4fe3",
       "segments": [
         {
@@ -4421,9 +4363,9 @@
       ]
     },
     {
-      "unitId": "cu_bae991300d88ed58867249c8",
+      "unitId": "cu_c461221220cde513f70ebd09",
       "chapterId": "speckled-band-8",
-      "paragraphIndex": 14,
+      "paragraphIndex": 10,
       "sourceHash": "24a47cb79a08e4fee4c35cc4788e6fa5dc497638c3620b24c76cd4502e2b36af",
       "segments": [
         {
@@ -4454,9 +4396,9 @@
       ]
     },
     {
-      "unitId": "cu_7f85a95a5d32a04b94e246bb",
+      "unitId": "cu_82b5a8a6e4fa3456a6f68ed5",
       "chapterId": "speckled-band-8",
-      "paragraphIndex": 15,
+      "paragraphIndex": 11,
       "sourceHash": "6e3f5865310de12b8044d76fa30cf25268d65e26f277f347f4d355d649273b02",
       "segments": [
         {
@@ -4487,9 +4429,9 @@
       ]
     },
     {
-      "unitId": "cu_d4e650aaa170174668984980",
+      "unitId": "cu_174ca45c1f5b5463a95c03cc",
       "chapterId": "speckled-band-8",
-      "paragraphIndex": 16,
+      "paragraphIndex": 12,
       "sourceHash": "6e5ec20b2ff40fd1c9c4f98bce9fb04c25860b1fc23b6039a9fa09e604a78730",
       "segments": [
         {
@@ -4520,9 +4462,9 @@
       ]
     },
     {
-      "unitId": "cu_3bfabfbd30711932b8782207",
+      "unitId": "cu_90a5a88209797e5457d34d06",
       "chapterId": "speckled-band-8",
-      "paragraphIndex": 17,
+      "paragraphIndex": 13,
       "sourceHash": "027d1f309c4adb6d77be8a5a8b9daa941ac3215b5e1fcc505823668318c33fab",
       "segments": [
         {
@@ -4553,9 +4495,9 @@
       ]
     },
     {
-      "unitId": "cu_e8c073bcff0545fa517e06a1",
-      "chapterId": "speckled-band-9",
-      "paragraphIndex": 0,
+      "unitId": "cu_bae991300d88ed58867249c8",
+      "chapterId": "speckled-band-8",
+      "paragraphIndex": 14,
       "sourceHash": "0e9379a2dd53d1eb96a01d68d4d220eea7afcccc90b0923eee53e4421903f5ec",
       "segments": [
         {
@@ -4586,9 +4528,9 @@
       ]
     },
     {
-      "unitId": "cu_f25f2bf8eb6edcc8288a3518",
-      "chapterId": "speckled-band-9",
-      "paragraphIndex": 1,
+      "unitId": "cu_7f85a95a5d32a04b94e246bb",
+      "chapterId": "speckled-band-8",
+      "paragraphIndex": 15,
       "sourceHash": "f355e3568e371adfd8418d61059f6de6aa20b3213ca169f78648eb654e8d71d4",
       "segments": [
         {
@@ -4619,9 +4561,9 @@
       ]
     },
     {
-      "unitId": "cu_64e81a723fb117521a26ffd1",
-      "chapterId": "speckled-band-9",
-      "paragraphIndex": 2,
+      "unitId": "cu_d4e650aaa170174668984980",
+      "chapterId": "speckled-band-8",
+      "paragraphIndex": 16,
       "sourceHash": "44deb4c541128711f7af570f3aecf42263573054a798834bda51b21ae511032d",
       "segments": [
         {
@@ -4652,9 +4594,9 @@
       ]
     },
     {
-      "unitId": "cu_32e20cb33d8bdb442f9adb45",
-      "chapterId": "speckled-band-9",
-      "paragraphIndex": 3,
+      "unitId": "cu_3bfabfbd30711932b8782207",
+      "chapterId": "speckled-band-8",
+      "paragraphIndex": 17,
       "sourceHash": "bb88c6cac69855949783dd62c3f4a7c6f00ed6535aa89bc03018ea051d75dc96",
       "segments": [
         {
@@ -4710,9 +4652,9 @@
       ]
     },
     {
-      "unitId": "cu_22571ef714888851d32e498b",
+      "unitId": "cu_f25f2bf8eb6edcc8288a3518",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 5,
+      "paragraphIndex": 1,
       "sourceHash": "f135043e169e155dfd9648256c0c038793637b4ac2a60c265155e075657c5dd1",
       "segments": [
         {
@@ -4743,9 +4685,9 @@
       ]
     },
     {
-      "unitId": "cu_f1ec74bf9d3abd4674dbf7f4",
+      "unitId": "cu_64e81a723fb117521a26ffd1",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 6,
+      "paragraphIndex": 2,
       "sourceHash": "163c09e5cbcfb3b0e7a01db28441bdbe687d60f549e0d55ff9a9665fdaf7e097",
       "segments": [
         {
@@ -4776,9 +4718,9 @@
       ]
     },
     {
-      "unitId": "cu_5f7f8c0a74f0b21324bf7663",
+      "unitId": "cu_32e20cb33d8bdb442f9adb45",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 7,
+      "paragraphIndex": 3,
       "sourceHash": "8792f8730ab0909681c2a6a881a5d8c299cd6791a10e4854eec1d6bee0d022e3",
       "segments": [
         {
@@ -4809,9 +4751,9 @@
       ]
     },
     {
-      "unitId": "cu_9511a356832a9f1a48fef9d5",
+      "unitId": "cu_9bfe8e0d114a942cdb2aaa70",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 8,
+      "paragraphIndex": 4,
       "sourceHash": "fd1e16d6dc2d8dd41d0b1f40cf601d112d98206cbc75c5722619983fbdd241c8",
       "segments": [
         {
@@ -4842,9 +4784,9 @@
       ]
     },
     {
-      "unitId": "cu_2e3272b9c39ce15a0de750d6",
+      "unitId": "cu_22571ef714888851d32e498b",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 9,
+      "paragraphIndex": 5,
       "sourceHash": "043930f905467cb76c8b7fab65393b9ab8173b12af75304085101854806c8bf5",
       "segments": [
         {
@@ -4875,9 +4817,9 @@
       ]
     },
     {
-      "unitId": "cu_b0a104e41926de547f786d4e",
+      "unitId": "cu_f1ec74bf9d3abd4674dbf7f4",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 10,
+      "paragraphIndex": 6,
       "sourceHash": "d66c4ac1a5add654f534baca428e513433159d8924fb8ad28c336e8ffb080956",
       "segments": [
         {
@@ -4908,9 +4850,9 @@
       ]
     },
     {
-      "unitId": "cu_9b59ed07079d8e63829cbb6d",
+      "unitId": "cu_5f7f8c0a74f0b21324bf7663",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 11,
+      "paragraphIndex": 7,
       "sourceHash": "2202d9ac50326c8de6a7b0c7dbce4903dd74966860082db1102fbb778781fc90",
       "segments": [
         {
@@ -4941,9 +4883,9 @@
       ]
     },
     {
-      "unitId": "cu_13c267093785936381c7f559",
+      "unitId": "cu_9511a356832a9f1a48fef9d5",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 12,
+      "paragraphIndex": 8,
       "sourceHash": "ea53132e3dd45a88d6fec3ec30e80eaf7b41bdcd555bbaf80b17990c49fce7d8",
       "segments": [
         {
@@ -4974,9 +4916,9 @@
       ]
     },
     {
-      "unitId": "cu_ea03c3373d5b625b405cc768",
+      "unitId": "cu_2e3272b9c39ce15a0de750d6",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 13,
+      "paragraphIndex": 9,
       "sourceHash": "9d13243b87e858642c783d7bce718abe7cf497c759565f1f7cf1188e6d83da52",
       "segments": [
         {
@@ -5007,9 +4949,9 @@
       ]
     },
     {
-      "unitId": "cu_40065d5a366b900c5ad0063f",
+      "unitId": "cu_b0a104e41926de547f786d4e",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 14,
+      "paragraphIndex": 10,
       "sourceHash": "04382f75a5558b0114ffb37383a71f0bbd7fbcb138074f65479772918452a444",
       "segments": [
         {
@@ -5040,9 +4982,9 @@
       ]
     },
     {
-      "unitId": "cu_153e4d798a942d62f1b4606c",
+      "unitId": "cu_9b59ed07079d8e63829cbb6d",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 15,
+      "paragraphIndex": 11,
       "sourceHash": "3c1849306cda6fb664d08d4465ab72b06b9d0d07b6e748e1314641803c05ae15",
       "segments": [
         {
@@ -5073,9 +5015,9 @@
       ]
     },
     {
-      "unitId": "cu_daa48b68515455d6e8a676cb",
+      "unitId": "cu_13c267093785936381c7f559",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 16,
+      "paragraphIndex": 12,
       "sourceHash": "3aa50877b1f829d295d2ef56ee361971801882af27ff97f7b0a09d5b3bde47a6",
       "segments": [
         {
@@ -5131,9 +5073,9 @@
       ]
     },
     {
-      "unitId": "cu_d62709ccb4099f2e1d9f2fa3",
+      "unitId": "cu_ea03c3373d5b625b405cc768",
       "chapterId": "speckled-band-9",
-      "paragraphIndex": 17,
+      "paragraphIndex": 13,
       "sourceHash": "c262b6339e641b49393b3a9f7871dcbb05901fa3cc098e61790c0e054b40110b",
       "segments": [
         {
@@ -5164,9 +5106,9 @@
       ]
     },
     {
-      "unitId": "cu_72a4e11425160a75fb2771e3",
-      "chapterId": "speckled-band-10",
-      "paragraphIndex": 0,
+      "unitId": "cu_40065d5a366b900c5ad0063f",
+      "chapterId": "speckled-band-9",
+      "paragraphIndex": 14,
       "sourceHash": "b16b88fc9e4b493246a5e734ec48960f2f5d57d96d83c6101a857de5841cb929",
       "segments": [
         {
@@ -5197,9 +5139,9 @@
       ]
     },
     {
-      "unitId": "cu_cbb54fd85b8ef277618fee58",
-      "chapterId": "speckled-band-10",
-      "paragraphIndex": 1,
+      "unitId": "cu_153e4d798a942d62f1b4606c",
+      "chapterId": "speckled-band-9",
+      "paragraphIndex": 15,
       "sourceHash": "ddd9944e8b0509f6f3e44d44f5a50dd8d196232a6038a7d9ebde22ff5a291317",
       "segments": [
         {
@@ -5230,9 +5172,9 @@
       ]
     },
     {
-      "unitId": "cu_1fdb22d79d8dc86d701d4f49",
-      "chapterId": "speckled-band-10",
-      "paragraphIndex": 2,
+      "unitId": "cu_daa48b68515455d6e8a676cb",
+      "chapterId": "speckled-band-9",
+      "paragraphIndex": 16,
       "sourceHash": "b73bab257e97f479720b84c215f98afc8dda58f0c953d990a2f6b5d64f2f6cd2",
       "segments": [
         {
@@ -5263,9 +5205,9 @@
       ]
     },
     {
-      "unitId": "cu_c966827acbbad6d7c25c4d44",
+      "unitId": "cu_72a4e11425160a75fb2771e3",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 4,
+      "paragraphIndex": 0,
       "sourceHash": "b5954ec35bb39edb9bd84b13f0cbe49f605d514f9abcc8c8373a1c15e021fd37",
       "segments": [
         {
@@ -5296,9 +5238,9 @@
       ]
     },
     {
-      "unitId": "cu_f4e1c5b55c92e90064bbc689",
+      "unitId": "cu_cbb54fd85b8ef277618fee58",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 5,
+      "paragraphIndex": 1,
       "sourceHash": "49d63e092fec981ba6e283822a1a64e72dbd9adbb4565c1dc74b50f8925c4ef5",
       "segments": [
         {
@@ -5329,9 +5271,9 @@
       ]
     },
     {
-      "unitId": "cu_eb5e41d638e124c977511963",
+      "unitId": "cu_1fdb22d79d8dc86d701d4f49",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 6,
+      "paragraphIndex": 2,
       "sourceHash": "d460742897cffc1c23f8fac893c83f24c8f9ad1328e4e2998ba7acd75f5c44ff",
       "segments": [
         {
@@ -5362,9 +5304,9 @@
       ]
     },
     {
-      "unitId": "cu_e1d38d3a0d74dad5d865b277",
+      "unitId": "cu_8b2f71f71d5f2df5029859c3",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 7,
+      "paragraphIndex": 3,
       "sourceHash": "3928b46f7b50dbf68e4eacbed5c9ffafc0662f36897ca622145331020af0ec11",
       "segments": [
         {
@@ -5395,9 +5337,9 @@
       ]
     },
     {
-      "unitId": "cu_1f110f66dd9bc69c3dd5512a",
+      "unitId": "cu_c966827acbbad6d7c25c4d44",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 8,
+      "paragraphIndex": 4,
       "sourceHash": "26982c150a1d29bbf6cbe1ed4baed0842e0d80e8789b63cea8a1fa3f42d2a7ae",
       "segments": [
         {
@@ -5428,9 +5370,9 @@
       ]
     },
     {
-      "unitId": "cu_74040524bf4cd32cf9916fcf",
+      "unitId": "cu_f4e1c5b55c92e90064bbc689",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 9,
+      "paragraphIndex": 5,
       "sourceHash": "9a8c4f9d5eb7babe4e4f603e0dcdeb7768de6d08fefc51581727abf4a98a2ca0",
       "segments": [
         {
@@ -5461,9 +5403,9 @@
       ]
     },
     {
-      "unitId": "cu_85ff651416e26fc6dcb8e080",
+      "unitId": "cu_eb5e41d638e124c977511963",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 10,
+      "paragraphIndex": 6,
       "sourceHash": "f3ea6ada8f7de65189d6bd4979fa144a0b5c969af8f7156dcf0c479b8bebd727",
       "segments": [
         {
@@ -5494,9 +5436,9 @@
       ]
     },
     {
-      "unitId": "cu_129c42d70e7b8b425d448366",
+      "unitId": "cu_e1d38d3a0d74dad5d865b277",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 11,
+      "paragraphIndex": 7,
       "sourceHash": "09e8fd19b27ca9c13f0a8a2bafa17ac7ad246a6a2d707fe79a961ba33dc3976f",
       "segments": [
         {
@@ -5527,9 +5469,9 @@
       ]
     },
     {
-      "unitId": "cu_7469b0c068800e7b1332314f",
+      "unitId": "cu_1f110f66dd9bc69c3dd5512a",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 12,
+      "paragraphIndex": 8,
       "sourceHash": "f0308dd048aef7a774ce39fdc116739ea38ec5818de4ebeddba133f9f6288dff",
       "segments": [
         {
@@ -5560,9 +5502,9 @@
       ]
     },
     {
-      "unitId": "cu_8f3f39bf8c6dfcf4eba660e6",
+      "unitId": "cu_74040524bf4cd32cf9916fcf",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 13,
+      "paragraphIndex": 9,
       "sourceHash": "a334ebe1111d93d24a1949052e2008cd8405356a322635ec436db993098dc71f",
       "segments": [
         {
@@ -5618,9 +5560,9 @@
       ]
     },
     {
-      "unitId": "cu_963603cff5a5532127ca40b5",
+      "unitId": "cu_129c42d70e7b8b425d448366",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 15,
+      "paragraphIndex": 11,
       "sourceHash": "e9fafe03f092a69e8d697c945663b14f60d3503b6daf778f700a1cbe5ac46399",
       "segments": [
         {
@@ -5651,9 +5593,9 @@
       ]
     },
     {
-      "unitId": "cu_0ce9b040603427c8cab042e8",
+      "unitId": "cu_7469b0c068800e7b1332314f",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 16,
+      "paragraphIndex": 12,
       "sourceHash": "869a30de95a229ced9521914c41f2624fb1666339b38c3486872b6493d22cc51",
       "segments": [
         {
@@ -5684,16 +5626,16 @@
       ]
     },
     {
-      "unitId": "cu_434599cdd22f3eed1705379c",
+      "unitId": "cu_8f3f39bf8c6dfcf4eba660e6",
       "chapterId": "speckled-band-10",
-      "paragraphIndex": 17,
-      "sourceHash": "5a2dec7e75ab6383d8987efa543dfe01d3e9b9c8bc96c2ea8f71161424f75c8d",
+      "paragraphIndex": 13,
+      "sourceHash": "2427e3e89526e6f14b01efe3c2832876f47c3e8ad8afd080e1da367c772c4cca",
       "segments": [
         {
           "segmentId": "s001",
           "speakerCode": "char_holmes",
           "templateCode": null,
-          "text": "并不那么太平通吧，哎呀，这真是个万恶的世界，一个聪明人如果把脑子用在为非作歹上，那就糟透了。我想我现在已经察看够了，斯托纳小姐，如果你许可的话，我们到外面草AE篭f1上去走走。",
+          "text": "并不那么普通吧，哎呀，这真是个万恶的世界，一个聪明人如果把脑子用在为非作歹上，那就糟透了。我想我现在已经察看够了，斯托纳小姐，如果你许可的话，我们到外面草坪上去走走。",
           "director": {
             "场景压力": "编辑部预制对白方案",
             "表演意图": "忠实原文并根据标点自然表达",
@@ -5717,9 +5659,9 @@
       ]
     },
     {
-      "unitId": "cu_ef5d2791599d09995e12ca0a",
-      "chapterId": "speckled-band-11",
-      "paragraphIndex": 1,
+      "unitId": "cu_963603cff5a5532127ca40b5",
+      "chapterId": "speckled-band-10",
+      "paragraphIndex": 15,
       "sourceHash": "b393cb8d46ca88cfdb3bafbdfe9674a9f415c58b10165ee40ad51c88176f5079",
       "segments": [
         {
@@ -5775,9 +5717,9 @@
       ]
     },
     {
-      "unitId": "cu_5f84714804822443a2bf728e",
-      "chapterId": "speckled-band-11",
-      "paragraphIndex": 2,
+      "unitId": "cu_0ce9b040603427c8cab042e8",
+      "chapterId": "speckled-band-10",
+      "paragraphIndex": 16,
       "sourceHash": "7da2e63b0626b6bcfde610eba739e551630faf50a25eaa7a5474bf133a0fc27d",
       "segments": [
         {
@@ -5808,9 +5750,9 @@
       ]
     },
     {
-      "unitId": "cu_a982026be83e9037c0b723d1",
-      "chapterId": "speckled-band-11",
-      "paragraphIndex": 3,
+      "unitId": "cu_434599cdd22f3eed1705379c",
+      "chapterId": "speckled-band-10",
+      "paragraphIndex": 17,
       "sourceHash": "8b1d20e7f25f8299a6a8146d18735da01d656bbc06e534fc8df65a25d7ccf4b2",
       "segments": [
         {
@@ -5841,9 +5783,9 @@
       ]
     },
     {
-      "unitId": "cu_7c8db4ef6bf0ab38c61a61dd",
+      "unitId": "cu_6445327f60efba5b7b6f7190",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 4,
+      "paragraphIndex": 0,
       "sourceHash": "cac46a158ad1778273194424e226c051f64883f509c1a5bbe047e52db17fdeda",
       "segments": [
         {
@@ -5874,9 +5816,9 @@
       ]
     },
     {
-      "unitId": "cu_888904625f1ec66bf50c801d",
+      "unitId": "cu_ef5d2791599d09995e12ca0a",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 5,
+      "paragraphIndex": 1,
       "sourceHash": "12ba6b44727c7b41e31806aa754c42c9a28064ff85afe4e2d0245597c6d0c9e4",
       "segments": [
         {
@@ -5907,9 +5849,9 @@
       ]
     },
     {
-      "unitId": "cu_c54d87961f6eae6f6164c878",
+      "unitId": "cu_a982026be83e9037c0b723d1",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 7,
+      "paragraphIndex": 3,
       "sourceHash": "f112880ee753c4b5f73a97e18bdaf3d7718fc556bd64670d7b4120536f1d388e",
       "segments": [
         {
@@ -5940,9 +5882,9 @@
       ]
     },
     {
-      "unitId": "cu_74d32896fdc885547b069beb",
+      "unitId": "cu_7c8db4ef6bf0ab38c61a61dd",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 8,
+      "paragraphIndex": 4,
       "sourceHash": "469e66d46605cda85ffa5b87760d29c28a6d3a767a0f1e8c370bfdd84b057b16",
       "segments": [
         {
@@ -5973,9 +5915,9 @@
       ]
     },
     {
-      "unitId": "cu_d34879cb00dbb1d6839bd26d",
+      "unitId": "cu_888904625f1ec66bf50c801d",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 9,
+      "paragraphIndex": 5,
       "sourceHash": "4ac73595b0d2a7b388c58aca4334b830541af38734dbb8ac8182e0e87941a177",
       "segments": [
         {
@@ -6006,9 +5948,9 @@
       ]
     },
     {
-      "unitId": "cu_6704b89e9870dcf617fbf159",
+      "unitId": "cu_3ad0ac40edb8e53c4d068512",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 10,
+      "paragraphIndex": 6,
       "sourceHash": "bc17a1c44f3daf5266dd8ce42e97de3ab01c507dc9ae18ad7044cc564f335bad",
       "segments": [
         {
@@ -6039,9 +5981,9 @@
       ]
     },
     {
-      "unitId": "cu_cb2a24f6c4521d069dad8288",
+      "unitId": "cu_c54d87961f6eae6f6164c878",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 11,
+      "paragraphIndex": 7,
       "sourceHash": "ef441e16423c4e75e296966a01f49445ddafb9d0e5cf526a037264cd0a7c1a2d",
       "segments": [
         {
@@ -6072,9 +6014,9 @@
       ]
     },
     {
-      "unitId": "cu_283b99ea80c6cb647633e4da",
+      "unitId": "cu_74d32896fdc885547b069beb",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 12,
+      "paragraphIndex": 8,
       "sourceHash": "dc4446c5f0f10fcfcf9fed3efb3972d00eb0d2539063f979ccba66ee56598cf7",
       "segments": [
         {
@@ -6105,9 +6047,9 @@
       ]
     },
     {
-      "unitId": "cu_25122066c137e7c54ceeb42b",
+      "unitId": "cu_d34879cb00dbb1d6839bd26d",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 13,
+      "paragraphIndex": 9,
       "sourceHash": "12ccce61f39df9e49ee54d733f8074d0b29054539a98c2d66daa2b9003336dd8",
       "segments": [
         {
@@ -6138,9 +6080,9 @@
       ]
     },
     {
-      "unitId": "cu_fe76b958d2ece2471c532eee",
+      "unitId": "cu_6704b89e9870dcf617fbf159",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 14,
+      "paragraphIndex": 10,
       "sourceHash": "c46a8a0ff3e42f082a77881fa68a6858d9f29352e48d820a5962e0c1ffde02df",
       "segments": [
         {
@@ -6171,9 +6113,9 @@
       ]
     },
     {
-      "unitId": "cu_96822b0ac2882c115fd9e5c7",
+      "unitId": "cu_cb2a24f6c4521d069dad8288",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 15,
+      "paragraphIndex": 11,
       "sourceHash": "f79ae3297acbda355d75d085b45f7bf3a9ddc3fb0c5b985f23f86441615f1031",
       "segments": [
         {
@@ -6204,9 +6146,9 @@
       ]
     },
     {
-      "unitId": "cu_e0eafc7baf233ae94929b077",
+      "unitId": "cu_283b99ea80c6cb647633e4da",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 16,
+      "paragraphIndex": 12,
       "sourceHash": "75230fbba596f6add7ae5aff4865da694a5f03f23c4d69b4de92c5611f6b4506",
       "segments": [
         {
@@ -6237,9 +6179,9 @@
       ]
     },
     {
-      "unitId": "cu_f84c67a6c1596eaeab03f5c2",
+      "unitId": "cu_25122066c137e7c54ceeb42b",
       "chapterId": "speckled-band-11",
-      "paragraphIndex": 17,
+      "paragraphIndex": 13,
       "sourceHash": "ffb415026f6af9d8c46eb68686c4ba1aa85dbdb3854af1e1cb76b52f5107b61f",
       "segments": [
         {
@@ -6270,9 +6212,9 @@
       ]
     },
     {
-      "unitId": "cu_641fd9b6513f782788cb26a1",
-      "chapterId": "speckled-band-12",
-      "paragraphIndex": 0,
+      "unitId": "cu_fe76b958d2ece2471c532eee",
+      "chapterId": "speckled-band-11",
+      "paragraphIndex": 14,
       "sourceHash": "2dba8852f8c110ddcd692fd1b4370747b940521e0cc1163948be71a35f0f6ee9",
       "segments": [
         {
@@ -6303,9 +6245,9 @@
       ]
     },
     {
-      "unitId": "cu_173e0a78942197b9ab44dfea",
-      "chapterId": "speckled-band-12",
-      "paragraphIndex": 1,
+      "unitId": "cu_96822b0ac2882c115fd9e5c7",
+      "chapterId": "speckled-band-11",
+      "paragraphIndex": 15,
       "sourceHash": "752edd92aa0548de8bc3d9bb064c12ec8759b5f4ee927ce3f40a7385500887d3",
       "segments": [
         {
@@ -6336,9 +6278,9 @@
       ]
     },
     {
-      "unitId": "cu_1aee5e13d08180fe98a325a4",
-      "chapterId": "speckled-band-12",
-      "paragraphIndex": 2,
+      "unitId": "cu_e0eafc7baf233ae94929b077",
+      "chapterId": "speckled-band-11",
+      "paragraphIndex": 16,
       "sourceHash": "a96e518faf151530ba5bd6143e00369a3a6bd5bb8453752239f1148efcfb2299",
       "segments": [
         {
@@ -6369,9 +6311,9 @@
       ]
     },
     {
-      "unitId": "cu_78b2533eb607f2431f45c220",
-      "chapterId": "speckled-band-12",
-      "paragraphIndex": 3,
+      "unitId": "cu_f84c67a6c1596eaeab03f5c2",
+      "chapterId": "speckled-band-11",
+      "paragraphIndex": 17,
       "sourceHash": "8b7e30708a49d6613a69a0dbd8d6cca8b4015994fd1b4bde68e4552f184bd3de",
       "segments": [
         {
@@ -6402,9 +6344,9 @@
       ]
     },
     {
-      "unitId": "cu_0a519cf3c0639ab64b678702",
+      "unitId": "cu_173e0a78942197b9ab44dfea",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 5,
+      "paragraphIndex": 1,
       "sourceHash": "dbbbd7c5d9c73f54ae47cf79fb6576ead2aa02818f15237adcd6111a4b19e0bd",
       "segments": [
         {
@@ -6460,9 +6402,9 @@
       ]
     },
     {
-      "unitId": "cu_3b05481365c6217f493338f3",
+      "unitId": "cu_1aee5e13d08180fe98a325a4",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 6,
+      "paragraphIndex": 2,
       "sourceHash": "5a09aae8e5cdad176a83085d00b8c2ec1e86c1e27a36b2551141736be3be1ace",
       "segments": [
         {
@@ -6493,9 +6435,9 @@
       ]
     },
     {
-      "unitId": "cu_0ec45e656a16fd4f3611f5b3",
+      "unitId": "cu_78b2533eb607f2431f45c220",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 7,
+      "paragraphIndex": 3,
       "sourceHash": "eff9e1b93e5c4ca0995f034d315e0f92301de748cb3606421f4fa6a59da6aeb6",
       "segments": [
         {
@@ -6526,9 +6468,9 @@
       ]
     },
     {
-      "unitId": "cu_8a2fff5566ec0b6eaa7e2968",
+      "unitId": "cu_dc6746baac133c6c4dff8bd2",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 8,
+      "paragraphIndex": 4,
       "sourceHash": "71ce2194b97821313fa3ec1e3d89ada52b9b3e9c661b9eee40f4daf1c0f22ce3",
       "segments": [
         {
@@ -6559,9 +6501,9 @@
       ]
     },
     {
-      "unitId": "cu_9fd9649486f54a1c14de7c6e",
+      "unitId": "cu_0a519cf3c0639ab64b678702",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 9,
+      "paragraphIndex": 5,
       "sourceHash": "83ba727bd186a5e6e4580936068d82bedb03080b7696a2ae6443af677fdfa9c5",
       "segments": [
         {
@@ -6592,9 +6534,9 @@
       ]
     },
     {
-      "unitId": "cu_30006cd6c3fe9370ec063746",
+      "unitId": "cu_3b05481365c6217f493338f3",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 10,
+      "paragraphIndex": 6,
       "sourceHash": "74f9f3efd1fd1b1dee335f7c5162de2fd5919611319abbb16d3837dba29491a6",
       "segments": [
         {
@@ -6625,9 +6567,9 @@
       ]
     },
     {
-      "unitId": "cu_5eb4bb4156590bd450b10f62",
+      "unitId": "cu_0ec45e656a16fd4f3611f5b3",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 11,
+      "paragraphIndex": 7,
       "sourceHash": "2d3d789038380dcd05e11bf29d126469c4c2039f0993e1f7d622e26563999b46",
       "segments": [
         {
@@ -6658,9 +6600,9 @@
       ]
     },
     {
-      "unitId": "cu_e687616c3e3edba3a3962cab",
+      "unitId": "cu_8a2fff5566ec0b6eaa7e2968",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 12,
+      "paragraphIndex": 8,
       "sourceHash": "3cac04ce70e7335a667b5ee3f076ba53af01f736aa17cfc56b80ec51c54efb5d",
       "segments": [
         {
@@ -6691,9 +6633,9 @@
       ]
     },
     {
-      "unitId": "cu_1b5a633a450a6954d33effeb",
+      "unitId": "cu_9fd9649486f54a1c14de7c6e",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 13,
+      "paragraphIndex": 9,
       "sourceHash": "ed3a1d139ab1e9e1511fc0a3cb72ae08dac449a99e808c25e403b29612a59879",
       "segments": [
         {
@@ -6724,9 +6666,9 @@
       ]
     },
     {
-      "unitId": "cu_77600de0fb9c37376cd21bdf",
+      "unitId": "cu_30006cd6c3fe9370ec063746",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 14,
+      "paragraphIndex": 10,
       "sourceHash": "a54054588c488ce8117244ac28499465a0a2ca2396a288173ff1b32611fe6b7a",
       "segments": [
         {
@@ -6757,9 +6699,9 @@
       ]
     },
     {
-      "unitId": "cu_6e79d40e80c34981659c11e6",
+      "unitId": "cu_5eb4bb4156590bd450b10f62",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 15,
+      "paragraphIndex": 11,
       "sourceHash": "0aa3c624999412e5698e9fdbc07b57c4f9d2faf1d4c3d81879d9f303eb0371f6",
       "segments": [
         {
@@ -6790,9 +6732,9 @@
       ]
     },
     {
-      "unitId": "cu_ca2de14399b140ce0ebcadb3",
+      "unitId": "cu_e687616c3e3edba3a3962cab",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 16,
+      "paragraphIndex": 12,
       "sourceHash": "4bdd4fceae472d18d8a719121f5c85bed5aca57d18f53194a69b20693fde524a",
       "segments": [
         {
@@ -6823,9 +6765,9 @@
       ]
     },
     {
-      "unitId": "cu_49c3e98f0ed5a680bf96ee2d",
+      "unitId": "cu_1b5a633a450a6954d33effeb",
       "chapterId": "speckled-band-12",
-      "paragraphIndex": 17,
+      "paragraphIndex": 13,
       "sourceHash": "f22d06fbce0a520f26ded1d48e2e4e8507f70b77fb33eb8fea2daf08d4066fd1",
       "segments": [
         {
@@ -6856,9 +6798,9 @@
       ]
     },
     {
-      "unitId": "cu_9e5a3a42e3e51c4e57b422e9",
-      "chapterId": "speckled-band-13",
-      "paragraphIndex": 0,
+      "unitId": "cu_77600de0fb9c37376cd21bdf",
+      "chapterId": "speckled-band-12",
+      "paragraphIndex": 14,
       "sourceHash": "6ef40b2a0e1c37fb0d6c3e9f95e970143d38de6a24aaa5b6157f16c02cbc2377",
       "segments": [
         {
@@ -6889,9 +6831,9 @@
       ]
     },
     {
-      "unitId": "cu_c63adc660fe66da3cca35118",
-      "chapterId": "speckled-band-13",
-      "paragraphIndex": 1,
+      "unitId": "cu_6e79d40e80c34981659c11e6",
+      "chapterId": "speckled-band-12",
+      "paragraphIndex": 15,
       "sourceHash": "d34cfae9b1b65840ba96371ef420d5ebc7ef7f194274d6d73714d5aa73204d87",
       "segments": [
         {
@@ -6922,9 +6864,9 @@
       ]
     },
     {
-      "unitId": "cu_85fbf8c1b644464845059230",
-      "chapterId": "speckled-band-13",
-      "paragraphIndex": 2,
+      "unitId": "cu_ca2de14399b140ce0ebcadb3",
+      "chapterId": "speckled-band-12",
+      "paragraphIndex": 16,
       "sourceHash": "c01aac41c5765e0a4c85a9a2d4e350d8826967855f516e843a7387b72fe21963",
       "segments": [
         {
@@ -6955,9 +6897,9 @@
       ]
     },
     {
-      "unitId": "cu_170b55a29e2dadc702d5723e",
-      "chapterId": "speckled-band-13",
-      "paragraphIndex": 3,
+      "unitId": "cu_49c3e98f0ed5a680bf96ee2d",
+      "chapterId": "speckled-band-12",
+      "paragraphIndex": 17,
       "sourceHash": "568bc4c61f600ee796f3c00bfb6b8f950ecf68d5fa1e14b9c15bb647d3cf94a4",
       "segments": [
         {
@@ -6988,9 +6930,9 @@
       ]
     },
     {
-      "unitId": "cu_adde660fafaaa6e0d979a8ba",
+      "unitId": "cu_9e5a3a42e3e51c4e57b422e9",
       "chapterId": "speckled-band-13",
-      "paragraphIndex": 4,
+      "paragraphIndex": 0,
       "sourceHash": "682c0e79d7da121bdf112880a2494b5821351bed3877a1b5b4fb565c0fa65bde",
       "segments": [
         {
@@ -7021,9 +6963,9 @@
       ]
     },
     {
-      "unitId": "cu_ad7d1a889b3dbbd10e25b65e",
+      "unitId": "cu_c63adc660fe66da3cca35118",
       "chapterId": "speckled-band-13",
-      "paragraphIndex": 5,
+      "paragraphIndex": 1,
       "sourceHash": "b8f49ae1ba73b638df4384bc7745f6b87ed4bcdb7ed5d8e8e2295eecf257d1b4",
       "segments": [
         {
@@ -7054,9 +6996,9 @@
       ]
     },
     {
-      "unitId": "cu_27b8fca63362dcf629c6f5c0",
+      "unitId": "cu_85fbf8c1b644464845059230",
       "chapterId": "speckled-band-13",
-      "paragraphIndex": 6,
+      "paragraphIndex": 2,
       "sourceHash": "d4d1ce769770bfd8cc5b58a2f5fcb0bf9e2572729209510b85afa5a776466bdd",
       "segments": [
         {
@@ -7087,9 +7029,9 @@
       ]
     },
     {
-      "unitId": "cu_10bf3857cf1c3c3b5400aa67",
+      "unitId": "cu_170b55a29e2dadc702d5723e",
       "chapterId": "speckled-band-13",
-      "paragraphIndex": 7,
+      "paragraphIndex": 3,
       "sourceHash": "1389a307fe60f6e3cb5ba371d72f82561ec46799f32dcd72815ff5e84888ccaa",
       "segments": [
         {
@@ -7120,9 +7062,9 @@
       ]
     },
     {
-      "unitId": "cu_9dec445aa02e7666a33a573f",
+      "unitId": "cu_adde660fafaaa6e0d979a8ba",
       "chapterId": "speckled-band-13",
-      "paragraphIndex": 8,
+      "paragraphIndex": 4,
       "sourceHash": "28788392bfd51e7049b0044c0bf677363f1aedbd30ec3fc9f71febdcf10deae8",
       "segments": [
         {
@@ -7178,9 +7120,9 @@
       ]
     },
     {
-      "unitId": "cu_b67774d09e9ea5fedbae1aec",
+      "unitId": "cu_ad7d1a889b3dbbd10e25b65e",
       "chapterId": "speckled-band-13",
-      "paragraphIndex": 9,
+      "paragraphIndex": 5,
       "sourceHash": "bc5cca55e667ca7d4d995d25e71826ec930e0ff7f9ea42c519b0a8134e96f538",
       "segments": [
         {
@@ -7213,9 +7155,9 @@
       ]
     },
     {
-      "unitId": "cu_025db2d64a352ba644c059c3",
+      "unitId": "cu_10bf3857cf1c3c3b5400aa67",
       "chapterId": "speckled-band-13",
-      "paragraphIndex": 11,
+      "paragraphIndex": 7,
       "sourceHash": "1acb48e6da73cecde21fa57d3fb702bd0ba9c6b6f1a98edb693d7e0fa1193d23",
       "segments": [
         {
@@ -7271,9 +7213,9 @@
       ]
     },
     {
-      "unitId": "cu_9b0a100c0d0bdfeb99959142",
+      "unitId": "cu_907ad7ad29e515cf5387ff1c",
       "chapterId": "speckled-band-13",
-      "paragraphIndex": 14,
+      "paragraphIndex": 10,
       "sourceHash": "6f19219589f00ff5b3900d512d23b2519ac2fb5b5bec0fb67f8dfc9cf7c6f919",
       "segments": [
         {
@@ -7329,9 +7271,9 @@
       ]
     },
     {
-      "unitId": "cu_2ec1b5959a85e0eed1f9f8e6",
+      "unitId": "cu_236301fdcd9f1ff0f62436ff",
       "chapterId": "speckled-band-13",
-      "paragraphIndex": 16,
+      "paragraphIndex": 12,
       "sourceHash": "84e0f7a5606972487090a57a064d80cfa1f76128b8a41541f2af0c891d53f567",
       "segments": [
         {
@@ -7387,9 +7329,9 @@
       ]
     },
     {
-      "unitId": "cu_db12a1c5942f05319f5fdd25",
+      "unitId": "cu_7749c0c175afd394e410ef56",
       "chapterId": "speckled-band-13",
-      "paragraphIndex": 17,
+      "paragraphIndex": 13,
       "sourceHash": "fdd7163a6ca7a158f013c98e61ad808c8187d1d5cb14aabc9f2a58c863fe0848",
       "segments": [
         {
@@ -7420,9 +7362,9 @@
       ]
     },
     {
-      "unitId": "cu_67ae73814ba6afc6525476a0",
-      "chapterId": "speckled-band-14",
-      "paragraphIndex": 1,
+      "unitId": "cu_891fc59ca28731135e685328",
+      "chapterId": "speckled-band-13",
+      "paragraphIndex": 15,
       "sourceHash": "2da2867289daf9f52fe4db9f30f8fcd4a8106642a6fdc6b98e95eac06e221c4f",
       "segments": [
         {
@@ -7453,9 +7395,9 @@
       ]
     },
     {
-      "unitId": "cu_fbb8bf84e89c9a0044d4fc3f",
-      "chapterId": "speckled-band-14",
-      "paragraphIndex": 3,
+      "unitId": "cu_db12a1c5942f05319f5fdd25",
+      "chapterId": "speckled-band-13",
+      "paragraphIndex": 17,
       "sourceHash": "411b166c10c8139e6bf89b7dcd893ba866f52a5e1829e9521155cfcab87aaf57",
       "segments": [
         {
@@ -7486,9 +7428,9 @@
       ]
     },
     {
-      "unitId": "cu_c7d53c2cf3526c8bcee039f1",
+      "unitId": "cu_8cdc02338db2393899c5e2b6",
       "chapterId": "speckled-band-14",
-      "paragraphIndex": 8,
+      "paragraphIndex": 4,
       "sourceHash": "d2a760606d99eb58989d945e6030867b3792def8362030ffa9ecb9a5815708ea",
       "segments": [
         {
@@ -7544,9 +7486,9 @@
       ]
     },
     {
-      "unitId": "cu_f735e6ed79f807a17b792f77",
+      "unitId": "cu_5a3a7986113362e67b06b9b4",
       "chapterId": "speckled-band-14",
-      "paragraphIndex": 11,
+      "paragraphIndex": 7,
       "sourceHash": "523c5d552d3222ff4bb4ca1d4ddb0ca625c0d62df4892d7b4ae9468b796d72aa",
       "segments": [
         {
@@ -7577,9 +7519,9 @@
       ]
     },
     {
-      "unitId": "cu_b771c199a45898886053b5ef",
+      "unitId": "cu_c7d53c2cf3526c8bcee039f1",
       "chapterId": "speckled-band-14",
-      "paragraphIndex": 12,
+      "paragraphIndex": 8,
       "sourceHash": "121b7fdfe32801a73983bed7d731fda8e53aa8809ecda1725da6215e4f8a5c16",
       "segments": [
         {
@@ -7635,9 +7577,9 @@
       ]
     },
     {
-      "unitId": "cu_03925259ee068482baa5133e",
+      "unitId": "cu_f735e6ed79f807a17b792f77",
       "chapterId": "speckled-band-14",
-      "paragraphIndex": 15,
+      "paragraphIndex": 11,
       "sourceHash": "29e000526837d75f616a60c9d9fba16b37cbfd5133b16534615d9641b4ca1207",
       "segments": [
         {
@@ -7668,9 +7610,9 @@
       ]
     },
     {
-      "unitId": "cu_7a609c257ce54fd64760688d",
+      "unitId": "cu_037cec4244eee1366beafd3e",
       "chapterId": "speckled-band-14",
-      "paragraphIndex": 17,
+      "paragraphIndex": 13,
       "sourceHash": "3e9cd7b5134227cf9837a34fc6ca9342bfeefc61d2236e26868114e343d4edd6",
       "segments": [
         {
@@ -7726,9 +7668,9 @@
       ]
     },
     {
-      "unitId": "cu_f1d28112aa6f7f93a60b2d54",
-      "chapterId": "speckled-band-15",
-      "paragraphIndex": 2,
+      "unitId": "cu_759b148d757d040ff5950028",
+      "chapterId": "speckled-band-14",
+      "paragraphIndex": 16,
       "sourceHash": "1d5fd9543c8ceea61f70b9538da4057968341ac4fb9effc113c8e5dfb1f7e0bb",
       "segments": [
         {
@@ -7784,9 +7726,9 @@
       ]
     },
     {
-      "unitId": "cu_5412640b2da5aabc3acf57fc",
-      "chapterId": "speckled-band-15",
-      "paragraphIndex": 3,
+      "unitId": "cu_7a609c257ce54fd64760688d",
+      "chapterId": "speckled-band-14",
+      "paragraphIndex": 17,
       "sourceHash": "67e6635c415e6aaeab2f6989c5f3661faa9116fb11596f7e643efa9d1ffdce22",
       "segments": [
         {
@@ -7817,9 +7759,9 @@
       ]
     },
     {
-      "unitId": "cu_1d409c93dda5964a94c807de",
+      "unitId": "cu_8251d20c95ddfcbf5c758fab",
       "chapterId": "speckled-band-15",
-      "paragraphIndex": 4,
+      "paragraphIndex": 0,
       "sourceHash": "632ab5fe3bd101d93e382f854d6d058b6d5906134c191c894623bd04bb2b63b4",
       "segments": [
         {
@@ -7850,9 +7792,9 @@
       ]
     },
     {
-      "unitId": "cu_f01f479324129715077d03b7",
+      "unitId": "cu_3bbd2d1d26827a6c6cff3677",
       "chapterId": "speckled-band-15",
-      "paragraphIndex": 5,
+      "paragraphIndex": 1,
       "sourceHash": "74b20ca7e99ac534d495d8472f8d754471854e57d5d641d2594a6d9d8f78dbf1",
       "segments": [
         {
