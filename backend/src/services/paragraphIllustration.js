@@ -30,7 +30,7 @@ const VALID_COMPONENT_TYPES = new Set([
   'environment_establishing',
   'object_detail'
 ]);
-const VALID_ASPECT_RATIOS = new Set(['1:1', '16:9', '4:3', '3:2', '2:3', '3:4', '9:16', '21:9']);
+const VALID_ASPECT_RATIOS = new Set(['16:9']);
 
 const DEFAULT_IMAGE_SETTINGS = {
   model: process.env.MINIMAX_IMAGE_MODEL || 'image-01',
@@ -128,7 +128,7 @@ export function buildParagraphImageRequest(plan, style) {
   return {
     ...DEFAULT_IMAGE_SETTINGS,
     prompt,
-    aspect_ratio: plan.aspect_ratio,
+    aspect_ratio: '16:9',
     _meta: {
       component_type: plan._meta.component_type,
       scene_summary_cn: plan._meta.scene_summary_cn,
@@ -445,16 +445,34 @@ async function runPhase2({ context, targetSegment, style }) {
   throw new Error('阶段二生成失败');
 }
 
-export async function generateParagraphIllustration({ chapterId, paragraphIndex, targetSegment }) {
+export function resolveParagraphIllustrationTarget({ chapterId, paragraphIndex, targetSegment }) {
   const paragraphContext = getParagraphContext({ chapterId, paragraphIndex, contextChars: 1000 });
   if (!paragraphContext) {
-    throw new Error('未找到目标段落');
+    const error = new Error('未找到目标段落');
+    error.statusCode = 404;
+    throw error;
   }
 
   const safeTarget = String(targetSegment || paragraphContext.originalTarget).trim();
   if (!safeTarget) {
     throw new Error('目标段落不能为空');
   }
+
+  if (safeTarget !== paragraphContext.originalTarget.trim()) {
+    const error = new Error('段落插图必须绑定当前标准段落的完整原文');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return { paragraphContext, safeTarget };
+}
+
+export async function generateParagraphIllustration({ chapterId, paragraphIndex, targetSegment }) {
+  const { paragraphContext, safeTarget } = resolveParagraphIllustrationTarget({
+    chapterId,
+    paragraphIndex,
+    targetSegment
+  });
 
   debugLog(
     'paragraphIllustration.js:generateParagraphIllustration',
@@ -502,5 +520,32 @@ export async function generateParagraphIllustration({ chapterId, paragraphIndex,
       paragraphIndex: paragraphContext.paragraphIndex,
       originalTarget: paragraphContext.originalTarget
     }
+  };
+}
+
+export async function generateDiyParagraphIllustration({ finalPrompt }) {
+  const prompt = String(finalPrompt ?? '');
+  if (!prompt.trim()) {
+    const error = new Error('Illustration prompt is required');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (prompt.length > MAX_PROMPT_CHARS) {
+    const error = new Error(`Illustration prompt cannot exceed ${MAX_PROMPT_CHARS} characters`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const image = await generateImageFromRequest({
+    ...DEFAULT_IMAGE_SETTINGS,
+    prompt,
+    aspect_ratio: '16:9',
+    n: 1
+  });
+  return {
+    ...image,
+    prompt,
+    aspectRatio: '16:9',
+    model: DEFAULT_IMAGE_SETTINGS.model
   };
 }
