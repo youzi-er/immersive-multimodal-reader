@@ -4,8 +4,10 @@ import {
   buildParagraphImageRequest,
   compactParagraphPlanToBudget,
   paragraphPromptLimitsForStyle,
+  resolveParagraphIllustrationTarget,
   validateParagraphPlan
 } from '../src/services/paragraphIllustration.js';
+import { chapters, getParagraphContext } from '../src/data.js';
 
 const style = {
   global_style_prompt: 'locked Victorian realism '.repeat(18).trim(),
@@ -33,6 +35,13 @@ test('programmatically assembles paragraph prompt with exact locked strings', ()
   assert.ok(request.prompt.includes(style.global_negative_prompt));
   assert.equal(request._meta.prompt_char_count, request.prompt.length);
   assert.equal(request.model, 'image-01');
+  assert.equal(request.aspect_ratio, '16:9');
+});
+
+test('locks every paragraph illustration plan to 16:9', () => {
+  const plan = validPlan();
+  plan.aspect_ratio = '4:3';
+  assert.throws(() => validateParagraphPlan(plan, style), /aspect_ratio/);
 });
 
 test('reserves final prompt budget before asking the paragraph planner', () => {
@@ -63,4 +72,27 @@ test('automatically compacts an oversized paragraph plan without changing locked
   assert.ok(request.prompt.length < 1400);
   assert.ok(request.prompt.includes(style.global_style_prompt));
   assert.ok(request.prompt.includes(style.global_negative_prompt));
+});
+
+test('binds paragraph illustrations to one complete standard paragraph', () => {
+  const chapterId = chapters[0].id;
+  const paragraphIndex = 0;
+  const context = getParagraphContext({ chapterId, paragraphIndex });
+  assert.ok(context);
+
+  const resolved = resolveParagraphIllustrationTarget({
+    chapterId,
+    paragraphIndex,
+    targetSegment: context.originalTarget
+  });
+  assert.equal(resolved.safeTarget, context.originalTarget.trim());
+
+  assert.throws(
+    () => resolveParagraphIllustrationTarget({
+      chapterId,
+      paragraphIndex,
+      targetSegment: context.originalTarget.slice(0, Math.max(1, context.originalTarget.length - 1))
+    }),
+    /完整原文/
+  );
 });

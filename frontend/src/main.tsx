@@ -2,9 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client';
 import {
   computeSelectionLayout,
-  getCaretPointFromPointer,
-  getTextFromRange,
-  normalizeRange,
   rangeKey,
   type SelectionLayout,
   type TextRange
@@ -109,6 +106,7 @@ type ParagraphImage = {
   styleInitializedNow: boolean;
   mediaAssetId?: string | null;
   mediaPersistenceError?: string | null;
+  illustrationVersionId?: string;
 };
 
 type ParagraphSpeechScriptLine = {
@@ -335,6 +333,68 @@ type DubbingVersion = {
 type DubbingUnitBundle = {
   unit: ContentUnit;
   versions: DubbingVersion[];
+};
+
+type IllustrationStatus = 'private' | 'public' | 'withdrawn' | 'moderated' | 'deleted';
+type IllustrationPromptMode = 'official' | 'free';
+
+type OfficialIllustrationStyle = {
+  id: string;
+  articleId: string;
+  versionNumber: number;
+  name: string;
+  globalStylePrompt: string;
+  globalNegativePrompt: string;
+  styleProfile: Record<string, string>;
+  usageNotes: string;
+  createdAt: string;
+};
+
+type IllustrationVersion = {
+  id: string;
+  projectId: string;
+  versionNumber: number;
+  ownerUserId: string;
+  username: string;
+  displayName: string;
+  unitId: string;
+  articleId: string;
+  chapterId: string;
+  paragraphIndex: number;
+  status: IllustrationStatus;
+  imageUrl: string;
+  mediaAssetId: string | null;
+  promptMode: IllustrationPromptMode;
+  finalPrompt: string;
+  styleVersionId: string | null;
+  aspectRatio: '16:9';
+  model: string;
+  sourceText: string;
+  sourceHash: string;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
+  adoptedByMe: boolean;
+  ownedByMe: boolean;
+  createdAt: string;
+  withdrawnAt: string | null;
+};
+
+type IllustrationComment = {
+  id: string;
+  versionId: string;
+  userId: string;
+  username: string;
+  displayName: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type IllustrationUnitBundle = {
+  unit: ContentUnit;
+  versions: IllustrationVersion[];
+  myVersions: IllustrationVersion[];
 };
 
 type SpeechDebugEvent = {
@@ -622,6 +682,82 @@ const api = {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
+  officialIllustrationStyle: (articleId: string) =>
+    requestJson<{ style: OfficialIllustrationStyle }>(
+      `/api/illustrations/styles/official?articleId=${encodeURIComponent(articleId)}`
+    ),
+  illustrationUnitAtPosition: (articleId: string, chapterId: string, paragraphIndex: number) =>
+    requestJson<IllustrationUnitBundle>(
+      `/api/illustrations/unit-at-position?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(
+        chapterId
+      )}&paragraphIndex=${paragraphIndex}`
+    ),
+  communityIllustrations: (
+    articleId: string,
+    unitId: string,
+    sort: 'popular' | 'newest',
+    scope: 'all' | 'mine' = 'all'
+  ) => requestJson<{ versions: IllustrationVersion[] }>(
+    `/api/illustrations/community?articleId=${encodeURIComponent(articleId)}&unitId=${encodeURIComponent(
+      unitId
+    )}&sort=${encodeURIComponent(sort)}&scope=${encodeURIComponent(scope)}`
+  ),
+  adoptedIllustrations: (articleId: string, chapterId: string) =>
+    requestJson<{ versions: IllustrationVersion[] }>(
+      `/api/illustrations/adoptions?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(chapterId)}`
+    ),
+  createIllustrationVersion: (
+    unitId: string,
+    payload: {
+      promptMode: IllustrationPromptMode;
+      finalPrompt: string;
+      styleVersionId?: string | null;
+    }
+  ) => requestJson<{ unit: ContentUnit; version: IllustrationVersion }>(
+    `/api/illustrations/units/${encodeURIComponent(unitId)}/versions`,
+    { method: 'POST', body: JSON.stringify(payload) }
+  ),
+  setIllustrationStatus: (
+    versionId: string,
+    status: 'public' | 'withdrawn' | 'deleted',
+    replaceVersionId = ''
+  ) => requestJson<{ version: IllustrationVersion }>(
+    `/api/illustrations/versions/${encodeURIComponent(versionId)}/status`,
+    { method: 'PATCH', body: JSON.stringify({ status, replaceVersionId }) }
+  ),
+  likeIllustration: (versionId: string, liked: boolean) =>
+    requestJson<{ version: IllustrationVersion }>(
+      `/api/illustrations/versions/${encodeURIComponent(versionId)}/like`,
+      { method: liked ? 'POST' : 'DELETE' }
+    ),
+  adoptIllustration: (unitId: string, versionId: string) =>
+    requestJson<{ unit: ContentUnit; version: IllustrationVersion }>(
+      `/api/illustrations/units/${encodeURIComponent(unitId)}/adoption`,
+      { method: 'PUT', body: JSON.stringify({ versionId }) }
+    ),
+  cancelIllustrationAdoption: (unitId: string) =>
+    requestJson<{ ok: true; removed: boolean }>(
+      `/api/illustrations/units/${encodeURIComponent(unitId)}/adoption`,
+      { method: 'DELETE' }
+    ),
+  illustrationComments: (versionId: string) =>
+    requestJson<{ comments: IllustrationComment[] }>(
+      `/api/illustrations/versions/${encodeURIComponent(versionId)}/comments`
+    ),
+  createIllustrationComment: (versionId: string, content: string) =>
+    requestJson<{ comment: IllustrationComment }>(
+      `/api/illustrations/versions/${encodeURIComponent(versionId)}/comments`,
+      { method: 'POST', body: JSON.stringify({ content }) }
+    ),
+  deleteIllustrationComment: (commentId: string) =>
+    requestJson<{ ok: true }>(`/api/illustrations/comments/${encodeURIComponent(commentId)}`, {
+      method: 'DELETE'
+    }),
+  reportIllustration: (versionId: string, reason: string) =>
+    requestJson<{ report: { status: 'open' } }>(
+      `/api/illustrations/versions/${encodeURIComponent(versionId)}/reports`,
+      { method: 'POST', body: JSON.stringify({ reason }) }
+    ),
   clueImage: (payload: { clueId: string; occurrenceId: string; force?: boolean }) =>
     requestJson<ClueImage>('/api/ai/clue-image', {
       method: 'POST',
@@ -812,7 +948,7 @@ function App() {
   const [chapterId, setChapterId] = useState('speckled-band-1');
   const [activeCover, setActiveCover] = useState<CoverVersion | null>(null);
   const [coverInspiration, setCoverInspiration] = useState<CoverVersion | null>(null);
-  const [communitySection, setCommunitySection] = useState<'dubbing' | 'cover'>('dubbing');
+  const [communitySection, setCommunitySection] = useState<'dubbing' | 'illustration' | 'cover'>('dubbing');
   const [notice, setNotice] = useState('');
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -1061,10 +1197,10 @@ function HomePage({
     <section className="home-page">
       <section className="home-hero">
         <div className="home-hero-copy">
-          <p className="eyebrow">AI Assisted Reading System</p>
+          <p className="eyebrow">IMMERSIVE STORY READING</p>
           <h1>探案小说的专注阅读空间</h1>
           <p>
-            系统围绕小说正文展开，只在对白、空间关系和证物整理这些关键时刻提供辅助。
+            让声音、画面与线索自然融入阅读，深入感受故事中的人物与世界。
           </p>
           <div className="home-actions">
             <button onClick={() => setPage(user ? 'bookshelf' : 'login')}>
@@ -1096,9 +1232,9 @@ function HomePage({
             <p>“案件里最危险的部分，往往藏在最普通的物件后面。”</p>
           </div>
           <div className="preview-context">
-            <span>系统状态</span>
-            <h2>正文优先，辅助按需出现</h2>
-            <p>对白配音、封面设计和证物袋都隐藏在阅读流程中，读者主动需要时才展开。</p>
+            <span>阅读体验</span>
+            <h2>沉浸阅读，灵感随行</h2>
+            <p>在需要的时刻调用声音、视觉与线索工具，保持阅读节奏完整。</p>
           </div>
         </div>
       </section>
@@ -1107,17 +1243,17 @@ function HomePage({
         <article>
           <span>Voice</span>
           <h2>对白配音</h2>
-          <p>点击人物对白后出现播放控件，声音不会主动打断阅读。</p>
+          <p>为人物对白赋予声音，感受语气、情绪与角色关系。</p>
         </article>
         <article>
           <span>Cover</span>
           <h2>封面设计</h2>
-          <p>用自己的提示词创作电影海报式封面，并从社区作品继续衍生灵感。</p>
+          <p>以视觉语言重新诠释故事，创作属于你的作品封面。</p>
         </article>
         <article>
           <span>Evidence</span>
           <h2>证物整理</h2>
-          <p>收集关键物件、地点和人物信息，为后续非剧透推理提供上下文。</p>
+          <p>收集人物、地点与关键物件，逐步还原案件脉络。</p>
         </article>
       </div>
     </section>
@@ -1134,10 +1270,10 @@ function CommunityPage({
   user: User | null;
   setPage: (page: Page) => void;
   setChapterId: (chapterId: string) => void;
-  initialSection: 'dubbing' | 'cover';
+  initialSection: 'dubbing' | 'illustration' | 'cover';
   onCoverRemix: (version: CoverVersion) => void;
 }) {
-  const [section, setSection] = useState<'dubbing' | 'cover'>(initialSection);
+  const [section, setSection] = useState<'dubbing' | 'illustration' | 'cover'>(initialSection);
 
   useEffect(() => {
     setSection(initialSection);
@@ -1149,12 +1285,17 @@ function CommunityPage({
         <button type="button" className={section === 'dubbing' ? 'active' : ''} onClick={() => setSection('dubbing')}>
           <span>VOICE WORKS</span><strong>配音创作</strong>
         </button>
+        <button type="button" className={section === 'illustration' ? 'active' : ''} onClick={() => setSection('illustration')}>
+          <span>ILLUSTRATION GALLERY</span><strong>插图创作</strong>
+        </button>
         <button type="button" className={section === 'cover' ? 'active' : ''} onClick={() => setSection('cover')}>
           <span>POSTER GALLERY</span><strong>封面创作</strong>
         </button>
       </nav>
       {section === 'dubbing' ? (
         <DubbingCommunityPage user={user} setPage={setPage} setChapterId={setChapterId} />
+      ) : section === 'illustration' ? (
+        <IllustrationCommunityPage user={user} setPage={setPage} setChapterId={setChapterId} />
       ) : (
         <CoverCommunityPage user={user} setPage={setPage} onRemix={onCoverRemix} />
       )}
@@ -1252,7 +1393,7 @@ function DubbingCommunityPage({
         <div>
           <p className="eyebrow">CREATION SQUARE</p>
           <h1>创作广场</h1>
-          <p>听见不同读者对同一段故事的理解。这里集中展示公开的真人演绎与 AI 配音。</p>
+          <p>聆听读者对故事段落的多样演绎，发现不同声音中的角色与情绪。</p>
         </div>
         <div className="community-hero-stat">
           <strong>{versions.length}</strong>
@@ -1262,7 +1403,7 @@ function DubbingCommunityPage({
 
       <div className="community-toolbar">
         <div className="community-tabs">
-          {([['all', '全部作品'], ['ai', 'AI 配音'], ['human', '真人配音'], ...(user ? [['mine', '我的发布']] : [])] as Array<[typeof tab, string]>).map(([value, label]) => (
+          {([['all', '全部作品'], ['ai', 'AI 配音'], ['human', '真人配音'], ...(user ? [['mine', '我的作品']] : [])] as Array<[typeof tab, string]>).map(([value, label]) => (
             <button key={value} type="button" className={tab === value ? 'active' : ''} onClick={() => setTab(value)}>{label}</button>
           ))}
         </div>
@@ -1277,9 +1418,9 @@ function DubbingCommunityPage({
 
       {error && <p className="community-error">{error}</p>}
       {loading ? (
-        <p className="community-empty">正在载入创作...</p>
+        <p className="community-empty">正在载入作品...</p>
       ) : versions.length === 0 ? (
-        <p className="community-empty">这个分类暂时还没有公开作品。</p>
+        <p className="community-empty">暂无公开作品。</p>
       ) : (
         <div className="community-grid">
           {versions.map((version) => {
@@ -1311,10 +1452,10 @@ function DubbingCommunityPage({
                       <button type="button" onClick={() => void toggleLike(version)}>{version.likedByMe ? '已赞' : '点赞'}</button>
                     )}
                     <button type="button" className={version.adoptedByMe ? 'active' : ''} onClick={() => void adopt(version)}>
-                      {version.adoptedByMe ? '已设为播放版本' : '采用播放'}
+                      {version.adoptedByMe ? '当前使用' : '采用为我的配音'}
                     </button>
                     {user && version.ownerUserId !== user.id && <button type="button" onClick={() => void report(version)}>举报</button>}
-                    {user && version.ownerUserId === user.id && <button type="button" onClick={() => void withdraw(version)}>撤回</button>}
+                    {user && version.ownerUserId === user.id && <button type="button" onClick={() => void withdraw(version)}>撤回作品</button>}
                     <button type="button" onClick={() => {
                       if (!requireLogin()) return;
                       setChapterId(version.chapterId);
@@ -1325,6 +1466,296 @@ function DubbingCommunityPage({
               </article>
             );
           })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function IllustrationWorkCard({
+  version,
+  user,
+  compact = false,
+  onRequireLogin,
+  onLike,
+  onAdopt,
+  onWithdraw,
+  onReport,
+  onViewSource,
+  onCommentCount
+}: {
+  version: IllustrationVersion;
+  user: User | null;
+  compact?: boolean;
+  onRequireLogin: () => void;
+  onLike: (version: IllustrationVersion) => Promise<void>;
+  onAdopt: (version: IllustrationVersion) => Promise<void>;
+  onWithdraw?: (version: IllustrationVersion) => Promise<void>;
+  onReport: (version: IllustrationVersion) => Promise<void>;
+  onViewSource?: (version: IllustrationVersion) => void;
+  onCommentCount?: (versionId: string, count: number) => void;
+}) {
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [comments, setComments] = useState<IllustrationComment[]>([]);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [commentBusy, setCommentBusy] = useState(false);
+  const [commentError, setCommentError] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  async function toggleComments() {
+    const nextOpen = !commentsOpen;
+    setCommentsOpen(nextOpen);
+    if (!nextOpen || commentsLoaded || version.status !== 'public') return;
+    setCommentBusy(true);
+    setCommentError('');
+    try {
+      const result = await api.illustrationComments(version.id);
+      setComments(result.comments);
+      setCommentsLoaded(true);
+    } catch (error) {
+      setCommentError(error instanceof Error ? error.message : '评论加载失败');
+    } finally {
+      setCommentBusy(false);
+    }
+  }
+
+  async function submitComment(event: React.FormEvent) {
+    event.preventDefault();
+    if (!user) {
+      onRequireLogin();
+      return;
+    }
+    const content = commentDraft.trim();
+    if (!content) return;
+    setCommentBusy(true);
+    setCommentError('');
+    try {
+      const { comment } = await api.createIllustrationComment(version.id, content);
+      const next = [...comments, comment];
+      setComments(next);
+      setCommentsLoaded(true);
+      setCommentDraft('');
+      onCommentCount?.(version.id, next.length);
+    } catch (error) {
+      setCommentError(error instanceof Error ? error.message : '评论发布失败');
+    } finally {
+      setCommentBusy(false);
+    }
+  }
+
+  async function removeComment(comment: IllustrationComment) {
+    if (!window.confirm('确定删除这条评论吗？')) return;
+    setCommentBusy(true);
+    try {
+      await api.deleteIllustrationComment(comment.id);
+      const next = comments.filter((item) => item.id !== comment.id);
+      setComments(next);
+      onCommentCount?.(version.id, next.length);
+    } catch (error) {
+      setCommentError(error instanceof Error ? error.message : '评论删除失败');
+    } finally {
+      setCommentBusy(false);
+    }
+  }
+
+  async function copyPrompt() {
+    try {
+      await navigator.clipboard.writeText(version.finalPrompt);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      window.prompt('复制创作提示词', version.finalPrompt);
+    }
+  }
+
+  const creatorName = version.displayName || version.username || '匿名创作者';
+  return (
+    <article className={`illustration-work-card${compact ? ' compact' : ''}`}>
+      <div className="illustration-work-image">
+        <img src={version.imageUrl} alt={`由 ${creatorName} 创作的段落插图`} />
+        <span>{version.promptMode === 'official' ? '官方风格' : '自由创作'}</span>
+      </div>
+      <div className="illustration-work-copy">
+        <header>
+          <div className="community-creator">
+            <span className="community-avatar">{creatorName.slice(0, 1)}</span>
+            <div>
+              <strong>{creatorName}</strong>
+              <small>第 {version.paragraphIndex + 1} 段 · V{version.versionNumber}</small>
+            </div>
+          </div>
+          {version.status !== 'public' && <span className={`illustration-status ${version.status}`}>{version.status === 'private' ? '未发布' : '已撤回'}</span>}
+        </header>
+        {!compact && <blockquote>{version.sourceText}</blockquote>}
+        <details className="illustration-full-prompt">
+          <summary>查看创作提示词</summary>
+          <p>{version.finalPrompt}</p>
+        </details>
+        <div className="illustration-work-actions">
+          <span>赞 {version.likeCount} · 评论 {version.commentCount}</span>
+          <div>
+            {version.status === 'public' && version.ownerUserId !== user?.id && (
+              <button type="button" className={version.likedByMe ? 'active' : ''} onClick={() => void onLike(version)}>
+                {version.likedByMe ? '已赞' : '点赞'}
+              </button>
+            )}
+            <button type="button" className={version.adoptedByMe ? 'active' : ''} onClick={() => void onAdopt(version)}>
+              {version.adoptedByMe ? '当前使用' : '采用为我的插图'}
+            </button>
+            <button type="button" onClick={() => void copyPrompt()}>{copied ? '已复制' : '复制提示词'}</button>
+            {version.status === 'public' && <button type="button" onClick={() => void toggleComments()}>评论</button>}
+            {version.ownerUserId === user?.id && version.status === 'public' && onWithdraw && (
+              <button type="button" onClick={() => void onWithdraw(version)}>撤回作品</button>
+            )}
+            {user && version.ownerUserId !== user.id && version.status === 'public' && (
+              <button type="button" onClick={() => void onReport(version)}>举报</button>
+            )}
+            {onViewSource && <button type="button" onClick={() => onViewSource(version)}>查看原文</button>}
+          </div>
+        </div>
+        {commentsOpen && version.status === 'public' && (
+          <div className="illustration-comments">
+            {commentBusy && !commentsLoaded ? <p>正在加载评论...</p> : comments.length === 0 ? <p>暂无评论。</p> : comments.map((comment) => (
+              <div key={comment.id} className="illustration-comment">
+                <div><strong>{comment.displayName || comment.username}</strong><span>{comment.content}</span></div>
+                {comment.userId === user?.id && <button type="button" disabled={commentBusy} onClick={() => void removeComment(comment)}>删除</button>}
+              </div>
+            ))}
+            <form onSubmit={submitComment}>
+              <input
+                value={commentDraft}
+                maxLength={1000}
+                placeholder={user ? '发表你的看法' : '登录后参与讨论'}
+                onChange={(event) => setCommentDraft(event.target.value)}
+              />
+              <button type="submit" disabled={commentBusy || !commentDraft.trim()}>发布</button>
+            </form>
+            {commentError && <p className="form-error">{commentError}</p>}
+          </div>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function IllustrationCommunityPage({
+  user,
+  setPage,
+  setChapterId
+}: {
+  user: User | null;
+  setPage: (page: Page) => void;
+  setChapterId: (chapterId: string) => void;
+}) {
+  const [tab, setTab] = useState<'all' | 'mine'>('all');
+  const [sort, setSort] = useState<'popular' | 'newest'>('popular');
+  const [versions, setVersions] = useState<IllustrationVersion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadVersions = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await api.communityIllustrations('', '', sort, tab);
+      setVersions(result.versions);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '插图创作广场加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [sort, tab]);
+
+  useEffect(() => { void loadVersions(); }, [loadVersions]);
+
+  function requireLogin() {
+    if (!user) setPage('login');
+  }
+
+  function replaceVersion(updated: IllustrationVersion) {
+    setVersions((current) => current.map((item) => item.id === updated.id ? updated : item));
+  }
+
+  async function toggleLike(version: IllustrationVersion) {
+    if (!user) { requireLogin(); return; }
+    try {
+      replaceVersion((await api.likeIllustration(version.id, !version.likedByMe)).version);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '点赞失败');
+    }
+  }
+
+  async function adopt(version: IllustrationVersion) {
+    if (!user) { requireLogin(); return; }
+    try {
+      const updated = (await api.adoptIllustration(version.unitId, version.id)).version;
+      setVersions((current) => current.map((item) => item.unitId === updated.unitId
+        ? { ...item, adoptedByMe: item.id === updated.id }
+        : item));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '采用插图失败');
+    }
+  }
+
+  async function withdraw(version: IllustrationVersion) {
+    if (!window.confirm('撤回后作品将从创作广场消失，已经采用的读者仍可继续使用。确定撤回吗？')) return;
+    try {
+      await api.setIllustrationStatus(version.id, 'withdrawn');
+      setVersions((current) => current.filter((item) => item.id !== version.id));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '撤回失败');
+    }
+  }
+
+  async function report(version: IllustrationVersion) {
+    if (!user) { requireLogin(); return; }
+    const reason = window.prompt('请简要说明举报原因（最多 500 字）')?.trim();
+    if (!reason) return;
+    try {
+      await api.reportIllustration(version.id, reason);
+      window.alert('举报已提交');
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '举报失败');
+    }
+  }
+
+  return (
+    <section className="community-page illustration-square-page">
+      <header className="community-hero illustration-square-hero">
+        <div>
+          <p className="eyebrow">ILLUSTRATION GALLERY</p>
+          <h1>插图创作广场</h1>
+          <p>探索读者对故事段落的多样视觉表达，发现值得采用的插图与创作灵感。</p>
+        </div>
+        <div className="community-hero-stat"><strong>{versions.length}</strong><span>公开作品</span></div>
+      </header>
+      <div className="community-toolbar">
+        <div className="community-tabs">
+          <button type="button" className={tab === 'all' ? 'active' : ''} onClick={() => setTab('all')}>全部作品</button>
+          {user && <button type="button" className={tab === 'mine' ? 'active' : ''} onClick={() => setTab('mine')}>我的作品</button>}
+        </div>
+        <label>排序<select value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}><option value="popular">热门优先</option><option value="newest">最新发布</option></select></label>
+      </div>
+      {error && <p className="community-error">{error}</p>}
+      {loading ? <p className="community-empty">正在载入插图作品...</p> : versions.length === 0 ? (
+        <p className="community-empty">暂无公开作品。</p>
+      ) : (
+        <div className="illustration-community-grid">
+          {versions.map((version) => (
+            <IllustrationWorkCard
+              key={version.id}
+              version={version}
+              user={user}
+              onRequireLogin={requireLogin}
+              onLike={toggleLike}
+              onAdopt={adopt}
+              onWithdraw={withdraw}
+              onReport={report}
+              onViewSource={(item) => { setChapterId(item.chapterId); setPage('reader'); }}
+              onCommentCount={(id, count) => setVersions((current) => current.map((item) => item.id === id ? { ...item, commentCount: count } : item))}
+            />
+          ))}
         </div>
       )}
     </section>
@@ -1430,7 +1861,7 @@ function CoverCommunityPage({
         <div>
           <p className="eyebrow">POSTER GALLERY</p>
           <h1>封面创作社区</h1>
-          <p>同一本书可以有很多张脸。查看完整提示词，收藏喜欢的方向，再把它变成自己的新版本。</p>
+          <p>探索读者对同一部作品的多样视觉诠释。</p>
         </div>
         <div className="community-hero-stat"><strong>{versions.length}</strong><span>公开封面</span></div>
       </header>
@@ -1439,14 +1870,14 @@ function CoverCommunityPage({
         <div className="community-tabs">
           <button type="button" className={tab === 'all' ? 'active' : ''} onClick={() => setTab('all')}>全部封面</button>
           {user && <button type="button" className={tab === 'collected' ? 'active' : ''} onClick={() => setTab('collected')}>我的收藏</button>}
-          {user && <button type="button" className={tab === 'mine' ? 'active' : ''} onClick={() => setTab('mine')}>我的发布</button>}
+          {user && <button type="button" className={tab === 'mine' ? 'active' : ''} onClick={() => setTab('mine')}>我的作品</button>}
         </div>
         <label>排序<select value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}><option value="popular">热门优先</option><option value="newest">最新发布</option></select></label>
       </div>
 
       {error && <p className="community-error">{error}</p>}
       {loading ? <p className="community-empty">正在载入封面作品…</p> : versions.length === 0 ? (
-        <p className="community-empty">这个分类暂时还没有公开封面。</p>
+        <p className="community-empty">暂无公开封面。</p>
       ) : (
         <div className="community-cover-grid">
           {versions.map((version) => (
@@ -1456,11 +1887,11 @@ function CoverCommunityPage({
                 <header><span className="community-kind cover">电影海报封面</span><small>V{version.versionNumber}</small></header>
                 <div className="community-creator">
                   <span className="community-avatar">{(version.displayName || version.username).slice(0, 1)}</span>
-                  <div><strong>{version.displayName || version.username}</strong><small>《{version.bookTitle}》· {version.mode === 'guided' ? '官方电影底模' : '高级自由模式'}</small></div>
+                <div><strong>{version.displayName || version.username}</strong><small>《{version.bookTitle}》· {version.mode === 'guided' ? '引导创作' : '自由创作'}</small></div>
                 </div>
-                <div className="cover-community-metrics">收藏 {version.collectionCount} · 二创 {version.remixCount}</div>
+                <div className="cover-community-metrics">收藏 {version.collectionCount} · 衍生创作 {version.remixCount}</div>
                 <div className="cover-community-tags">{[version.mood, version.palette, version.composition].filter(Boolean).map((tag) => <span key={tag}>{tag}</span>)}</div>
-                <details className="cover-full-prompt"><summary>查看完整提示词</summary><p>{version.finalPrompt}</p></details>
+                <details className="cover-full-prompt"><summary>查看创作提示词</summary><p>{version.finalPrompt}</p></details>
                 <footer>
                   <CoverLikeButton
                     version={version}
@@ -1469,7 +1900,7 @@ function CoverCommunityPage({
                     onToggle={() => void toggleLike(version)}
                   />
                   {version.ownerUserId === user?.id ? (
-                    <button type="button" onClick={() => void withdraw(version)}>撤回发布</button>
+                    <button type="button" onClick={() => void withdraw(version)}>撤回作品</button>
                   ) : (
                     <>
                       <button type="button" className={version.collectedByMe ? 'active' : ''} onClick={() => void toggleCollection(version)}>{version.collectedByMe ? '已收藏' : '收藏'}</button>
@@ -1479,7 +1910,7 @@ function CoverCommunityPage({
                   <button type="button" className="cover-remix-cta" onClick={() => {
                     if (!requireLogin()) return;
                     onRemix(version);
-                  }}>以此为灵感</button>
+                  }}>基于此作品创作</button>
                 </footer>
               </div>
             </article>
@@ -1553,7 +1984,7 @@ function VoiceLibrary({
         <div>
           <p className="eyebrow">MY VOICE LIBRARY</p>
           <h2>我的音色库</h2>
-          <p>音色创建后可跨作品、跨角色使用，默认仅自己可见。</p>
+          <p>建立个人音色库，为不同作品与角色持续使用。</p>
         </div>
         <span>{voices.length} 个音色版本</span>
       </div>
@@ -1572,15 +2003,15 @@ function VoiceLibrary({
           <textarea value={previewText} maxLength={200} rows={2} placeholder="输入一段最能体现该音色特点的文本" onChange={(event) => setPreviewText(event.target.value)} />
         </label>
         {error && <p className="form-error">{error}</p>}
-        <button type="submit" disabled={saving}>{saving ? '正在生成试听...' : '生成并保存音色'}</button>
+        <button type="submit" disabled={saving}>{saving ? '正在创建...' : '创建音色'}</button>
       </form>
 
       <div className="voice-library-list">
-        {loading ? <p>正在读取我的音色...</p> : voices.length === 0 ? <p>还没有自创音色，可以先从上面的描述开始。</p> : voices.map((voice) => (
+        {loading ? <p>正在读取我的音色...</p> : voices.length === 0 ? <p>暂无个人音色。</p> : voices.map((voice) => (
           <article key={voice.id} className="voice-library-card">
             <div>
               <strong>{voice.characterName}</strong>
-              <small>V{voice.versionNumber} · {voice.shared ? '已随公开作品共享' : '仅自己可用'}</small>
+              <small>V{voice.versionNumber} · {voice.shared ? '已随公开作品共享' : '个人音色'}</small>
               <p>{voice.prompt}</p>
               <span>试听文本：{voice.previewText}</span>
             </div>
@@ -1661,7 +2092,7 @@ function BookshelfPage({
         <div>
           <p className="eyebrow">My Library</p>
           <h1>{user.displayName} 的书架</h1>
-          <p>这里保存你读过和正在阅读的作品。进入某本书后，系统才会打开对应阅读器。</p>
+          <p>收藏正在阅读与已经读过的作品，随时继续上次的阅读。</p>
         </div>
         <div className="shelf-summary">
           <span>{books.length}</span>
@@ -1798,7 +2229,7 @@ function AuthPage({
           className="link-button"
           onClick={() => setPage(isLogin ? 'register' : 'login')}
         >
-          {isLogin ? '还没有账号？去注册' : '已有账号？去登录'}
+          {isLogin ? '注册账号' : '返回登录'}
         </button>
       </form>
     </section>
@@ -1930,7 +2361,7 @@ function ProfilePage({
       <div className="profile-card">
         <h2>我的证物袋</h2>
         {collectedEntries.length === 0 ? (
-          <p>还没有收集证物。进入书架中的作品，点击正文里的可疑细节即可加入证物袋。</p>
+          <p>暂无已收集证物。阅读时可将可疑细节收入证物袋。</p>
         ) : (
           <div className="profile-clues">
             {collectedEntries.map(({ clue, record }) => {
@@ -2020,7 +2451,7 @@ function SpeechDebugPage() {
 
   async function regenerateGlobalProduct(kind: 'speech' | 'image') {
     const label = kind === 'speech' ? '语音音色缓存' : '图像全局风格缓存';
-    const confirmed = window.confirm(`确定要重新生成${label}吗？这会覆盖当前本地全局产物，并可能调用 MiniMax API。`);
+    const confirmed = window.confirm(`确定重新生成${label}吗？当前生成结果将被替换。`);
     if (!confirmed) return;
 
     setRegenerating(kind);
@@ -2355,10 +2786,10 @@ function ReaderPage({
   } | null>(null);
   const [selectedParagraph, setSelectedParagraph] = useState<SelectedParagraph | null>(null);
   const [selectionLayout, setSelectionLayout] = useState<SelectionLayout | null>(null);
-  const [draggingHandle, setDraggingHandle] = useState<'start' | 'end' | null>(null);
   const bookPageRef = useRef<HTMLElement | null>(null);
   const [paragraphImageLoadingKey, setParagraphImageLoadingKey] = useState<string | null>(null);
   const [paragraphImages, setParagraphImages] = useState<Record<string, RangeMedia<ParagraphImage>>>({});
+  const [platformParagraphImages, setPlatformParagraphImages] = useState<Record<string, RangeMedia<ParagraphImage>>>({});
   const [collapsedParagraphImages, setCollapsedParagraphImages] = useState<Record<string, RangeMedia<ParagraphImage>>>({});
   const toggleContextPanel = useCallback(
     (tab: ContextTab) => {
@@ -2384,8 +2815,20 @@ function ReaderPage({
   const [voiceDesignerOpen, setVoiceDesignerOpen] = useState(false);
   const [voiceDesignerSpeaker, setVoiceDesignerSpeaker] = useState<string | null>(null);
   const [paragraphCommunityOpen, setParagraphCommunityOpen] = useState(false);
+  const [paragraphCommunityKind, setParagraphCommunityKind] = useState<'dubbing' | 'illustration'>('dubbing');
   const [paragraphCommunityTab, setParagraphCommunityTab] = useState<'all' | 'ai' | 'human'>('all');
   const [dubbingBundles, setDubbingBundles] = useState<Record<string, DubbingUnitBundle>>({});
+  const [illustrationBundles, setIllustrationBundles] = useState<Record<string, IllustrationUnitBundle>>({});
+  const [illustrationLoadingKey, setIllustrationLoadingKey] = useState<string | null>(null);
+  const [illustrationCreatorOpen, setIllustrationCreatorOpen] = useState(false);
+  const [illustrationCreatorTab, setIllustrationCreatorTab] = useState<'create' | 'mine'>('create');
+  const [illustrationPromptMode, setIllustrationPromptMode] = useState<IllustrationPromptMode>('official');
+  const [officialIllustrationStyle, setOfficialIllustrationStyle] = useState<OfficialIllustrationStyle | null>(null);
+  const [illustrationSceneDescription, setIllustrationSceneDescription] = useState('');
+  const [illustrationFinalPrompt, setIllustrationFinalPrompt] = useState('');
+  const [illustrationGenerating, setIllustrationGenerating] = useState(false);
+  const [illustrationError, setIllustrationError] = useState('');
+  const [illustrationPublishTarget, setIllustrationPublishTarget] = useState<string | null>(null);
   const [voiceLoadingKey, setVoiceLoadingKey] = useState<string | null>(null);
   const [voiceSaving, setVoiceSaving] = useState(false);
   const [aiComposerOpen, setAiComposerOpen] = useState(false);
@@ -2568,6 +3011,31 @@ function ReaderPage({
     };
   }
 
+  function imageFromIllustrationVersion(version: IllustrationVersion): RangeMedia<ParagraphImage> {
+    const range: TextRange = {
+      startParagraphIndex: version.paragraphIndex,
+      startOffset: 0,
+      endParagraphIndex: version.paragraphIndex,
+      endOffset: version.sourceText.length
+    };
+    return {
+      chapterId: version.chapterId,
+      range,
+      imageUrl: version.imageUrl,
+      prompt: version.finalPrompt,
+      sceneSummaryCn: '',
+      componentType: 'community-illustration',
+      promptCharCount: version.finalPrompt.length,
+      traceId: null,
+      styleInitializedNow: false,
+      mediaAssetId: version.mediaAssetId,
+      illustrationVersionId: version.id,
+      userId: version.ownerUserId,
+      fromLibrary: true,
+      createdAt: version.createdAt
+    };
+  }
+
   useEffect(() => {
     setSelectedParagraph(null);
     stopParagraphAudio();
@@ -2583,9 +3051,10 @@ function ReaderPage({
 
     Promise.all([
       api.mediaAssets('speckled-band', chapter.id),
-      api.adoptedDubbingVersions('speckled-band', chapter.id)
+      api.adoptedDubbingVersions('speckled-band', chapter.id).catch(() => ({ versions: [] })),
+      api.adoptedIllustrations('speckled-band', chapter.id).catch(() => ({ versions: [] }))
     ])
-      .then(([{ assets }, { versions: adoptedVersions }]) => {
+      .then(([{ assets }, { versions: adoptedVersions }, { versions: adoptedIllustrations }]) => {
         if (cancelled) {
           return;
         }
@@ -2616,13 +3085,21 @@ function ReaderPage({
           resolvedAudios[rangeKey(audio.chapterId, audio.range)] = audio;
         });
 
-        setParagraphImages(nextImages);
+        const resolvedImages = { ...nextImages };
+        adoptedIllustrations.forEach((version) => {
+          const image = imageFromIllustrationVersion(version);
+          resolvedImages[rangeKey(image.chapterId, image.range)] = image;
+        });
+
+        setPlatformParagraphImages(nextImages);
+        setParagraphImages(resolvedImages);
         setPlatformParagraphAudios(nextAudios);
         setParagraphAudios(resolvedAudios);
       })
       .catch(() => {
         if (!cancelled) {
           setParagraphImages({});
+          setPlatformParagraphImages({});
           setPlatformParagraphAudios({});
           setParagraphAudios({});
         }
@@ -2745,6 +3222,202 @@ function ReaderPage({
     setVoicePanelOpen(false);
   }
 
+  function composeOfficialIllustrationPrompt(style: OfficialIllustrationStyle, sceneDescription: string) {
+    const scene = sceneDescription.trim();
+    const styleBlock = style.globalStylePrompt.trim();
+    const avoidPrefix = style.globalNegativePrompt.trim() ? '\n\nAvoid: ' : '';
+    const fixedLength = styleBlock.length + avoidPrefix.length;
+    const sceneBudget = Math.max(0, 1400 - fixedLength - style.globalNegativePrompt.length - (scene ? 2 : 0));
+    const safeScene = scene.slice(0, sceneBudget);
+    const withoutAvoid = [safeScene, styleBlock].filter(Boolean).join('\n\n');
+    const negativeBudget = Math.max(0, 1400 - withoutAvoid.length - avoidPrefix.length);
+    return `${withoutAvoid}${avoidPrefix}${style.globalNegativePrompt.slice(0, negativeBudget)}`;
+  }
+
+  async function loadIllustrationBundle(selection = selectedParagraph) {
+    if (!selection) return null;
+    const key = dubbingBundleKey(selection);
+    setIllustrationLoadingKey(key);
+    try {
+      const bundle = await api.illustrationUnitAtPosition(
+        'speckled-band',
+        selection.chapterId,
+        selection.paragraphIndex
+      );
+      setIllustrationBundles((current) => ({ ...current, [key]: bundle }));
+      setSelectedParagraph((current) =>
+        current && current.chapterId === bundle.unit.chapterId && current.paragraphIndex === bundle.unit.paragraphIndex
+          ? { ...current, draft: bundle.unit.sourceText, range: bundle.unit.range }
+          : current
+      );
+      return bundle;
+    } catch (error) {
+      setIllustrationError(error instanceof Error ? error.message : '插图版本加载失败');
+      return null;
+    } finally {
+      setIllustrationLoadingKey(null);
+    }
+  }
+
+  async function openIllustrationCreator() {
+    if (!user) {
+      setPage('login');
+      return;
+    }
+    if (!selectedParagraph) return;
+    closeVoiceDesigner();
+    closeAiDesignMenu();
+    setParagraphCommunityOpen(false);
+    setIllustrationCreatorOpen(true);
+    setIllustrationCreatorTab('create');
+    setIllustrationPublishTarget(null);
+    setIllustrationError('');
+    const selection = selectedParagraph;
+    try {
+      const [bundle, styleResult] = await Promise.all([
+        loadIllustrationBundle(selection),
+        api.officialIllustrationStyle('speckled-band')
+      ]);
+      if (!bundle) return;
+      const style = styleResult.style;
+      setOfficialIllustrationStyle(style);
+      const description = `为下面这段原文创作一张叙事插图。请自行安排人物、环境、布局和光线：\n${bundle.unit.sourceText}`;
+      setIllustrationSceneDescription(description);
+      setIllustrationPromptMode('official');
+      setIllustrationFinalPrompt('');
+    } catch (error) {
+      setIllustrationError(error instanceof Error ? error.message : '插图创作器加载失败');
+    }
+  }
+
+  async function createIllustration() {
+    if (!user || !selectedParagraph || illustrationGenerating) return;
+    const key = dubbingBundleKey(selectedParagraph);
+    const bundle = illustrationBundles[key] || await loadIllustrationBundle(selectedParagraph);
+    if (!bundle) return;
+    const finalPrompt = illustrationPromptMode === 'official' && officialIllustrationStyle
+      ? composeOfficialIllustrationPrompt(officialIllustrationStyle, illustrationSceneDescription)
+      : illustrationFinalPrompt;
+    if (!finalPrompt.trim() || finalPrompt.length > 1400) {
+      setIllustrationError(
+        illustrationPromptMode === 'official'
+          ? '请填写画面描述。'
+          : '请填写创作提示词。'
+      );
+      return;
+    }
+    setIllustrationGenerating(true);
+    setIllustrationError('');
+    try {
+      await api.createIllustrationVersion(bundle.unit.id, {
+        promptMode: illustrationPromptMode,
+        finalPrompt,
+        styleVersionId: illustrationPromptMode === 'official' ? officialIllustrationStyle?.id : null
+      });
+      await loadIllustrationBundle(selectedParagraph);
+      setIllustrationCreatorTab('mine');
+      setNotice('插图已生成，已收录至“我的作品”。');
+      window.setTimeout(() => setNotice(''), 2600);
+    } catch (error) {
+      setIllustrationError(error instanceof Error ? error.message : '插图生成失败');
+    } finally {
+      setIllustrationGenerating(false);
+    }
+  }
+
+  async function adoptIllustrationVersion(version: IllustrationVersion) {
+    if (!user) {
+      setPage('login');
+      return;
+    }
+    try {
+      const { version: adopted } = await api.adoptIllustration(version.unitId, version.id);
+      const image = imageFromIllustrationVersion(adopted);
+      const key = rangeKey(image.chapterId, image.range);
+      setParagraphImages((current) => ({ ...current, [key]: image }));
+      setCollapsedParagraphImages((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+      if (selectedParagraph) await loadIllustrationBundle(selectedParagraph);
+      setNotice('已设为我的当前段落插图');
+      window.setTimeout(() => setNotice(''), 1800);
+    } catch (error) {
+      setIllustrationError(error instanceof Error ? error.message : '采用插图失败');
+    }
+  }
+
+  async function restoreOneClickIllustration(unit: ContentUnit) {
+    if (!user) return;
+    try {
+      await api.cancelIllustrationAdoption(unit.id);
+      const key = rangeKey(unit.chapterId, unit.range);
+      setParagraphImages((current) => {
+        const next = { ...current };
+        if (platformParagraphImages[key]) next[key] = platformParagraphImages[key];
+        else delete next[key];
+        return next;
+      });
+      setCollapsedParagraphImages((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+      if (selectedParagraph) await loadIllustrationBundle(selectedParagraph);
+      setNotice('已恢复一键生成插图');
+      window.setTimeout(() => setNotice(''), 1600);
+    } catch (error) {
+      setIllustrationError(error instanceof Error ? error.message : '恢复一键插图失败');
+    }
+  }
+
+  async function toggleIllustrationLike(version: IllustrationVersion) {
+    if (!user) { setPage('login'); return; }
+    try {
+      await api.likeIllustration(version.id, !version.likedByMe);
+      if (selectedParagraph) await loadIllustrationBundle(selectedParagraph);
+    } catch (error) {
+      setIllustrationError(error instanceof Error ? error.message : '点赞失败');
+    }
+  }
+
+  async function reportIllustrationVersion(version: IllustrationVersion) {
+    if (!user) { setPage('login'); return; }
+    const reason = window.prompt('请简要说明举报原因（最多 500 字）')?.trim();
+    if (!reason) return;
+    try {
+      await api.reportIllustration(version.id, reason);
+      setNotice('举报已提交');
+      window.setTimeout(() => setNotice(''), 1600);
+    } catch (error) {
+      setIllustrationError(error instanceof Error ? error.message : '举报失败');
+    }
+  }
+
+  async function changeIllustrationStatus(
+    version: IllustrationVersion,
+    status: 'public' | 'withdrawn' | 'deleted',
+    replaceVersionId = ''
+  ) {
+    try {
+      await api.setIllustrationStatus(version.id, status, replaceVersionId);
+      setIllustrationPublishTarget(null);
+      if (selectedParagraph) await loadIllustrationBundle(selectedParagraph);
+    } catch (error) {
+      setIllustrationError(error instanceof Error ? error.message : '作品状态更新失败');
+    }
+  }
+
+  function publishIllustration(version: IllustrationVersion, bundle: IllustrationUnitBundle) {
+    const publicVersions = bundle.myVersions.filter((item) => item.status === 'public' && item.id !== version.id);
+    if (publicVersions.length >= 3) {
+      setIllustrationPublishTarget(version.id);
+      return;
+    }
+    void changeIllustrationStatus(version, 'public');
+  }
+
   async function loadDubbingBundle(selection = selectedParagraph) {
     if (!selection) {
       return null;
@@ -2797,7 +3470,7 @@ function ReaderPage({
       const bundle =
         dubbingBundles[requestedSelectionKey] || (await loadDubbingBundle(requestedSelection));
       if (!bundle) {
-        throw new Error('暂时无法读取这个段落的配音');
+        throw new Error('当前段落配音暂不可用。');
       }
       if (!bundle.unit.hasDialogue) {
         throw new Error('这个段落没有角色对白，不需要创建配音');
@@ -2991,7 +3664,7 @@ function ReaderPage({
       ) {
         closeAiComposer();
       }
-      setNotice(visibility === 'public' ? 'AI 配音新版本已公开' : 'AI 配音已私密保存');
+      setNotice(visibility === 'public' ? '配音已发布。' : '配音已收录至“我的作品”。');
       window.setTimeout(() => setNotice(''), 1800);
     } catch (error) {
       if (aiComposerRequestRef.current !== requestId) {
@@ -3082,7 +3755,7 @@ function ReaderPage({
       await api.createHumanDubbingVersion(bundle.unit.id, { audioDataUrl, visibility });
       await loadDubbingBundle(selectedParagraph);
       resetRecordingDraft();
-      setNotice(visibility === 'public' ? '真人配音新版本已公开' : '真人配音已私密保存');
+      setNotice(visibility === 'public' ? '配音已发布。' : '配音已收录至“我的作品”。');
       window.setTimeout(() => setNotice(''), 1800);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '真人配音保存失败');
@@ -3106,7 +3779,7 @@ function ReaderPage({
     const confirmed = window.confirm(
       version.status === 'public'
         ? '公开版本将被撤回，新用户无法再查看或采用。已有采用者仍可继续播放。'
-        : '确定删除这个私密版本吗？'
+        : '确定删除这个未发布版本吗？'
     );
     if (!confirmed) {
       return;
@@ -3162,10 +3835,10 @@ function ReaderPage({
         else delete next[key];
         return next;
       });
-      setNotice('已恢复平台默认配音');
+      setNotice('已使用官方配音。');
       window.setTimeout(() => setNotice(''), 1600);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '取消采用失败');
+      setNotice(error instanceof Error ? error.message : '切换官方配音失败');
       window.setTimeout(() => setNotice(''), 2200);
     }
   }
@@ -3254,63 +3927,6 @@ function ReaderPage({
   }, [selectedParagraph, refreshSelectionLayout]);
 
   useEffect(() => {
-    if (!draggingHandle || !selectedParagraph || !bookPageRef.current) {
-      return;
-    }
-
-    const handlePointerMove = (event: PointerEvent) => {
-      const point = getCaretPointFromPointer(
-        bookPageRef.current!,
-        event.clientX,
-        event.clientY,
-        chapter.paragraphs.length
-      );
-
-      if (!point) {
-        return;
-      }
-
-      setSelectedParagraph((current) => {
-        if (!current) {
-          return current;
-        }
-
-        const nextRange =
-          draggingHandle === 'start'
-            ? {
-                ...current.range,
-                startParagraphIndex: point.paragraphIndex,
-                startOffset: point.offset
-              }
-            : {
-                ...current.range,
-                endParagraphIndex: point.paragraphIndex,
-                endOffset: point.offset
-              };
-        const normalizedRange = normalizeRange(nextRange);
-        const draft = getTextFromRange(chapter.paragraphs, normalizedRange);
-
-        return {
-          ...current,
-          paragraphIndex: normalizedRange.startParagraphIndex,
-          range: normalizedRange,
-          draft
-        };
-      });
-    };
-
-    const handlePointerUp = () => setDraggingHandle(null);
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-    };
-  }, [chapter.paragraphs, draggingHandle, selectedParagraph]);
-
-  useEffect(() => {
     if (!selectedParagraph) {
       return;
     }
@@ -3357,16 +3973,27 @@ function ReaderPage({
     if (!selectedParagraph) {
       setVoicePanelOpen(false);
       setParagraphCommunityOpen(false);
+      setIllustrationCreatorOpen(false);
       return;
     }
 
     if (voicePanelOpen || paragraphCommunityOpen) {
       void loadDubbingBundle(selectedParagraph);
     }
-  }, [selectedParagraph?.chapterId, selectedParagraph?.paragraphIndex, voicePanelOpen, paragraphCommunityOpen]);
+    if (illustrationCreatorOpen || paragraphCommunityOpen) {
+      void loadIllustrationBundle(selectedParagraph);
+    }
+  }, [
+    selectedParagraph?.chapterId,
+    selectedParagraph?.paragraphIndex,
+    voicePanelOpen,
+    paragraphCommunityOpen,
+    illustrationCreatorOpen
+  ]);
 
   function selectParagraph(paragraph: TextSegment[], paragraphIndex: number) {
     clearLongPressTimer();
+    window.getSelection()?.removeAllRanges();
     const draft = paragraphToText(paragraph);
     const range: TextRange = {
       startParagraphIndex: paragraphIndex,
@@ -3381,6 +4008,7 @@ function ReaderPage({
       draft,
       range
     });
+    window.requestAnimationFrame(() => window.getSelection()?.removeAllRanges());
   }
 
   function handleParagraphContextMenu(event: React.MouseEvent, paragraph: TextSegment[], paragraphIndex: number) {
@@ -3464,7 +4092,32 @@ function ReaderPage({
     const existingImage = paragraphImages[key];
     const collapsedImage = collapsedParagraphImages[key];
 
-    if (existingImage || collapsedImage) {
+    if (existingImage?.illustrationVersionId || collapsedImage?.illustrationVersionId) {
+      const bundle = illustrationBundles[dubbingBundleKey(selectedParagraph)] || await loadIllustrationBundle(selectedParagraph);
+      if (bundle && user) {
+        await api.cancelIllustrationAdoption(bundle.unit.id);
+      }
+      const platformImage = platformParagraphImages[key];
+      setCollapsedParagraphImages((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+      setParagraphImages((current) => {
+        const next = { ...current };
+        if (platformImage) next[key] = platformImage;
+        else delete next[key];
+        return next;
+      });
+      if (platformImage) {
+        setSelectedParagraph(null);
+        setNotice('已恢复一键生成插图');
+        window.setTimeout(() => setNotice(''), 1800);
+        return;
+      }
+    }
+
+    if ((existingImage && !existingImage.illustrationVersionId) || (collapsedImage && !collapsedImage.illustrationVersionId)) {
       if (collapsedImage) {
         expandParagraphImage(key);
       }
@@ -3484,6 +4137,10 @@ function ReaderPage({
         range: savedRange
       });
       setParagraphImages((prev) => ({
+        ...prev,
+        [key]: { ...result, chapterId: savedChapterId, range: savedRange, fromLibrary: false }
+      }));
+      setPlatformParagraphImages((prev) => ({
         ...prev,
         [key]: { ...result, chapterId: savedChapterId, range: savedRange, fromLibrary: false }
       }));
@@ -3536,6 +4193,28 @@ function ReaderPage({
     }
 
     try {
+      if (image.illustrationVersionId && user) {
+        const bundle = await api.illustrationUnitAtPosition(
+          'speckled-band',
+          image.chapterId,
+          image.range.startParagraphIndex
+        );
+        await api.cancelIllustrationAdoption(bundle.unit.id);
+        setCollapsedParagraphImages((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        setParagraphImages((prev) => {
+          const next = { ...prev };
+          if (platformParagraphImages[key]) next[key] = platformParagraphImages[key];
+          else delete next[key];
+          return next;
+        });
+        setNotice('已移除采用的插图');
+        window.setTimeout(() => setNotice(''), 1600);
+        return;
+      }
       if (image.mediaAssetId) {
         await api.deleteMediaAsset(image.mediaAssetId);
       }
@@ -3760,7 +4439,7 @@ function ReaderPage({
     const isMine = version.ownerUserId === user?.id;
     const kindLabel = version.kind === 'ai' ? 'AI 配音' : '真人演绎';
     const statusLabels: Record<DubbingStatus, string> = {
-      private: '私密',
+      private: '未发布',
       public: '公开',
       withdrawn: '已停止公开',
       moderated: '已下架',
@@ -3782,7 +4461,7 @@ function ReaderPage({
           </button>
           {version.adoptedByMe ? (
             <button type="button" onClick={() => void cancelDubbingAdoption(unit)}>
-              取消采用
+              使用官方配音
             </button>
           ) : version.status === 'public' ? (
             <button type="button" onClick={() => void adoptDubbingVersion(version, unit)}>
@@ -3828,7 +4507,7 @@ function ReaderPage({
                   {recipe ? (
                     <>
                       <p>
-                        MiniMax：{recipe.voiceSetting.emotion || '自动情绪'} · 语速 {recipe.voiceSetting.speed} ·
+                        情绪：{recipe.voiceSetting.emotion || '智能匹配'} · 语速 {recipe.voiceSetting.speed} ·
                         音量 {recipe.voiceSetting.volume} · 音调 {recipe.voiceSetting.pitch}
                       </p>
                       <p>
@@ -3847,7 +4526,7 @@ function ReaderPage({
             })}
             {(version.promptSnapshot.generationSettings || version.promptSnapshot.ttsRequests) && (
               <details className="raw-minimax-recipe">
-                <summary>查看完整 MiniMax 参数</summary>
+                <summary>查看生成参数</summary>
                 <pre>{JSON.stringify({
                   generationSettings: version.promptSnapshot.generationSettings,
                   requests: version.promptSnapshot.ttsRequests
@@ -3887,7 +4566,7 @@ function ReaderPage({
     });
 
     return (
-      <div className="annotated-script" aria-label="可插入 MiniMax 台词标记的原文">
+      <div className="annotated-script" aria-label="可插入台词标记的原文">
         {renderAnnotations(0)}
         {units.map((unit) => (
           <React.Fragment key={`${segment.segmentId}-${unit.start}`}>
@@ -3994,7 +4673,7 @@ function ReaderPage({
         </div>
 
         <details className="minimax-global-settings">
-          <summary>MiniMax 生成与音频设置</summary>
+          <summary>生成与音频设置</summary>
           <div className="ai-segment-fields">
             <label>
               模型
@@ -4093,7 +4772,7 @@ function ReaderPage({
                   aigcWatermark: event.target.checked
                 }))}
               />
-              MiniMax AIGC 音频标识
+              AI 音频标识
             </label>
           </div>
           <p className="platform-output-note">正式版本固定使用非流式、MP3、HEX 持久化输出；这些传输参数由平台管理。</p>
@@ -4229,8 +4908,8 @@ function ReaderPage({
         </div>
         {selectedOwnVoices.length > 0 && (
           <div className="voice-share-options">
-            <strong>发布时共享音色（可选）</strong>
-            <p>勾选后，其他创作者可以在自己的 AI 配音中使用该音色；系统不会展示原始音色 ID。</p>
+            <strong>共享所用音色</strong>
+            <p>共享后，其他创作者可在配音作品中使用该音色。</p>
             {selectedOwnVoices.map((voice) => (
               <label key={voice.id}>
                 <input
@@ -4246,12 +4925,11 @@ function ReaderPage({
           </div>
         )}
         <div className="ai-composer-actions">
-          <button className="ai-secondary-action" type="button" onClick={() => void saveAiDubbingVersion('private')} disabled={voiceSaving}>保存私密</button>
+          <button className="ai-secondary-action" type="button" onClick={() => void saveAiDubbingVersion('private')} disabled={voiceSaving}>保存作品</button>
           <button className="ai-primary-action" type="button" onClick={() => void saveAiDubbingVersion('public')} disabled={voiceSaving}>
-            {voiceSaving ? '生成中...' : '生成并公开新版本'}
+            {voiceSaving ? '生成中...' : '生成并发布'}
           </button>
         </div>
-        <small>未指定自创音色的角色继续使用平台默认音色。当前单元：{bundle.unit.sourceText.slice(0, 46)}...</small>
       </section>
     );
   }
@@ -4278,15 +4956,173 @@ function ReaderPage({
     );
   }
 
+  function renderIllustrationCreatorPanel() {
+    if (!selectedParagraph) return null;
+    const key = dubbingBundleKey(selectedParagraph);
+    const bundle = illustrationBundles[key];
+    const loading = illustrationLoadingKey === key;
+    const replacementTarget = bundle?.myVersions.find((version) => version.id === illustrationPublishTarget) || null;
+    const publicVersions = bundle?.myVersions.filter((version) => version.status === 'public') || [];
+    const illustrationPromptReady = illustrationPromptMode === 'official'
+      ? Boolean(officialIllustrationStyle && illustrationSceneDescription.trim())
+      : Boolean(illustrationFinalPrompt.trim());
+
+    return (
+      <div
+        className="selection-voice-panel ai-design-panel illustration-creator-panel"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="ai-design-panel-header">
+          <div>
+            <span>DIY ILLUSTRATION</span>
+            <strong>创作段落插图</strong>
+            <p>为当前段落构思画面，创作专属插图。</p>
+          </div>
+          <button type="button" className="ai-design-close" onClick={() => setIllustrationCreatorOpen(false)} aria-label="关闭插图创作器">×</button>
+        </header>
+        <div className="ai-design-panel-body">
+          <div className="voice-panel-tabs illustration-creator-tabs">
+            <button type="button" className={illustrationCreatorTab === 'create' ? 'active' : ''} onClick={() => setIllustrationCreatorTab('create')}>创作插图</button>
+            <button type="button" className={illustrationCreatorTab === 'mine' ? 'active' : ''} onClick={() => setIllustrationCreatorTab('mine')}>我的作品 {bundle ? `(${bundle.myVersions.length})` : ''}</button>
+          </div>
+          {loading && !bundle ? (
+            <div className="ai-design-loading"><span aria-hidden="true" /><p>正在准备当前段落与官方风格...</p></div>
+          ) : !bundle ? (
+            <p className="voice-panel-empty">当前段落暂不可用。</p>
+          ) : illustrationCreatorTab === 'create' ? (
+            <div className="illustration-create-form">
+              <div className="ai-design-source">
+                <span>当前段落</span>
+                <p>{bundle.unit.sourceText}</p>
+              </div>
+              <div className="illustration-mode-switch">
+                <button
+                  type="button"
+                  className={illustrationPromptMode === 'official' ? 'active' : ''}
+                  onClick={() => {
+                    setIllustrationPromptMode('official');
+                  }}
+                >官方风格</button>
+                <button
+                  type="button"
+                  className={illustrationPromptMode === 'free' ? 'active' : ''}
+                  onClick={() => {
+                    setIllustrationPromptMode('free');
+                    if (!illustrationFinalPrompt.trim()) {
+                      setIllustrationFinalPrompt(illustrationSceneDescription.slice(0, 1400));
+                    }
+                  }}
+                >自由创作</button>
+              </div>
+              {illustrationPromptMode === 'official' && (
+                <>
+                  <div className="illustration-official-style">
+                    <header>
+                      <strong>官方风格</strong>
+                      <span>官方插图风格 · V{officialIllustrationStyle?.versionNumber || 1}</span>
+                    </header>
+                    <p>{officialIllustrationStyle?.globalStylePrompt || '正在读取官方风格提示词...'}</p>
+                    <small>该风格提示词将在生成时自动追加。</small>
+                  </div>
+                  <label>
+                    画面描述
+                    <textarea
+                      value={illustrationSceneDescription}
+                      rows={5}
+                      maxLength={700}
+                      placeholder="描述画面中的人物、场景、构图、动作与光线。"
+                      onChange={(event) => setIllustrationSceneDescription(event.target.value)}
+                    />
+                    <small>{illustrationSceneDescription.length}/700</small>
+                  </label>
+                </>
+              )}
+              {illustrationPromptMode === 'free' && (
+                <label>
+                  创作提示词
+                  <textarea
+                    className="illustration-final-prompt"
+                    value={illustrationFinalPrompt}
+                    rows={9}
+                    maxLength={1400}
+                    placeholder="描述你希望呈现的画面、风格与视觉细节。"
+                    onChange={(event) => setIllustrationFinalPrompt(event.target.value)}
+                  />
+                  <small>{illustrationFinalPrompt.length}/1400</small>
+                </label>
+              )}
+              <div className="illustration-create-actions">
+                <span>16:9 横向插图</span>
+                <button type="button" className="ai-primary-action" disabled={illustrationGenerating || !illustrationPromptReady} onClick={() => void createIllustration()}>
+                  {illustrationGenerating ? '创作中...' : '生成插图'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="illustration-my-works">
+              {replacementTarget && (
+                <div className="illustration-replacement-picker">
+                  <strong>当前段落已发布 3 幅作品</strong>
+                  <p>请选择一幅已发布作品进行替换。原作品的互动数据将独立保留。</p>
+                  <div>
+                    {publicVersions.map((version) => (
+                      <button key={version.id} type="button" onClick={() => void changeIllustrationStatus(replacementTarget, 'public', version.id)}>
+                        <img src={version.imageUrl} alt="" /><span>替换此作品</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => setIllustrationPublishTarget(null)}>暂不发布</button>
+                </div>
+              )}
+              {bundle.myVersions.length === 0 ? (
+                <div className="paragraph-community-empty"><strong>暂无插图作品</strong><p>完成创作后，作品将在这里集中展示。</p></div>
+              ) : bundle.myVersions.map((version) => (
+                <div key={version.id} className="illustration-my-work-row">
+                  <IllustrationWorkCard
+                    version={version}
+                    user={user}
+                    compact
+                    onRequireLogin={() => setPage('login')}
+                    onLike={toggleIllustrationLike}
+                    onAdopt={(item) => item.adoptedByMe ? restoreOneClickIllustration(bundle.unit) : adoptIllustrationVersion(item)}
+                    onWithdraw={(item) => changeIllustrationStatus(item, 'withdrawn')}
+                    onReport={reportIllustrationVersion}
+                    onCommentCount={() => { void loadIllustrationBundle(selectedParagraph); }}
+                  />
+                  <div className="illustration-my-work-management">
+                    {version.status === 'private' && <button type="button" onClick={() => publishIllustration(version, bundle)}>发布作品</button>}
+                    {version.status === 'public' && <button type="button" onClick={() => void changeIllustrationStatus(version, 'withdrawn')}>撤回作品</button>}
+                    {version.status === 'withdrawn' && <button type="button" onClick={() => publishIllustration(version, bundle)}>重新发布</button>}
+                    {version.status !== 'public' && <button type="button" onClick={() => {
+                      if (window.confirm('确定删除这幅作品吗？')) void changeIllustrationStatus(version, 'deleted');
+                    }}>删除</button>}
+                    {version.adoptedByMe && <button type="button" onClick={() => void restoreOneClickIllustration(bundle.unit)}>使用官方插图</button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {illustrationError && <p className="form-error illustration-error">{illustrationError}</p>}
+        </div>
+      </div>
+    );
+  }
+
   function renderParagraphCommunityPanel() {
     if (!selectedParagraph) return null;
     const key = dubbingBundleKey(selectedParagraph);
     const bundle = dubbingBundles[key];
-    const loading = voiceLoadingKey === key;
+    const illustrationBundle = illustrationBundles[key];
+    const loading = paragraphCommunityKind === 'dubbing'
+      ? voiceLoadingKey === key
+      : illustrationLoadingKey === key;
     const publicVersions = (bundle?.versions || []).filter((version) =>
       version.status === 'public' &&
       (paragraphCommunityTab === 'all' || version.kind === paragraphCommunityTab)
     );
+    const publicIllustrations = (illustrationBundle?.versions || []).filter((version) => version.status === 'public');
+    const activeUnit = paragraphCommunityKind === 'dubbing' ? bundle?.unit : illustrationBundle?.unit;
 
     return (
       <div
@@ -4297,8 +5133,8 @@ function ReaderPage({
         <header className="ai-design-panel-header">
           <div>
             <span>CREATION SQUARE</span>
-            <strong>当前段落的创作广场</strong>
-            <p>试听其他创作者为这段原文公开的真人演绎和 AI 配音。</p>
+            <strong>当前段落创作</strong>
+            <p>探索其他读者对当前段落的声音与画面表达。</p>
           </div>
           <button
             type="button"
@@ -4311,41 +5147,56 @@ function ReaderPage({
         </header>
 
         <div className="ai-design-panel-body">
+          <div className="paragraph-community-kind-tabs">
+            <button type="button" className={paragraphCommunityKind === 'dubbing' ? 'active' : ''} onClick={() => setParagraphCommunityKind('dubbing')}>配音</button>
+            <button type="button" className={paragraphCommunityKind === 'illustration' ? 'active' : ''} onClick={() => setParagraphCommunityKind('illustration')}>插图</button>
+          </div>
           {loading ? (
             <div className="ai-design-loading">
               <span aria-hidden="true" />
-              <p>正在读取这段原文的公开创作...</p>
+              <p>正在载入段落作品...</p>
             </div>
-          ) : !bundle ? (
-            <p className="voice-panel-empty">暂时无法读取这个段落的创作。</p>
+          ) : !activeUnit ? (
+            <p className="voice-panel-empty">当前段落作品暂不可用。</p>
           ) : (
             <>
               <div className="ai-design-source paragraph-community-source">
                 <span>当前段落</span>
-                <p>{bundle.unit.sourceText}</p>
+                <p>{activeUnit.sourceText}</p>
               </div>
-              <div className="voice-panel-tabs paragraph-community-tabs">
-                {([['all', '全部'], ['ai', 'AI 配音'], ['human', '真人配音']] as const).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={paragraphCommunityTab === value ? 'active' : ''}
-                    onClick={() => setParagraphCommunityTab(value)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="voice-panel-section paragraph-community-list">
-                {publicVersions.length > 0 ? (
-                  publicVersions.map((version) => renderDubbingVersionCard(version, bundle.unit))
-                ) : (
-                  <div className="paragraph-community-empty">
-                    <strong>这个分类还没有公开作品</strong>
-                    <p>你可以关闭广场，使用“我来配音”或“我来设计 AI 配音”发布第一份创作。</p>
+              {paragraphCommunityKind === 'dubbing' && bundle ? (
+                <>
+                  <div className="voice-panel-tabs paragraph-community-tabs">
+                    {([['all', '全部'], ['ai', 'AI 配音'], ['human', '真人配音']] as const).map(([value, label]) => (
+                      <button key={value} type="button" className={paragraphCommunityTab === value ? 'active' : ''} onClick={() => setParagraphCommunityTab(value)}>{label}</button>
+                    ))}
                   </div>
-                )}
-              </div>
+                  <div className="voice-panel-section paragraph-community-list">
+                    {publicVersions.length > 0 ? publicVersions.map((version) => renderDubbingVersionCard(version, bundle.unit)) : (
+                      <div className="paragraph-community-empty"><strong>暂无公开作品</strong><p>创作并发布你的段落配音。</p></div>
+                    )}
+                  </div>
+                </>
+              ) : illustrationBundle ? (
+                <div className="paragraph-illustration-community-list">
+                  {publicIllustrations.length > 0 ? publicIllustrations.map((version) => (
+                    <IllustrationWorkCard
+                      key={version.id}
+                      version={version}
+                      user={user}
+                      compact
+                      onRequireLogin={() => setPage('login')}
+                      onLike={toggleIllustrationLike}
+                      onAdopt={adoptIllustrationVersion}
+                      onWithdraw={(item) => changeIllustrationStatus(item, 'withdrawn')}
+                      onReport={reportIllustrationVersion}
+                      onCommentCount={() => { void loadIllustrationBundle(selectedParagraph); }}
+                    />
+                  )) : (
+                    <div className="paragraph-community-empty"><strong>暂无公开插图</strong><p>创作并发布你的段落插图。</p></div>
+                  )}
+                </div>
+              ) : null}
             </>
           )}
         </div>
@@ -4372,7 +5223,7 @@ function ReaderPage({
           <div>
             <span>AI DUBBING DESIGN</span>
             <strong>我来设计 AI 配音</strong>
-            <p>按句调整表演方式，角色音色始终保持不变。</p>
+            <p>逐句打磨语气、节奏与情绪，完成整段配音。</p>
           </div>
           <button type="button" className="ai-design-close" onClick={closeAiDesignMenu} aria-label="关闭 AI 配音设计">
             ×
@@ -4385,7 +5236,7 @@ function ReaderPage({
             <p>正在准备这段台词...</p>
           </div>
         ) : !bundle ? (
-          <p className="voice-panel-empty">暂时无法读取这个段落的配音。</p>
+          <p className="voice-panel-empty">当前段落配音暂不可用。</p>
         ) : (
           <div className="ai-design-panel-body">
             <div className="ai-design-source">
@@ -4399,7 +5250,7 @@ function ReaderPage({
                 <summary>
                   <div>
                     <strong>我的配音版本</strong>
-                    <small>{myVersions.length} 个私密或公开版本</small>
+                    <small>{myVersions.length} 个未发布或已发布版本</small>
                   </div>
                   <span>管理</span>
                 </summary>
@@ -4677,7 +5528,7 @@ function ReaderPage({
                 onPointerUp={clearLongPressTimer}
                 onPointerCancel={clearLongPressTimer}
                 onPointerLeave={clearLongPressTimer}
-                title="长按或右键选取段落，拖动两端符号调整范围"
+                title="长按或右键选取完整段落"
               >
                 {renderParagraphWithMedia(paragraph, paragraphIndex)}
               </p>
@@ -4697,7 +5548,7 @@ function ReaderPage({
                 <section className="paragraph-comments" aria-label={`第 ${paragraphIndex + 1} 段评论`}>
                   {commentsLoading && <p className="comment-status">正在加载评论…</p>}
                   {!commentsLoading && comments.length === 0 && (
-                    <p className="comment-status">还没有评论，来留下第一条想法吧。</p>
+                    <p className="comment-status">暂无评论，欢迎参与讨论。</p>
                   )}
                   {comments.map((comment) => (
                     <article className="paragraph-comment" key={comment.id}>
@@ -4767,45 +5618,34 @@ function ReaderPage({
               ))}
               <button
                 type="button"
-                className="selection-handle selection-handle-start"
+                className="selection-handle selection-handle-start selection-handle-fixed"
                 style={{
                   top: `${selectionLayout.startHandle.y}px`,
                   left: `${selectionLayout.startHandle.x}px`,
                   height: `${selectionLayout.startHandle.height}px`
                 }}
-                onPointerDown={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  setDraggingHandle('start');
-                }}
-                aria-label="拖动调整选取起点"
+                tabIndex={-1}
+                aria-hidden="true"
               />
               <button
                 type="button"
-                className="selection-handle selection-handle-end"
+                className="selection-handle selection-handle-end selection-handle-fixed"
                 style={{
                   top: `${selectionLayout.endHandle.y}px`,
                   left: `${selectionLayout.endHandle.x}px`,
                   height: `${selectionLayout.endHandle.height}px`
                 }}
-                onPointerDown={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  setDraggingHandle('end');
-                }}
-                aria-label="拖动调整选取终点"
+                tabIndex={-1}
+                aria-hidden="true"
               />
-              {!draggingHandle && (
-                <div
-                  className="selection-toolbar"
-                  style={{
-                    top: `${selectionLayout.toolbar.top}px`,
-                    left: `${selectionLayout.toolbar.left}px`,
-                    width: `${selectionLayout.toolbar.width}px`
-                  }}
-                >
+              <div
+                className="selection-toolbar"
+                style={{
+                  top: `${selectionLayout.toolbar.top}px`,
+                  left: `${selectionLayout.toolbar.left}px`,
+                  width: `${selectionLayout.toolbar.width}px`
+                }}
+              >
                   <button
                     type="button"
                     onClick={generateParagraphImage}
@@ -4815,10 +5655,13 @@ function ReaderPage({
                   </button>
                   <button
                     type="button"
-                    onClick={generateParagraphSpeech}
-                    disabled={imageGenerating || speechGenerating}
+                    className={illustrationCreatorOpen ? 'selection-menu-button active' : 'selection-menu-button'}
+                    aria-expanded={illustrationCreatorOpen}
+                    onClick={() => illustrationCreatorOpen ? setIllustrationCreatorOpen(false) : void openIllustrationCreator()}
+                    disabled={imageGenerating || speechGenerating || illustrationGenerating}
                   >
-                    {oneClickSpeechGenerating ? '生成中...' : '一键生成 AI 配音'}
+                    <span>我来创作插图</span>
+                    <span className="selection-menu-chevron" aria-hidden="true">›</span>
                   </button>
                   <button
                     type="button"
@@ -4831,6 +5674,8 @@ function ReaderPage({
                       }
                       closeVoiceDesigner();
                       closeAiDesignMenu();
+                      setIllustrationCreatorOpen(false);
+                      setParagraphCommunityKind('dubbing');
                       setParagraphCommunityTab('all');
                       setParagraphCommunityOpen(true);
                     }}
@@ -4838,6 +5683,13 @@ function ReaderPage({
                   >
                     <span>创作广场</span>
                     <span className="selection-menu-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generateParagraphSpeech}
+                    disabled={imageGenerating || speechGenerating || illustrationGenerating}
+                  >
+                    {oneClickSpeechGenerating ? '生成中...' : '一键生成 AI 配音'}
                   </button>
                   <button
                     type="button"
@@ -4858,6 +5710,7 @@ function ReaderPage({
                         return;
                       }
                       setParagraphCommunityOpen(false);
+                      setIllustrationCreatorOpen(false);
                       setVoicePanelOpen(false);
                       openVoiceDesigner();
                     }}
@@ -4877,6 +5730,7 @@ function ReaderPage({
                       }
                       closeVoiceDesigner();
                       setParagraphCommunityOpen(false);
+                      setIllustrationCreatorOpen(false);
                       void startAiDubbingCreation();
                     }}
                     disabled={imageGenerating || speechGenerating}
@@ -4884,13 +5738,14 @@ function ReaderPage({
                     <span>我来设计 AI 配音</span>
                     <span className="selection-menu-chevron" aria-hidden="true">›</span>
                   </button>
-                  {paragraphCommunityOpen
-                    ? renderParagraphCommunityPanel()
-                    : voiceDesignerOpen
-                      ? renderVoiceDesignerPanel()
-                      : voicePanelOpen && renderVoicePanel()}
-                </div>
-              )}
+                  {illustrationCreatorOpen
+                    ? renderIllustrationCreatorPanel()
+                    : paragraphCommunityOpen
+                      ? renderParagraphCommunityPanel()
+                      : voiceDesignerOpen
+                        ? renderVoiceDesignerPanel()
+                        : voicePanelOpen && renderVoicePanel()}
+              </div>
             </div>
           )}
         </article>
@@ -5002,7 +5857,7 @@ function ReaderPage({
                 </div>
 
                 {collectedClues.length === 0 ? (
-                  <p className="empty-bag">还没有证物。阅读正文时点击可疑细节即可收入证物袋。</p>
+                  <p className="empty-bag">暂无证物。点击正文中的可疑细节即可收集。</p>
                 ) : (
                   <div className="clue-board-list">
                     {collectedClues.map(({ clue, record }) => {

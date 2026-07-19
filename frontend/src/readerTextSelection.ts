@@ -274,8 +274,31 @@ export function computeSelectionLayout(bookPage: HTMLElement, range: TextRange):
   }
 
   const pageRect = bookPage.getBoundingClientRect();
-  const rects = Array.from(domRange.getClientRects())
-    .filter((rect) => rect.width > 0 && rect.height > 0)
+  const rawRects = Array.from(domRange.getClientRects()).filter(
+    (rect) => rect.width > 0 && rect.height > 0
+  );
+  const visibleRects = rawRects.filter((rect, rectIndex) => {
+    return !rawRects.some((candidate, candidateIndex) => {
+      if (candidateIndex === rectIndex) return false;
+
+      const tolerance = 0.75;
+      const containsRect =
+        candidate.left <= rect.left + tolerance &&
+        candidate.top <= rect.top + tolerance &&
+        candidate.right >= rect.right - tolerance &&
+        candidate.bottom >= rect.bottom - tolerance;
+      if (!containsRect) return false;
+
+      const sameGeometry =
+        Math.abs(candidate.left - rect.left) <= tolerance &&
+        Math.abs(candidate.top - rect.top) <= tolerance &&
+        Math.abs(candidate.right - rect.right) <= tolerance &&
+        Math.abs(candidate.bottom - rect.bottom) <= tolerance;
+
+      return !sameGeometry || candidateIndex < rectIndex;
+    });
+  });
+  const rects = visibleRects
     .map((rect) => ({
       top: rect.top - pageRect.top,
       left: rect.left - pageRect.left,

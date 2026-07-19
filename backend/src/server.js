@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
-import { chapters, clues } from './data.js';
+import { chapters, clues, getParagraphContext } from './data.js';
 import {
   createMediaAsset,
   createParagraphComment,
@@ -44,6 +44,7 @@ import {
   synthesizeSpeech
 } from './services/minimax.js';
 import {
+  generateDiyParagraphIllustration,
   generateParagraphIllustration,
   getImageDebugInfo,
   regenerateBookStyle
@@ -69,6 +70,7 @@ import {
 } from './content-units.js';
 import { communityStore } from './community-store.js';
 import { coverStore } from './cover-store.js';
+import { illustrationStore } from './illustration-store.js';
 import { getPreparedDubbingPlan } from './prepared-dubbing-plans.js';
 import { buildCoverPrompt } from './services/coverImage.js';
 import { ensureBookStyle } from './services/bookImageStyle.js';
@@ -722,7 +724,13 @@ app.get('/api/media/assets', optionalAuth, async (req, res) => {
       userId: userId ? String(userId) : undefined
     });
 
-    res.json({ assets: assets.filter((asset) => !isClueImageAsset(asset)) });
+    res.json({
+      assets: assets.filter(
+        (asset) =>
+          !isClueImageAsset(asset) &&
+          metadataValue(asset, 'generationType') !== 'diy-paragraph-image'
+      )
+    });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Failed to list media assets' });
   }
@@ -788,11 +796,23 @@ app.delete('/api/media/assets/:id', optionalAuth, async (req, res) => {
 function requireContentUnit(unitId) {
   const unit = getContentUnit(unitId);
   if (!unit) {
-    const error = new Error('Standard dubbing unit not found');
+    const error = new Error('Standard paragraph unit not found');
     error.statusCode = 404;
     throw error;
   }
   return unit;
+}
+
+async function ensureOfficialIllustrationStyle(articleId = 'speckled-band') {
+  const { style } = await ensureBookStyle();
+  return illustrationStore.ensureOfficialStyle({
+    articleId,
+    name: '官方插图风格 V1',
+    globalStylePrompt: style.global_style_prompt,
+    globalNegativePrompt: style.global_negative_prompt || '',
+    styleProfile: style.style_profile_cn || {},
+    usageNotes: style.usage_notes || ''
+  });
 }
 
 function versionVisibility(value) {
@@ -1279,6 +1299,303 @@ app.post('/api/dubbing/versions/:versionId/reports', requireAuth, async (req, re
     res.status(201).json({ report });
   } catch (error) {
     sendRouteError(res, error, 'Failed to report dubbing version');
+  }
+});
+
+app.get('/api/illustrations/styles/official', optionalAuth, async (req, res) => {
+  try {
+    const articleId = String(req.query.articleId || 'speckled-band');
+    const style = await ensureOfficialIllustrationStyle(articleId);
+    res.json({ style });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to load the official illustration style');
+  }
+});
+
+app.get('/api/illustrations/community', optionalAuth, async (req, res) => {
+  try {
+    const scope = String(req.query.scope || 'all');
+    if (!['all', 'mine'].includes(scope)) {
+      res.status(400).json({ error: 'Unsupported illustration community scope' });
+      return;
+    }
+    const versions = await illustrationStore.listCommunityVersions({
+      articleId: String(req.query.articleId || ''),
+      unitId: String(req.query.unitId || ''),
+      currentUserId: req.user?.id || '',
+      sort: String(req.query.sort || 'popular'),
+      scope,
+      limit: normalizeInteger(req.query.limit) || 60,
+      offset: normalizeInteger(req.query.offset) || 0
+    });
+    res.json({ versions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to load the illustration community');
+  }
+});
+
+app.get('/api/illustrations/unit-at-position', optionalAuth, async (req, res) => {
+  try {
+    const unit = getContentUnitByPosition({
+      articleId: String(req.query.articleId || 'speckled-band'),
+      chapterId: String(req.query.chapterId || ''),
+      paragraphIndex: normalizeInteger(req.query.paragraphIndex)
+    });
+    if (!unit) {
+      res.status(404).json({ error: 'Standard paragraph unit not found' });
+      return;
+    }
+    const versions = await illustrationStore.listVersionsForUnit(unit.id, req.user?.id || '');
+    const myVersions = req.user
+      ? await illustrationStore.listMyVersions({ ownerUserId: req.user.id, unitId: unit.id })
+      : [];
+    res.json({ unit: toPublicContentUnit(unit), versions, myVersions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to locate the illustration paragraph');
+  }
+});
+
+app.get('/api/illustrations/units/:unitId/versions', optionalAuth, async (req, res) => {
+  try {
+    const unit = requireContentUnit(req.params.unitId);
+    const versions = await illustrationStore.listVersionsForUnit(unit.id, req.user?.id || '');
+    const myVersions = req.user
+      ? await illustrationStore.listMyVersions({ ownerUserId: req.user.id, unitId: unit.id })
+      : [];
+    res.json({ unit: toPublicContentUnit(unit), versions, myVersions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to list illustration versions');
+  }
+});
+
+app.get('/api/illustrations/adoptions', optionalAuth, async (req, res) => {
+  try {
+    const versions = req.user
+      ? await illustrationStore.listAdoptedVersions({
+          userId: req.user.id,
+          articleId: String(req.query.articleId || 'speckled-band'),
+          chapterId: req.query.chapterId ? String(req.query.chapterId) : ''
+        })
+      : [];
+    res.json({ versions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to list adopted illustrations');
+  }
+});
+
+app.post('/api/illustrations/units/:unitId/versions', requireAuth, async (req, res) => {
+  let persisted = null;
+  try {
+    const unit = requireContentUnit(req.params.unitId);
+    const promptMode = String(req.body.promptMode || '');
+    const finalPrompt = String(req.body.finalPrompt ?? '');
+    if (!['official', 'free'].includes(promptMode)) {
+      res.status(400).json({ error: 'promptMode must be official or free' });
+      return;
+    }
+    if (!finalPrompt.trim() || finalPrompt.length > 1400) {
+      res.status(400).json({ error: 'finalPrompt must contain 1-1400 characters' });
+      return;
+    }
+
+    let styleVersion = null;
+    if (promptMode === 'official') {
+      const requestedStyleId = String(req.body.styleVersionId || '');
+      styleVersion = requestedStyleId
+        ? await illustrationStore.getStyleVersion(requestedStyleId)
+        : await ensureOfficialIllustrationStyle(unit.articleId);
+      if (!styleVersion || styleVersion.articleId !== unit.articleId) {
+        res.status(400).json({ error: 'A valid official style version for this book is required' });
+        return;
+      }
+    }
+
+    const generated = await generateDiyParagraphIllustration({ finalPrompt });
+    persisted = await persistGeneratedImage({
+      req,
+      sourceUrl: generated.imageUrl,
+      prompt: generated.prompt,
+      sourceText: unit.sourceText,
+      model: generated.model,
+      metadata: {
+        traceId: generated.traceId,
+        generationType: 'diy-paragraph-image',
+        unitId: unit.id,
+        promptMode,
+        styleVersionId: styleVersion?.id || null,
+        aspectRatio: '16:9'
+      },
+      position: {
+        articleId: unit.articleId,
+        chapterId: unit.chapterId,
+        paragraphIndex: unit.paragraphIndex,
+        range: unit.range
+      },
+      userId: req.user.id
+    });
+    const version = await illustrationStore.createVersion({
+      ownerUserId: req.user.id,
+      unitId: unit.id,
+      articleId: unit.articleId,
+      chapterId: unit.chapterId,
+      paragraphIndex: unit.paragraphIndex,
+      imageUrl: persisted.imageUrl,
+      mediaAssetId: persisted.mediaAssetId,
+      promptMode,
+      finalPrompt,
+      styleVersionId: styleVersion?.id || null,
+      model: generated.model,
+      sourceText: unit.sourceText,
+      sourceHash: unit.sourceHash
+    });
+    res.status(201).json({ unit: toPublicContentUnit(unit), version, traceId: generated.traceId });
+  } catch (error) {
+    await cleanUpPersistedImage(persisted);
+    sendRouteError(res, error, 'Illustration generation failed');
+  }
+});
+
+app.patch('/api/illustrations/versions/:versionId/status', requireAuth, async (req, res) => {
+  try {
+    const status = String(req.body.status || '');
+    if (!['public', 'withdrawn', 'deleted'].includes(status)) {
+      res.status(400).json({ error: 'Unsupported illustration status' });
+      return;
+    }
+    const version = await illustrationStore.setVersionStatus(
+      req.params.versionId,
+      req.user.id,
+      status,
+      String(req.body.replaceVersionId || '')
+    );
+    if (!version) {
+      res.status(404).json({ error: 'Illustration version not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    if (error?.code === 'PUBLIC_VERSION_LIMIT') {
+      res.status(409).json({
+        error: error.message,
+        code: error.code,
+        publicVersionIds: error.publicVersionIds || []
+      });
+      return;
+    }
+    sendRouteError(res, error, 'Failed to update illustration status');
+  }
+});
+
+app.put('/api/illustrations/units/:unitId/adoption', requireAuth, async (req, res) => {
+  try {
+    const unit = requireContentUnit(req.params.unitId);
+    const version = await illustrationStore.adoptVersion({
+      versionId: String(req.body.versionId || ''),
+      userId: req.user.id,
+      unitId: unit.id
+    });
+    if (!version) {
+      res.status(400).json({ error: 'An available illustration from this paragraph is required' });
+      return;
+    }
+    res.json({ unit: toPublicContentUnit(unit), version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to adopt illustration');
+  }
+});
+
+app.delete('/api/illustrations/units/:unitId/adoption', requireAuth, async (req, res) => {
+  try {
+    const unit = requireContentUnit(req.params.unitId);
+    const removed = await illustrationStore.clearAdoption({ userId: req.user.id, unitId: unit.id });
+    res.json({ ok: true, removed });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to restore the one-click illustration');
+  }
+});
+
+app.post('/api/illustrations/versions/:versionId/like', requireAuth, async (req, res) => {
+  try {
+    const version = await illustrationStore.setLike(req.params.versionId, req.user.id, true);
+    if (!version) {
+      res.status(404).json({ error: 'Public illustration version not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to like illustration');
+  }
+});
+
+app.delete('/api/illustrations/versions/:versionId/like', requireAuth, async (req, res) => {
+  try {
+    const version = await illustrationStore.setLike(req.params.versionId, req.user.id, false);
+    if (!version) {
+      res.status(404).json({ error: 'Public illustration version not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to unlike illustration');
+  }
+});
+
+app.get('/api/illustrations/versions/:versionId/comments', optionalAuth, async (req, res) => {
+  try {
+    const comments = await illustrationStore.listComments(req.params.versionId);
+    res.json({ comments });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to load illustration comments');
+  }
+});
+
+app.post('/api/illustrations/versions/:versionId/comments', requireAuth, async (req, res) => {
+  try {
+    const comment = await illustrationStore.createComment({
+      versionId: req.params.versionId,
+      userId: req.user.id,
+      content: req.body.content
+    });
+    if (!comment) {
+      res.status(404).json({ error: 'Public illustration version not found' });
+      return;
+    }
+    res.status(201).json({ comment });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to publish illustration comment');
+  }
+});
+
+app.delete('/api/illustrations/comments/:commentId', requireAuth, async (req, res) => {
+  try {
+    const removed = await illustrationStore.deleteComment({
+      commentId: req.params.commentId,
+      userId: req.user.id
+    });
+    if (!removed) {
+      res.status(404).json({ error: 'Your illustration comment was not found' });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to delete illustration comment');
+  }
+});
+
+app.post('/api/illustrations/versions/:versionId/reports', requireAuth, async (req, res) => {
+  try {
+    const report = await illustrationStore.createReport({
+      versionId: req.params.versionId,
+      reporterUserId: req.user.id,
+      reason: req.body.reason
+    });
+    if (!report) {
+      res.status(404).json({ error: 'Public illustration version not found' });
+      return;
+    }
+    res.status(201).json({ report });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to report illustration');
   }
 });
 
@@ -1828,6 +2145,7 @@ app.post('/api/ai/cover', requireAuth, async (req, res) => {
 app.post('/api/ai/paragraph-image', optionalAuth, async (req, res) => {
   try {
     const { chapterId, paragraphIndex, targetSegment } = req.body;
+    const safeArticleId = String(req.body.articleId || 'speckled-band');
     const safeChapterId = String(chapterId ?? '').trim();
     const safeParagraphIndex = Number(paragraphIndex);
     const safeTargetSegment = String(targetSegment ?? '').trim();
@@ -1847,18 +2165,53 @@ app.post('/api/ai/paragraph-image', optionalAuth, async (req, res) => {
       return;
     }
 
+    const paragraphContext = getParagraphContext({
+      chapterId: safeChapterId,
+      paragraphIndex: safeParagraphIndex
+    });
+    if (!paragraphContext) {
+      res.status(404).json({ error: '未找到目标段落' });
+      return;
+    }
+
+    const fixedRange = {
+      startParagraphIndex: safeParagraphIndex,
+      startOffset: 0,
+      endParagraphIndex: safeParagraphIndex,
+      endOffset: paragraphContext.originalTarget.length
+    };
     const safeRange = normalizeRange(req.body.range);
+    if (safeTargetSegment !== paragraphContext.originalTarget.trim() || !rangesEqual(safeRange, fixedRange)) {
+      res.status(400).json({ error: '段落插图必须绑定当前标准段落的完整原文' });
+      return;
+    }
+
+    const unit = getContentUnitByPosition({
+      articleId: safeArticleId,
+      chapterId: safeChapterId,
+      paragraphIndex: safeParagraphIndex
+    });
+    if (!unit) {
+      res.status(404).json({ error: 'Standard paragraph unit not found' });
+      return;
+    }
+
     const cached = await findParagraphImageAsset({
+      articleId: safeArticleId,
       chapterId: safeChapterId,
       paragraphIndex: safeParagraphIndex,
-      range: safeRange,
+      range: fixedRange,
       sourceText: safeTargetSegment
     });
     if (cached) {
+      if (req.user) {
+        await illustrationStore.clearAdoption({ userId: req.user.id, unitId: unit.id });
+      }
       res.json(imageAssetResponse(cached));
       return;
     }
 
+    const officialStyle = await ensureOfficialIllustrationStyle(safeArticleId);
     const result = await generateParagraphIllustration({
       chapterId: safeChapterId,
       paragraphIndex: safeParagraphIndex,
@@ -1877,13 +2230,24 @@ app.post('/api/ai/paragraph-image', optionalAuth, async (req, res) => {
         componentType: result.componentType || null,
         promptCharCount: result.promptCharCount || null,
         styleInitializedNow: Boolean(result.styleInitializedNow),
-        generationType: 'paragraph-image'
+        generationType: 'paragraph-image',
+        styleVersionId: officialStyle.id,
+        aspectRatio: '16:9'
+      },
+      position: {
+        articleId: safeArticleId,
+        chapterId: safeChapterId,
+        paragraphIndex: safeParagraphIndex,
+        range: fixedRange
       }
     });
 
+    if (req.user) {
+      await illustrationStore.clearAdoption({ userId: req.user.id, unitId: unit.id });
+    }
     res.json({ ...result, ...persisted });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'MiniMax paragraph image generation failed' });
+    sendRouteError(res, error, 'MiniMax paragraph image generation failed');
   }
 });
 

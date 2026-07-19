@@ -19,7 +19,8 @@ export function ensureCommunitySchema() {
     for (const filename of [
       '002_community_dubbing.sql',
       '003_shared_voice_designs.sql',
-      '004_cover_community.sql'
+      '004_cover_community.sql',
+      '005_illustration_community.sql'
     ]) {
       const sql = await fs.readFile(path.resolve(__dirname, `../sql/${filename}`), 'utf8');
       for (const statement of splitStatements(sql)) {

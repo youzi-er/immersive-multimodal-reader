@@ -337,7 +337,7 @@ export function CoverStudio({
     if (!selectedCover?.finalPrompt) return;
     try {
       await navigator.clipboard.writeText(selectedCover.finalPrompt);
-      setMessage(`V${selectedCover.versionNumber} 的完整提示词已复制`);
+      setMessage(`V${selectedCover.versionNumber} 的创作提示词已复制`);
       setError('');
     } catch {
       setError('复制失败，请手动选择提示词文本');
@@ -436,7 +436,7 @@ export function CoverStudio({
             <div className="cover-generating-poster"><span /><strong>AI</strong></div>
             <span className="cover-kicker">GENERATING COVER</span>
             <h2>正在制作新封面</h2>
-            <p>MiniMax 正在根据人物关系、戏剧节点和摄影参数生成 2:3 画面，完成后会自动进入结果确认页。</p>
+            <p>正在构建人物、场景与视觉氛围，请稍候。</p>
             <div className="cover-generating-summary">
               <span>{parameters.focus}</span><span>{parameters.cast}</span><span>{parameters.relationship}</span><span>{parameters.storyBeat}</span>
               <span>{parameters.shotSize}</span><span>{parameters.cameraAngle}</span><span>{parameters.lighting}</span>
@@ -447,7 +447,7 @@ export function CoverStudio({
             <header className="cover-result-heading">
               <button type="button" onClick={() => setStudioStep('editor')}>← 返回调整</button>
               <div><span>GENERATION COMPLETE</span><h2>V{selectedCover.versionNumber} 生成完成</h2></div>
-              <small>{selectedCover.status === 'public' ? '已发布' : '私人版本'}</small>
+              <small>{selectedCover.status === 'public' ? '已发布' : '未发布'}</small>
             </header>
 
             <div className="cover-result-hero">
@@ -455,7 +455,7 @@ export function CoverStudio({
               <div>
                 <span className="cover-kicker">RESULT PREVIEW</span>
                 <h3>{selectedCover.bookTitle}</h3>
-                <p>图片已经保存到“我的版本”。采用和发布是两个独立选择，你可以只做其中一个，也可以稍后再决定。</p>
+                <p>封面已收录至“我的版本”，你可以选择使用或发布。</p>
                 <div className="cover-result-tags">
                   {Object.values(selectedCover.parameters || {}).filter(Boolean).map((value) => <span key={value}>{value}</span>)}
                 </div>
@@ -466,7 +466,7 @@ export function CoverStudio({
               <article className={selectedCover.activeByMe ? 'done' : ''}>
                 <span>01 · 个人使用</span>
                 <strong>{selectedCover.activeByMe ? '已采用为当前封面' : '采用这张封面？'}</strong>
-                <p>只会替换你自己书架和阅读器里的封面，不会自动公开。</p>
+                <p>设为书架与阅读器中的当前封面。</p>
                 <button type="button" disabled={selectedCover.activeByMe} onClick={() => void activate(selectedCover)}>
                   {selectedCover.activeByMe ? '已采用' : '采用为当前封面'}
                 </button>
@@ -474,9 +474,9 @@ export function CoverStudio({
               <article className={selectedCover.status === 'public' ? 'done' : ''}>
                 <span>02 · 创作社区</span>
                 <strong>{selectedCover.status === 'public' ? '已发布到社区' : '公开这张封面？'}</strong>
-                <p>其他读者可以查看完整提示词、收藏并以此继续二创。</p>
+                <p>发布后，其他读者可以查看创作提示词、收藏或基于作品继续创作。</p>
                 {selectedCover.status === 'public' ? (
-                  <button type="button" className="secondary" onClick={() => void setStatus(selectedCover, 'withdrawn')}>撤回发布</button>
+                  <button type="button" className="secondary" onClick={() => void setStatus(selectedCover, 'withdrawn')}>撤回作品</button>
                 ) : (
                   <button type="button" onClick={() => void setStatus(selectedCover, 'public')}>发布到社区</button>
                 )}
@@ -485,11 +485,11 @@ export function CoverStudio({
 
             <section className="cover-prompt-receipt">
               <header>
-                <div><span>MINIMAX PROMPT RECEIPT</span><strong>实际发送给 MiniMax 的完整提示词</strong></div>
+                <div><span>CREATIVE PROMPT</span><strong>创作提示词</strong></div>
                 <small>{selectedCover.finalPrompt.length} 字符</small>
               </header>
               <p>{selectedCover.finalPrompt}</p>
-              <button type="button" onClick={() => void copyFinalPrompt()}>复制完整提示词</button>
+              <button type="button" onClick={() => void copyFinalPrompt()}>复制创作提示词</button>
             </section>
 
             <div className="cover-result-footer">
@@ -504,7 +504,7 @@ export function CoverStudio({
             <div>
               <span className="cover-kicker">BOOK COVER LAB</span>
               <h2>{selectedCover ? `创作版本 V${selectedCover.versionNumber}` : '从一个画面开始'}</h2>
-              <p>图像负责氛围，书名与作者由系统清晰排版，不让乱码破坏封面。</p>
+              <p>塑造封面画面，并为书名与作者保留清晰的视觉层级。</p>
               {activeCover && <button type="button" className="cover-text-button" onClick={() => void restoreOfficial()}>恢复官方封面</button>}
             </div>
           </div>
@@ -515,18 +515,18 @@ export function CoverStudio({
                 <strong>快捷生成</strong>
               </button>
               <button type="button" className={mode === 'advanced' ? 'active' : ''} onClick={() => setMode('advanced')}>
-                <strong>自由</strong>
+                <strong>自由创作</strong>
               </button>
             </div>
 
             <label className="cover-prompt-field">
-              <span>{mode === 'guided' ? '描述演员、场景和戏剧瞬间' : '完整提示词'}</span>
+              <span>{mode === 'guided' ? '画面描述' : '创作提示词'}</span>
               <textarea
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
                 maxLength={mode === 'guided' ? 180 : 900}
                 rows={5}
-                placeholder={mode === 'guided' ? '补充地点、天气、道具或动作即可；若与导演参数冲突，会以导演参数为准…' : '直接输入最终发送给生图模型的完整提示词…'}
+                placeholder={mode === 'guided' ? '描述地点、天气、道具、人物动作与画面氛围…' : '描述你希望呈现的画面、风格与视觉细节…'}
               />
               <small>{prompt.length}/{mode === 'guided' ? 180 : 900}</small>
             </label>
@@ -544,7 +544,7 @@ export function CoverStudio({
                   </div>
                   <div className="cover-direction-grid">
                     <TagGroup label="主体角色" hint="决定谁是画面第一主角" values={PARAMETER_OPTIONS.focus} selected={parameters.focus} onSelect={(value) => setParameters((current) => ({ ...current, focus: value }))} />
-                    <TagGroup label="人物阵容" hint="严格限制可见人物数量" values={PARAMETER_OPTIONS.cast} selected={parameters.cast} onSelect={selectCast} />
+                    <TagGroup label="人物阵容" hint="确定画面中的人物数量" values={PARAMETER_OPTIONS.cast} selected={parameters.cast} onSelect={selectCast} />
                     <TagGroup label={parameters.cast === '单主角' ? '单人调度' : '关系调度'} hint={parameters.cast === '单主角' ? '只控制主角视线与动作' : '决定人物站位与视线'} values={availableRelationships} selected={parameters.relationship} onSelect={(value) => setParameters((current) => ({ ...current, relationship: value }))} />
                     <TagGroup label="戏剧节点" hint="决定截图发生在哪一秒" values={PARAMETER_OPTIONS.storyBeat} selected={parameters.storyBeat} onSelect={(value) => setParameters((current) => ({ ...current, storyBeat: value }))} />
                     <TagGroup label="表演强度" hint="决定演员的情绪状态" values={PARAMETER_OPTIONS.performance} selected={parameters.performance} onSelect={(value) => setParameters((current) => ({ ...current, performance: value }))} />
@@ -565,11 +565,10 @@ export function CoverStudio({
                 </details>
 
                 <div className="cover-hard-constraint">
-                  <span>本次硬约束</span>
-                  <strong>{visibleCount === 1 ? '仅 1 位可见人物、仅 1 张脸' : `严格 ${visibleCount} 位可见人物、${visibleCount} 张脸`}</strong>
+                  <span>画面设定</span>
+                  <strong>画面人物：{visibleCount} 位</strong>
                   <p>{parameters.focus}为视觉主体 · {parameters.storyBeat} · {parameters.shotSize}。描述框中与这些设置冲突的人物、剧情时刻和景别会被忽略。</p>
                 </div>
-                <p className="cover-director-note">生成优先级：人物数量与主体 → 戏剧节点 → 景别与机位 → 场景补充 → 光色。快捷生成会把前四项写成 MiniMax 必须优先遵守的硬约束。</p>
               </div>
             )}
 
@@ -582,7 +581,7 @@ export function CoverStudio({
 
             {remixedFromVersionId && (
               <div className="cover-remix-note">
-                正在进行灵感二创
+                正在基于社区作品创作
                 <button type="button" onClick={() => setRemixedFromVersionId(null)}>取消引用</button>
               </div>
             )}
@@ -597,7 +596,7 @@ export function CoverStudio({
               <small>{history.length} 个版本</small>
             </div>
             {loading ? <p className="cover-empty">正在读取版本…</p> : history.length === 0 ? (
-              <p className="cover-empty">第一张封面会自动保存在这里。</p>
+              <p className="cover-empty">暂无封面作品。</p>
             ) : (
               <div className="cover-history-grid">
                 {history.map((version) => (
@@ -620,7 +619,7 @@ export function CoverStudio({
             </select>
           </div>
           {communityLoading ? <p className="cover-empty">正在布置灵感墙…</p> : community.length === 0 ? (
-            <p className="cover-empty">还没有公开封面。你可以发布第一张。</p>
+            <p className="cover-empty">暂无公开封面。</p>
           ) : (
             <div className="cover-community-mini-grid">
               {community.map((version) => (
@@ -628,8 +627,8 @@ export function CoverStudio({
                   <CoverArtwork version={version} />
                   <div className="cover-community-card-body">
                     <strong>{version.displayName || version.username}</strong>
-                    <small>收藏 {version.collectionCount} · 二创 {version.remixCount}</small>
-                    <details><summary>完整提示词</summary><p>{version.finalPrompt}</p></details>
+                    <small>收藏 {version.collectionCount} · 衍生创作 {version.remixCount}</small>
+                    <details><summary>创作提示词</summary><p>{version.finalPrompt}</p></details>
                     <div>
                       <CoverLikeButton
                         version={version}
@@ -638,14 +637,14 @@ export function CoverStudio({
                         onToggle={() => void toggleLike(version)}
                       />
                       {version.ownedByMe ? (
-                        <button type="button" onClick={() => void setStatus(version, 'withdrawn')}>撤回</button>
+                        <button type="button" onClick={() => void setStatus(version, 'withdrawn')}>撤回作品</button>
                       ) : (
                         <>
                           <button type="button" className={version.collectedByMe ? 'active' : ''} onClick={() => void toggleCollection(version)}>{version.collectedByMe ? '已收藏' : '收藏'}</button>
                           <button type="button" onClick={() => void report(version)}>举报</button>
                         </>
                       )}
-                      <button type="button" className="remix" onClick={() => useAsInspiration(version)}>以此为灵感</button>
+                      <button type="button" className="remix" onClick={() => useAsInspiration(version)}>基于此作品创作</button>
                     </div>
                   </div>
                 </article>
