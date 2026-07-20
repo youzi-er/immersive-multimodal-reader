@@ -3472,6 +3472,36 @@ function ReaderPage({
     return typeof value === 'number' ? value : null;
   }
 
+  function currentRangeForSource(chapterId: string, range: TextRange, sourceText?: string | null): TextRange | null {
+    if (!sourceText) {
+      return range;
+    }
+
+    if (!chapter || chapter.id !== chapterId) {
+      return null;
+    }
+
+    const paragraph = chapter.paragraphs[range.startParagraphIndex];
+    if (paragraph && range.startParagraphIndex === range.endParagraphIndex) {
+      const currentText = paragraphToText(paragraph);
+      if (currentText.slice(range.startOffset, range.endOffset) === sourceText) {
+        return range;
+      }
+    }
+
+    const exactParagraphIndex = chapter.paragraphs.findIndex((item) => paragraphToText(item) === sourceText);
+    if (exactParagraphIndex < 0) {
+      return null;
+    }
+
+    return {
+      startParagraphIndex: exactParagraphIndex,
+      startOffset: 0,
+      endParagraphIndex: exactParagraphIndex,
+      endOffset: sourceText.length
+    };
+  }
+
   function mediaAssetPositionKey(asset: MediaLibraryAsset) {
     if (!asset.chapterId || !asset.range) {
       return null;
@@ -3490,13 +3520,18 @@ function ReaderPage({
       return null;
     }
 
+    const currentRange = currentRangeForSource(asset.chapterId, asset.range, asset.sourceText);
+    if (!currentRange) {
+      return null;
+    }
+
     const script = Array.isArray(asset.metadata?.script)
       ? (asset.metadata.script as ParagraphSpeechScriptLine[])
       : [];
 
     return {
       chapterId: asset.chapterId,
-      range: asset.range,
+      range: currentRange,
       audioUrl: asset.url,
       durationMs: metadataNumber(asset.metadata, 'durationMs'),
       segmentCount: metadataNumber(asset.metadata, 'segmentCount') ?? script.length,
@@ -3510,13 +3545,19 @@ function ReaderPage({
     };
   }
 
-  function audioFromDubbingVersion(version: DubbingVersion): RangeMedia<ParagraphSpeech> {
-    const range: TextRange = {
+  function audioFromDubbingVersion(version: DubbingVersion): RangeMedia<ParagraphSpeech> | null {
+    const savedRange: TextRange = {
       startParagraphIndex: version.paragraphIndex,
       startOffset: 0,
       endParagraphIndex: version.paragraphIndex,
       endOffset: version.sourceText.length
     };
+    const range = currentRangeForSource(version.chapterId, savedRange, version.sourceText);
+
+    if (!range) {
+      return null;
+    }
+
     return {
       chapterId: version.chapterId,
       range,
@@ -3632,6 +3673,9 @@ function ReaderPage({
         let resolvedAudios = { ...nextAudios };
         adoptedVersions.forEach((version) => {
           const audio = audioFromDubbingVersion(version);
+          if (!audio) {
+            return;
+          }
           resolvedAudios = replaceParagraphMedia(resolvedAudios, audio);
         });
 
@@ -4355,6 +4399,11 @@ function ReaderPage({
       await api.adoptDubbingVersion(unit.id, version.id);
       await loadDubbingBundle(selectedParagraph);
       const audio = audioFromDubbingVersion({ ...version, adoptedByMe: true });
+      if (!audio) {
+        setNotice('该配音与当前正文不匹配，已跳过显示');
+        window.setTimeout(() => setNotice(''), 2200);
+        return;
+      }
       setParagraphAudios((current) => replaceParagraphMedia(current, audio));
       setNotice('已用于我的阅读');
       window.setTimeout(() => setNotice(''), 1600);
