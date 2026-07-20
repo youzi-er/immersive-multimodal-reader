@@ -12,7 +12,6 @@ export type SelectionLayout = {
   toolbar: { top: number; left: number; width: number };
 };
 
-const SELECTION_TOOLBAR_HEIGHT = 44;
 const SELECTION_TOOLBAR_GAP = 8;
 
 export function rangeKey(chapterId: string, range: TextRange) {
@@ -334,11 +333,26 @@ export function computeSelectionLayout(bookPage: HTMLElement, range: TextRange):
     (max, rect) => Math.max(max, rect.left + rect.width),
     rects[0] ? rects[0].left + rects[0].width : 0
   );
+  const mobileToolbar = window.matchMedia('(max-width: 760px)').matches;
+  const toolbarHeight = mobileToolbar ? 64 : 44;
   const toolbarWidth = Math.max(boundsRight - boundsLeft, 168);
   const toolbarLeft = boundsLeft + (boundsRight - boundsLeft) / 2 - toolbarWidth / 2;
-  const toolbarTop = Math.max(
-    0,
-    (rects[0]?.top ?? startRect.top - pageRect.top) - SELECTION_TOOLBAR_HEIGHT - SELECTION_TOOLBAR_GAP
+  const firstSelectionTop = rects[0]?.top ?? startRect.top - pageRect.top;
+  const lastSelectionBottom = rects.reduce(
+    (max, rect) => Math.max(max, rect.top + rect.height),
+    firstSelectionTop
+  );
+  const viewportTopInPage = Math.max(0, -pageRect.top + 8);
+  const viewportBottomInPage = Math.max(
+    viewportTopInPage,
+    -pageRect.top + window.innerHeight - toolbarHeight - 8
+  );
+  const preferredToolbarTop = firstSelectionTop - toolbarHeight - SELECTION_TOOLBAR_GAP;
+  const toolbarTop = Math.min(
+    viewportBottomInPage,
+    preferredToolbarTop >= viewportTopInPage
+      ? preferredToolbarTop
+      : lastSelectionBottom + SELECTION_TOOLBAR_GAP
   );
 
   return {
