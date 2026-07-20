@@ -5779,19 +5779,24 @@ button:disabled {
     left: 8px !important;
     width: calc(100% - 16px) !important;
     max-width: none;
-    display: block;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: stretch;
+    gap: 3px;
     overflow: hidden;
     border-color: rgba(255, 255, 255, 0.08);
     border-radius: 16px;
     background:
       linear-gradient(135deg, rgba(53, 61, 64, 0.98), rgba(28, 42, 47, 0.98));
-    padding: 4px 22px 4px 4px;
+    padding: 4px;
     box-shadow: 0 12px 28px rgba(12, 22, 25, 0.24);
   }
 
   .selection-toolbar-actions {
     display: flex;
-    width: 100%;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
     flex-wrap: nowrap;
     justify-content: flex-start;
     gap: 0;
@@ -5834,27 +5839,29 @@ button:disabled {
   }
 
   .selection-toolbar > .selection-toolbar-more {
-    position: absolute;
-    top: 4px;
-    right: 2px;
-    bottom: 4px;
+    position: static;
     z-index: 2;
     display: grid;
-    width: 19px;
+    flex: 0 0 22px !important;
+    width: 22px;
+    min-width: 22px;
+    max-width: 22px;
     min-height: 46px;
+    align-self: stretch;
     place-items: center;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
+    box-sizing: border-box;
+    border: 1px solid rgba(244, 231, 205, 0.16);
+    border-radius: 8px 12px 12px 8px;
+    background: linear-gradient(180deg, #17272c, #0e1d21);
     padding: 0;
-    color: rgba(245, 241, 233, 0.9);
-    box-shadow: none;
+    color: #f3dfb6;
+    box-shadow: inset 1px 0 rgba(255, 255, 255, 0.04), -3px 0 8px rgba(8, 15, 17, 0.18);
   }
 
   .selection-toolbar-more span {
     transform: translateY(-1px);
     font-family: Georgia, serif;
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1;
   }
 
