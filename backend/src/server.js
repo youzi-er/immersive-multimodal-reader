@@ -1,5 +1,4 @@
 import dotenv from 'dotenv';
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -7,9 +6,6 @@ import cors from 'cors';
 import crypto from 'node:crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const officialIllustrationSelections = JSON.parse(
-  fs.readFileSync(path.resolve(__dirname, '../content/official-illustration-selections.json'), 'utf8')
-);
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import { applyClueManifest, chapters, clues, getClueOccurrence, getParagraphContext } from './data.js';
@@ -75,6 +71,10 @@ import {
 import { communityStore } from './community-store.js';
 import { coverStore } from './cover-store.js';
 import { illustrationStore } from './illustration-store.js';
+import {
+  ensureBundledOfficialIllustrationSlots,
+  officialIllustrationSelections
+} from './official-illustration-slots.js';
 import { clueImageStore } from './clue-image-store.js';
 import { officialClueCatalogStore } from './official-clue-catalog-store.js';
 import {
@@ -1458,6 +1458,9 @@ app.get('/api/illustrations/official-slots', optionalAuth, async (req, res) => {
   try {
     const articleId = String(req.query.articleId || 'speckled-band');
     const chapterId = req.query.chapterId ? String(req.query.chapterId) : '';
+    if (articleId === officialIllustrationSelections.articleId) {
+      await ensureBundledOfficialIllustrationSlots();
+    }
     const slots = await illustrationStore.listOfficialSlots({ articleId, chapterId });
     res.json({ slots });
   } catch (error) {
