@@ -69,6 +69,37 @@ button:disabled {
   color: #182231;
 }
 
+.top-nav-leading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-back {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(36, 81, 89, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.64);
+  padding: 7px 11px 7px 8px;
+  color: #31474d;
+}
+
+.nav-back span {
+  font-family: Georgia, serif;
+  font-size: 23px;
+  line-height: 0.7;
+}
+
+.nav-back em {
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
 .nav-brand span,
 .brand-mark {
   display: grid;
@@ -6088,6 +6119,14 @@ button:disabled {
     width: 34px;
     height: 34px;
     border-radius: 9px;
+  }
+
+  .top-nav:not(.reader-global-nav) .top-nav-leading {
+    width: 100%;
+  }
+
+  .top-nav:not(.reader-global-nav) .nav-back {
+    padding: 6px 9px 6px 6px;
   }
 
   .top-nav:not(.reader-global-nav) nav {

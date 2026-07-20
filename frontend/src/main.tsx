@@ -19,6 +19,17 @@ import './styles.css';
 type Page = 'home' | 'bookshelf' | 'reader' | 'community' | 'login' | 'register' | 'profile' | 'speech-debug';
 type CommunitySection = 'dubbing' | 'illustration' | 'clue' | 'cover';
 
+type AppHistoryState = {
+  caseReaderPage?: Page;
+  caseReaderDepth?: number;
+};
+
+const APP_PAGES: Page[] = ['home', 'bookshelf', 'reader', 'community', 'login', 'register', 'profile', 'speech-debug'];
+
+function isAppPage(value: unknown): value is Page {
+  return typeof value === 'string' && APP_PAGES.includes(value as Page);
+}
+
 type User = {
   id: string;
   username: string;
@@ -1069,7 +1080,11 @@ const api = {
 };
 
 function App() {
-  const [page, setPage] = useState<Page>('home');
+  const initialHistoryState = window.history.state as AppHistoryState | null;
+  const [page, setPageState] = useState<Page>(() =>
+    isAppPage(initialHistoryState?.caseReaderPage) ? initialHistoryState.caseReaderPage : 'home'
+  );
+  const pageRef = useRef(page);
   const [user, setUser] = useState<User | null>(() => {
     const saved = window.localStorage.getItem(USER_KEY);
     return saved ? JSON.parse(saved) : null;
@@ -1094,6 +1109,55 @@ function App() {
       content: '我是你的案情助手。你可以问我：目前有哪些证物？谁最可疑？这一段发生在哪里？'
     }
   ]);
+
+  const setPage = useCallback((nextPage: Page) => {
+    if (pageRef.current === nextPage) return;
+    const currentState = (window.history.state || {}) as AppHistoryState;
+    const currentDepth = Number.isFinite(currentState.caseReaderDepth) ? Number(currentState.caseReaderDepth) : 0;
+    const nextDepth = currentDepth + 1;
+    window.history.pushState(
+      { ...currentState, caseReaderPage: nextPage, caseReaderDepth: nextDepth },
+      '',
+      window.location.href
+    );
+    pageRef.current = nextPage;
+    setPageState(nextPage);
+  }, []);
+
+  const goBack = useCallback(() => {
+    const currentState = (window.history.state || {}) as AppHistoryState;
+    const currentDepth = Number.isFinite(currentState.caseReaderDepth) ? Number(currentState.caseReaderDepth) : 0;
+    if (currentDepth > 0) {
+      window.history.back();
+      return;
+    }
+    if (pageRef.current !== 'home') {
+      const nextState = { ...currentState, caseReaderPage: 'home' as Page, caseReaderDepth: 0 };
+      window.history.replaceState(nextState, '', window.location.href);
+      pageRef.current = 'home';
+      setPageState('home');
+    }
+  }, []);
+
+  useEffect(() => {
+    const currentState = (window.history.state || {}) as AppHistoryState;
+    const initialDepth = Number.isFinite(currentState.caseReaderDepth) ? Number(currentState.caseReaderDepth) : 0;
+    window.history.replaceState(
+      { ...currentState, caseReaderPage: pageRef.current, caseReaderDepth: initialDepth },
+      '',
+      window.location.href
+    );
+
+    const handlePopState = (event: PopStateEvent) => {
+      const nextState = event.state as AppHistoryState | null;
+      const nextPage = isAppPage(nextState?.caseReaderPage) ? nextState.caseReaderPage : 'home';
+      pageRef.current = nextPage;
+      setPageState(nextPage);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     api.chapters().then(setChapters);
@@ -1197,7 +1261,7 @@ function App() {
 
   return (
     <main>
-      <TopNav page={page} user={user} setPage={setPage} logout={logout} />
+      <TopNav page={page} user={user} setPage={setPage} goBack={goBack} logout={logout} />
 
       {page === 'home' && <HomePage user={user} setPage={setPage} activeCover={activeCover} />}
       {page === 'community' && (
@@ -1263,6 +1327,7 @@ function App() {
             messages={messages}
             setMessages={setMessages}
             setPage={setPage}
+            goBack={goBack}
             activeCover={activeCover}
             setActiveCover={setActiveCover}
             coverInspiration={coverInspiration}
@@ -1287,19 +1352,29 @@ function TopNav({
   page,
   user,
   setPage,
+  goBack,
   logout
 }: {
   page: Page;
   user: User | null;
   setPage: (page: Page) => void;
+  goBack: () => void;
   logout: () => void;
 }) {
   return (
     <header className={page === 'reader' ? 'top-nav reader-global-nav' : 'top-nav'}>
-      <button className="nav-brand" onClick={() => setPage('home')}>
-        <span>CR</span>
-        <strong>CaseReader</strong>
-      </button>
+      <div className="top-nav-leading">
+        {page !== 'home' && (
+          <button type="button" className="nav-back" onClick={goBack} aria-label="返回上一页">
+            <span aria-hidden="true">‹</span>
+            <em>返回</em>
+          </button>
+        )}
+        <button className="nav-brand" onClick={() => setPage('home')}>
+          <span>CR</span>
+          <strong>CaseReader</strong>
+        </button>
+      </div>
       <nav>
         <button className={page === 'home' ? 'active' : ''} onClick={() => setPage('home')}>
           首页
@@ -3258,6 +3333,7 @@ function ReaderPage({
   messages,
   setMessages,
   setPage,
+  goBack,
   activeCover,
   setActiveCover,
   coverInspiration,
@@ -3281,6 +3357,7 @@ function ReaderPage({
   messages: ChatMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   setPage: (page: Page) => void;
+  goBack: () => void;
   activeCover: CoverVersion | null;
   setActiveCover: (cover: CoverVersion | null) => void;
   coverInspiration: CoverVersion | null;
@@ -6070,7 +6147,7 @@ function ReaderPage({
         {mobileChromeOpen && (
           <>
             <div className="mobile-reader-topbar" aria-label="阅读导航">
-              <button type="button" onClick={() => setPage('bookshelf')} aria-label="返回书架">
+              <button type="button" onClick={goBack} aria-label="返回上一页">
                 <span aria-hidden="true">‹</span>
               </button>
               <strong>{chapter.title}</strong>

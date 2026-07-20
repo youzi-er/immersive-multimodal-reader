@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
+const OFFICIAL_COVER_IMAGE_URL = '/assets/speckled-band-official-cover-v38.jpg';
+
 export type CoverVersion = {
   id: string;
   projectId: string;
@@ -143,7 +145,7 @@ export function CoverArtwork({
   const coverSubtitle = version?.bookSubtitle || subtitle;
   return (
     <div className={`cover-artwork${version ? ' generated' : ' official'}${className ? ` ${className}` : ''}`}>
-      <img src={version?.imageUrl || '/assets/speckled-band-poster-v2.png'} alt={`${coverTitle}封面`} />
+      <img src={version?.imageUrl || OFFICIAL_COVER_IMAGE_URL} alt={`${coverTitle}封面`} />
       <div className="cover-artwork-shade" />
       <span className="cover-artwork-studio">CASE READER ORIGINAL</span>
       <span className="cover-artwork-author">{coverAuthor}</span>

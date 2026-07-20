@@ -8,6 +8,7 @@ const ignoredDirectoryNames = new Set(['.git', 'node_modules', 'dist', 'build', 
 const deployableMediaPattern = /\.(?:png|jpe?g|webp|gif|mp3|wav|ogg|m4a|mp4)$/i;
 const allowedPublicMedia = new Set([
   'frontend/public/assets/speckled-band-poster-v2.png',
+  'frontend/public/assets/speckled-band-official-cover-v38.jpg',
   'frontend/public/assets/official-illustrations/official-illustration-01-veiled-visitor.jpg',
   'frontend/public/assets/official-illustrations/official-illustration-02-sisters-final-moments.jpg',
   'frontend/public/assets/official-illustrations/official-illustration-03-royllott-at-the-door.jpg',
