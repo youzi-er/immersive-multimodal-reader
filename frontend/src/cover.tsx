@@ -156,6 +156,39 @@ export function CoverArtwork({
   );
 }
 
+export function CommunityLikeButton({
+  liked,
+  likeCount,
+  ownedByMe = false,
+  pending = false,
+  onToggle,
+  className = ''
+}: {
+  liked: boolean;
+  likeCount: number;
+  ownedByMe?: boolean;
+  pending?: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  const label = ownedByMe ? '自己的作品不可点赞' : liked ? '取消点赞' : '点赞';
+  return (
+    <button
+      type="button"
+      className={`cover-like-button${liked ? ' active' : ''}${ownedByMe ? ' owner' : ''}${className ? ` ${className}` : ''}`}
+      disabled={ownedByMe || pending}
+      aria-label={`${label}，当前 ${likeCount} 个赞`}
+      aria-pressed={ownedByMe ? undefined : liked}
+      title={ownedByMe ? '作者不能给自己的作品点赞' : label}
+      onClick={onToggle}
+    >
+      <span aria-hidden="true">{liked ? '♥' : '♡'}</span>
+      <em>{pending ? '处理中' : ownedByMe ? '赞' : liked ? '已赞' : '点赞'}</em>
+      <strong>{likeCount}</strong>
+    </button>
+  );
+}
+
 export function CoverLikeButton({
   version,
   ownedByMe = false,
@@ -167,21 +200,14 @@ export function CoverLikeButton({
   pending?: boolean;
   onToggle: () => void;
 }) {
-  const label = ownedByMe ? '自己的作品不可点赞' : version.likedByMe ? '取消点赞' : '点赞';
   return (
-    <button
-      type="button"
-      className={`cover-like-button${version.likedByMe ? ' active' : ''}${ownedByMe ? ' owner' : ''}`}
-      disabled={ownedByMe || pending}
-      aria-label={`${label}，当前 ${version.likeCount} 个赞`}
-      aria-pressed={ownedByMe ? undefined : version.likedByMe}
-      title={ownedByMe ? '作者不能给自己的作品点赞' : label}
-      onClick={onToggle}
-    >
-      <span aria-hidden="true">{version.likedByMe ? '♥' : '♡'}</span>
-      <em>{pending ? '处理中' : ownedByMe ? '赞' : version.likedByMe ? '已赞' : '点赞'}</em>
-      <strong>{version.likeCount}</strong>
-    </button>
+    <CommunityLikeButton
+      liked={version.likedByMe}
+      likeCount={version.likeCount}
+      ownedByMe={ownedByMe}
+      pending={pending}
+      onToggle={onToggle}
+    />
   );
 }
 

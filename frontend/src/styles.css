@@ -1444,6 +1444,18 @@ button:disabled {
 
 .reader-paragraph-block { position: relative; margin-bottom: 18px; }
 .reader-paragraph-block > .reader-paragraph { margin-bottom: 0; }
+.paragraph-audio-controls {
+  position: absolute;
+  top: 7px;
+  left: -24px;
+  z-index: 2;
+}
+.paragraph-audio-controls .inline-audio-play { margin: 0; }
+.paragraph-image-media {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
 .paragraph-comment-trigger {
   position: absolute; top: 3px; right: -30px; padding: 4px 7px;
   border: 1px solid rgba(180, 138, 82, 0.35); border-radius: 999px;
@@ -1937,6 +1949,97 @@ button:disabled {
   .voice-library-card {
     grid-template-columns: 1fr;
   }
+}
+
+/* Evidence creation and community */
+.community-hero.clue-square-hero {
+  background:
+    radial-gradient(circle at 82% 12%, rgba(194, 151, 79, .24), transparent 29%),
+    linear-gradient(135deg, #18262b, #29464c 58%, #6b5638);
+}
+
+.clue-community-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.clue-version-card {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(32, 45, 56, .1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .88);
+  box-shadow: 0 12px 34px rgba(30, 40, 48, .07);
+}
+
+.clue-version-card.adopted { border-color: rgba(36, 81, 89, .44); box-shadow: 0 0 0 2px rgba(36, 81, 89, .08); }
+.clue-version-image { position: relative; overflow: hidden; aspect-ratio: 4 / 3; background: #e8e5dd; }
+.clue-version-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.clue-version-image > span { position: absolute; left: 10px; bottom: 10px; border-radius: 999px; background: rgba(20, 28, 30, .72); padding: 5px 8px; color: #fff; font-size: 11px; backdrop-filter: blur(8px); }
+.clue-version-copy { display: grid; gap: 11px; padding: 15px; }
+.clue-version-copy > header { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
+.clue-version-copy blockquote { display: -webkit-box; overflow: hidden; margin: 0; color: #4f595e; font-family: Georgia, "Noto Serif SC", serif; font-size: 12px; line-height: 1.65; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.clue-version-meta { color: #78838a; font-size: 11px; }
+.clue-version-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; border-top: 1px solid rgba(32, 45, 56, .08); padding-top: 11px; }
+.clue-version-actions > button { border: 1px solid rgba(36, 81, 89, .14); border-radius: 8px; background: white; padding: 6px 8px; color: #42515a; font-size: 11px; }
+.clue-version-actions > button.active { border-color: #245159; background: #245159; color: white; }
+
+.clue-creator { display: grid; gap: 9px; margin-top: 11px; border-top: 1px solid rgba(32, 45, 56, .08); padding-top: 11px; }
+.clue-creator-toggle,
+.clue-open-community { border: 1px solid rgba(36, 81, 89, .18); border-radius: 9px; background: rgba(36, 81, 89, .07); padding: 8px 10px; color: #245159; font-size: 12px; font-weight: 800; }
+.clue-creator-body { display: grid; gap: 11px; }
+.clue-creator-body label { display: grid; gap: 6px; color: #36464d; font-size: 12px; font-weight: 800; }
+.clue-creator-body label > span { display: flex; justify-content: space-between; gap: 10px; }
+.clue-creator-body label small { color: #869096; font-weight: 500; }
+.clue-creator-body textarea { box-sizing: border-box; width: 100%; resize: vertical; border: 1px solid rgba(36, 81, 89, .16); border-radius: 9px; background: white; padding: 10px; color: #2d3742; font: inherit; font-size: 12px; line-height: 1.6; }
+.clue-creator-primary-actions,
+.clue-creator-tabs,
+.bag-heading-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.clue-creator-primary-actions button,
+.clue-creator-tabs button,
+.bag-heading-actions button { border: 1px solid rgba(36, 81, 89, .15); border-radius: 8px; background: white; padding: 7px 9px; color: #42515a; font-size: 11px; font-weight: 750; }
+.clue-creator-primary-actions button:first-child { background: #245159; color: white; }
+.clue-creator-tabs { display: grid; grid-template-columns: repeat(2, 1fr); border-radius: 9px; background: #e8ebe9; padding: 3px; }
+.clue-creator-tabs button { border: 0; background: transparent; }
+.clue-creator-tabs button.active { background: white; color: #245159; box-shadow: 0 1px 4px rgba(0, 0, 0, .1); }
+.clue-creator-empty { margin: 0; border-radius: 9px; background: rgba(239, 240, 237, .72); padding: 12px; color: #78838a; font-size: 12px; text-align: center; }
+.clue-version-grid { display: grid; gap: 10px; }
+.clue-version-card.compact { grid-template-columns: 132px minmax(0, 1fr); border-radius: 11px; box-shadow: none; }
+.clue-version-card.compact .clue-version-image { align-self: start; }
+.clue-version-card.compact .clue-version-copy { padding: 9px; }
+.clue-personal-version { display: inline-flex; width: fit-content; margin-top: 4px; border-radius: 999px; background: rgba(36, 81, 89, .09); padding: 4px 7px; color: #245159; font-size: 10px !important; }
+.bag-heading-actions { justify-content: flex-end; }
+
+/* Every community uses the cover community like control. */
+.community-work-card .cover-like-button,
+.illustration-work-card .cover-like-button,
+.voice-recording-row .cover-like-button,
+.clue-version-card .cover-like-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid rgba(173, 69, 64, .22);
+  border-radius: 8px;
+  background: rgba(173, 69, 64, .06);
+  padding: 6px 9px;
+  color: #914743;
+}
+.community-work-card .cover-like-button.active,
+.illustration-work-card .cover-like-button.active,
+.voice-recording-row .cover-like-button.active,
+.clue-version-card .cover-like-button.active { border-color: #ad4540; background: #ad4540; color: white; }
+
+@media (max-width: 980px) {
+  .community-content-switch { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .clue-community-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 680px) {
+  .clue-community-grid { grid-template-columns: 1fr; }
+  .clue-version-card.compact { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
@@ -4163,7 +4266,7 @@ button:disabled {
 
 .community-content-switch {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   max-width: 1180px;
   margin: 28px auto -16px;
@@ -4417,20 +4520,13 @@ button:disabled {
 .cover-community-card-body button { border: 1px solid rgba(36,81,89,.13); border-radius: 7px; background: white; padding: 5px 6px; color: #53616a; font-size: 9px; }
 .cover-community-card-body button.active { background: #245159; color: white; }
 .cover-community-card-body button.remix { margin-left: auto; background: #8f6a3a; color: white; }
-.community-cover-card-copy footer .cover-like-button,
-.cover-community-card-body .cover-like-button { display: inline-flex; align-items: center; gap: 5px; border-color: rgba(173,69,64,.22); background: rgba(173,69,64,.06); color: #914743; }
-.community-cover-card-copy footer .cover-like-button span,
-.cover-community-card-body .cover-like-button span { font-size: 1.15em; line-height: 1; }
-.community-cover-card-copy footer .cover-like-button em,
-.cover-community-card-body .cover-like-button em { font-style: normal; font-weight: 800; }
-.community-cover-card-copy footer .cover-like-button strong,
-.cover-community-card-body .cover-like-button strong { min-width: 1.4em; border-radius: 999px; background: rgba(173,69,64,.12); padding: 1px 5px; text-align: center; }
-.community-cover-card-copy footer .cover-like-button.active,
-.cover-community-card-body .cover-like-button.active { border-color: #ad4540; background: #ad4540; color: white; }
-.community-cover-card-copy footer .cover-like-button.active strong,
-.cover-community-card-body .cover-like-button.active strong { background: rgba(255,255,255,.2); }
-.community-cover-card-copy footer .cover-like-button.owner,
-.cover-community-card-body .cover-like-button.owner { cursor: not-allowed; opacity: .68; }
+.cover-like-button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 1px solid rgba(173,69,64,.22); border-radius: 8px; background: rgba(173,69,64,.06); padding: 6px 9px; color: #914743; }
+.cover-like-button span { font-size: 1.15em; line-height: 1; }
+.cover-like-button em { font-style: normal; font-weight: 800; }
+.cover-like-button strong { min-width: 1.4em; border-radius: 999px; background: rgba(173,69,64,.12); padding: 1px 5px; text-align: center; }
+.cover-like-button.active { border-color: #ad4540; background: #ad4540; color: white; }
+.cover-like-button.active strong { background: rgba(255,255,255,.2); }
+.cover-like-button.owner { cursor: not-allowed; opacity: .68; }
 .cover-open-square { border: 0; border-radius: 10px; background: #18363d; padding: 11px; color: white; font-weight: 800; }
 
 @media (max-width: 900px) {
@@ -4916,5 +5012,39 @@ button:disabled {
   .illustration-work-actions,
   .illustration-create-actions,
   .illustration-official-style header { align-items: flex-start; flex-direction: column; }
+}
+
+.community-work-card .cover-like-button,
+.illustration-work-card .cover-like-button,
+.voice-recording-row .cover-like-button,
+.clue-version-card .cover-like-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid rgba(173, 69, 64, .22);
+  border-radius: 8px;
+  background: rgba(173, 69, 64, .06);
+  padding: 6px 9px;
+  color: #914743;
+}
+.community-work-card .cover-like-button.active,
+.illustration-work-card .cover-like-button.active,
+.voice-recording-row .cover-like-button.active,
+.clue-version-card .cover-like-button.active { border-color: #ad4540; background: #ad4540; color: white; }
+.clue-card .clue-version-image > span { position: absolute; color: white; font-size: 11px; }
+.clue-card .community-avatar { color: white; font-size: 12px; }
+.clue-card .clue-creator-body label > span { color: #36464d; font-size: 12px; }
+.clue-card .clue-personal-version { font-size: 10px; }
+
+@media (max-width: 980px) {
+  .community-content-switch { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .clue-community-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 680px) {
+  .community-content-switch { grid-template-columns: 1fr; }
+  .clue-community-grid { grid-template-columns: 1fr; }
+  .clue-version-card.compact { grid-template-columns: 1fr; }
 }
 

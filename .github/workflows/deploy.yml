@@ -79,6 +79,7 @@ jobs:
           MINIMAX_IMAGE_MODEL=image-01
           MINIMAX_DEFAULT_VOICE_ID=Chinese (Mandarin)_Lyrical_Voice
           AUTH_TOKEN_SECRET=${{ secrets.AUTH_TOKEN_SECRET }}
+          OFFICIAL_STUDIO_USER_IDS=${{ secrets.OFFICIAL_STUDIO_USER_IDS }}
           MYSQL_HOST=${{ secrets.MYSQL_HOST }}
           MYSQL_PORT=${{ secrets.MYSQL_PORT }}
           MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}

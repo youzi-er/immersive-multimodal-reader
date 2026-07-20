@@ -1,0 +1,229 @@
+{
+  "version": 1,
+  "recommendationRevision": 2,
+  "articleId": "speckled-band",
+  "targetCount": { "minimum": 20, "maximum": 30 },
+  "groups": [
+    {
+      "targetId": "clue-person-helen-stoner",
+      "memberIds": ["clue-person-veil-black-clad-lady", "clue-person-helen-stoner", "clue-person-miss-stonerson-identifying-gesture"],
+      "label": "海伦·斯托纳",
+      "reason": "同一人物在来访、揭下面纱和庄园会面时被拆成了多个条目。",
+      "hiddenIdentityPrompt": "海伦·斯托纳，年轻的维多利亚时代英国女性，神情疲惫而警觉；人物身份必须保持一致，不得替换成其他角色。"
+    },
+    {
+      "targetId": "clue-person-dr-roylott",
+      "memberIds": ["clue-person-dr-roylott", "clue-person-large-man-at-door", "clue-person-dr-grimesby-roylott"],
+      "label": "格里姆斯比·罗伊洛特医生",
+      "reason": "彪形大汉和格里姆斯比·罗伊洛特医生是同一人物。",
+      "hiddenIdentityPrompt": "格里姆斯比·罗伊洛特医生，高大强壮、性情暴烈的维多利亚时代英国乡绅医生；必须保持同一人物身份。"
+    },
+    {
+      "targetId": "clue-person-julia-stoner",
+      "memberIds": ["clue-person-julia-stoner"],
+      "label": "朱莉娅·斯托纳",
+      "reason": "案件核心受害者，保留为独立人物主题。",
+      "hiddenIdentityPrompt": "朱莉娅·斯托纳，海伦的孪生姐姐，年轻的维多利亚时代英国女性；不得与海伦或其他人物混淆。"
+    },
+    {
+      "targetId": "clue-place-stoke-moran-manor",
+      "memberIds": ["clue-place-stoke-moran-manor", "clue-place-roylott-manor-exterior"],
+      "label": "斯托克莫兰庄园",
+      "reason": "古老邸宅与罗伊洛特医生邸宅外观指向同一地点。",
+      "hiddenIdentityPrompt": "斯托克莫兰庄园，年久失修的维多利亚时代英国灰石庄园，中央主体和两侧翼楼清晰可辨；不得画成现代住宅。"
+    },
+    {
+      "targetId": "clue-place-sisters-death-room",
+      "memberIds": ["clue-place-sisters-death-room", "clue-place-stonoer-bedroom-scene", "clue-place-miss-stoners-bedroom"],
+      "label": "朱莉娅遇害的卧室",
+      "reason": "姐姐丧命的房间与海伦后来居住、接受检查的卧室是同一核心现场。",
+      "hiddenIdentityPrompt": "斯托克莫兰庄园内朱莉娅遇害的卧室，低矮、陈旧、带壁炉、固定床、假铃绳和通气孔；空间结构必须符合原文。"
+    },
+    {
+      "targetId": "clue-place-dr-roylotts-room",
+      "memberIds": ["clue-place-dr-roylotts-room"],
+      "label": "罗伊洛特医生的房间",
+      "reason": "与保险柜、牛奶和鞭绳直接关联的关键地点。",
+      "hiddenIdentityPrompt": "罗伊洛特医生的宽敞而简朴的房间，包含行军床、技术书架、木椅、圆桌和大铁保险柜；保持维多利亚时代陈设。"
+    },
+    {
+      "targetId": "clue-place-crown-inn",
+      "memberIds": ["clue-place-crown-inn", "clue-place-crown-inn-second-floor-room"],
+      "label": "克朗旅店",
+      "reason": "旅店与旅店二楼观察房间属于同一地点主题。",
+      "hiddenIdentityPrompt": "斯托克莫兰附近的维多利亚时代英国乡村旅店克朗旅店，可从二楼观察庄园；不得出现现代建筑元素。"
+    },
+    {
+      "targetId": "clue-evidence-return-ticket-stub-in-glove",
+      "memberIds": ["clue-evidence-return-ticket-stub-in-glove"],
+      "label": "手套中的半截回程车票",
+      "reason": "福尔摩斯首次观察推断的重要实物。",
+      "hiddenIdentityPrompt": "一张藏在女士手套里的维多利亚时代英国铁路回程车票后半截，主体必须是纸质旧车票，不得画成现代票据。"
+    },
+    {
+      "targetId": "clue-evidence-coat-left-arm-mud-splashes",
+      "memberIds": ["clue-evidence-coat-left-arm-mud-splashes"],
+      "label": "外套左臂的泥迹",
+      "reason": "用于表现福尔摩斯观察能力的清晰视觉证据。",
+      "hiddenIdentityPrompt": "维多利亚时代女士深色外套左袖上的多处新鲜泥点，泥迹分布是核心主体。"
+    },
+    {
+      "targetId": "clue-evidence-burnt-matchstick",
+      "memberIds": ["clue-evidence-burnt-matchstick", "clue-evidence-matchbox"],
+      "label": "烧焦的火柴与火柴盒",
+      "reason": "同一临终现场中相互关联的火柴证据。",
+      "hiddenIdentityPrompt": "维多利亚时代卧室地板上的一根烧焦火柴和一个小火柴盒，必须作为同一组现场证物。"
+    },
+    {
+      "targetId": "clue-evidence-key-in-lock",
+      "memberIds": ["clue-evidence-key-in-lock", "clue-evidence-indoor-door-lock"],
+      "label": "从室内锁住的房门",
+      "reason": "门锁、钥匙和室内反锁共同构成密室条件。",
+      "hiddenIdentityPrompt": "维多利亚时代卧室木门的老式门锁，钥匙从室内插在锁孔中；核心是房门确实从内部锁住。"
+    },
+    {
+      "targetId": "clue-evidence-shuttered-window-with-iron-bars",
+      "memberIds": ["clue-evidence-shuttered-window-with-iron-bars", "clue-evidence-shutter-bedroom-window", "clue-evidence-window-latch"],
+      "label": "无法打开的百叶窗",
+      "reason": "铁杠、百叶窗和坚固搭扣共同排除窗户出入。",
+      "hiddenIdentityPrompt": "斯托克莫兰卧室的老式百叶窗，带宽铁杠、坚固铰链和无法从外部开启的搭扣；不得画成普通开放窗户。"
+    },
+    {
+      "targetId": "clue-evidence-bell-rope",
+      "memberIds": ["clue-evidence-thick-bell-pull-rope", "clue-evidence-bell-rope"],
+      "label": "没有连接铃铛的假铃绳",
+      "reason": "粗铃拉绳与后续多次出现的铃绳是同一关键证物。",
+      "hiddenIdentityPrompt": "卧室床边垂下的粗大铃绳，外观像铃拉绳但没有连接任何铃铛，末端靠近枕头；不得画成正常可用的铃绳。"
+    },
+    {
+      "targetId": "clue-evidence-ventilator-opening",
+      "memberIds": ["clue-evidence-bedroom-wall-drill-holes", "clue-evidence-small-ventilator-hole", "clue-evidence-ventilator-opening"],
+      "label": "通向隔壁房间的通气孔",
+      "reason": "墙壁钻孔、小通气孔和后续检查属于同一结构证物。",
+      "hiddenIdentityPrompt": "两间卧室之间墙面上新开的小通气孔，通向罗伊洛特医生的房间而不是室外；空间方向必须正确。"
+    },
+    {
+      "targetId": "clue-evidence-screwed-down-bed",
+      "memberIds": ["clue-evidence-floor-screws", "clue-evidence-screwed-down-bed"],
+      "label": "固定在地板上的床",
+      "reason": "地板螺钉与不能移动的床是同一结构证据。",
+      "hiddenIdentityPrompt": "维多利亚时代窄床用明显螺钉牢牢固定在木地板上，床头正对假铃绳；不得画成可自由移动的床。"
+    },
+    {
+      "targetId": "clue-evidence-large-iron-safe",
+      "memberIds": ["clue-evidence-large-iron-safe", "clue-evidence-iron-safe"],
+      "label": "罗伊洛特房间的大铁保险柜",
+      "reason": "大铁保险柜与结案时的铁柜子是同一物件。",
+      "hiddenIdentityPrompt": "罗伊洛特医生房间内沉重的维多利亚时代大铁保险柜，内部空间足以藏匿危险动物；不得画成现代电子保险柜。"
+    },
+    {
+      "targetId": "clue-evidence-milk-saucer-on-safe",
+      "memberIds": ["clue-evidence-milk-saucer-on-safe", "clue-evidence-saucer-of-milk"],
+      "label": "保险柜上的一碟牛奶",
+      "reason": "浅碟与结案解释中的一碟牛奶是同一证物。",
+      "hiddenIdentityPrompt": "放在大铁保险柜上的浅碟，里面盛着少量牛奶；浅碟和保险柜的关系必须清晰。"
+    },
+    {
+      "targetId": "clue-evidence-dog-whip-on-bedhead",
+      "memberIds": ["clue-evidence-dog-whip-on-bedhead", "clue-evidence-dog-whip-coiled-with-knot", "clue-evidence-short-handled-long-whip", "clue-evidence-dog-whip", "clue-evidence-whip-noose"],
+      "label": "打成活结的短柄鞭子",
+      "reason": "五个鞭子和活结条目描述的是同一件训练工具。",
+      "hiddenIdentityPrompt": "一条短柄长鞭，鞭梢被打成可套住小动物的活结，放在罗伊洛特医生床边；不得画成普通马鞭。"
+    },
+    {
+      "targetId": "clue-evidence-brown-spotted-yellow-band-snake",
+      "memberIds": ["clue-evidence-spotted-headscarves", "clue-evidence-brown-spotted-yellow-band-snake", "clue-evidence-swamp-viper"],
+      "label": "带褐色斑点的毒蛇",
+      "reason": "带点子的头巾、黄带子和沼地蝰蛇最终指向同一凶器。",
+      "hiddenIdentityPrompt": "一条细长、黄色并带褐色斑点的危险毒蛇，是故事中的斑点带子；必须是蛇，不得画成布带、头巾或普通饰物。"
+    },
+    {
+      "targetId": "clue-evidence-signal-lamp",
+      "memberIds": ["clue-evidence-signal-lamp"],
+      "label": "作为信号的灯",
+      "reason": "夜间行动与训练过程中的关键视觉信号。",
+      "hiddenIdentityPrompt": "罗伊洛特医生房间里用于发出夜间信号的维多利亚时代遮光灯，灯光克制集中，不得出现现代电灯。"
+    },
+    {
+      "targetId": "clue-person-holmes-fully-dressed-at-bedside",
+      "introducedRevision": 2,
+      "memberIds": ["clue-person-holmes-fully-dressed-at-bedside"],
+      "label": "夏洛克·福尔摩斯",
+      "reason": "全书核心侦探人物，原条目名称过于局限，需要提升为统一人物主题。",
+      "hiddenIdentityPrompt": "夏洛克·福尔摩斯，身材修长、目光敏锐、举止冷静的维多利亚时代英国侦探；必须保持同一人物身份和时代服饰。"
+    },
+    {
+      "targetId": "clue-place-stoke-moran-surrey",
+      "introducedRevision": 2,
+      "memberIds": ["clue-place-stoke-moran-surrey"],
+      "label": "萨里郡斯托克莫兰",
+      "reason": "案件所在乡野区域，可作为庄园之外的环境地点主题。",
+      "hiddenIdentityPrompt": "英国萨里郡斯托克莫兰的维多利亚时代乡野环境，林地、道路和远处旧庄园构成冷清压抑的地域印象；不得出现现代设施。"
+    },
+    {
+      "targetId": "clue-evidence-indian-cheetah-and-baboon",
+      "introducedRevision": 2,
+      "memberIds": ["clue-evidence-indian-cheetah-and-baboon", "clue-evidence-indian-cheetah", "clue-evidence-baboon"],
+      "label": "庄园里的印度猎豹与狒狒",
+      "reason": "猎豹、狒狒及两者合称条目重复，合并为罗伊洛特饲养的异国动物主题。",
+      "hiddenIdentityPrompt": "斯托克莫兰庄园中被罗伊洛特医生放养的一只印度猎豹和一只狒狒，两种动物必须物种清晰、大小关系真实，不得混合成幻想生物。"
+    },
+    {
+      "targetId": "clue-place-ground-floor-bedrooms",
+      "introducedRevision": 2,
+      "memberIds": ["clue-place-manor-side-wing", "clue-place-ground-floor-bedrooms", "clue-place-shared-corridor", "clue-place-whitewashed-corridor"],
+      "label": "庄园三间相邻卧室与共同过道",
+      "reason": "耳房、一楼卧室、共同过道和刷白过道描述同一组关键空间关系。",
+      "hiddenIdentityPrompt": "斯托克莫兰庄园一楼同一侧相邻排列的三间卧室及连接它们的刷白共同过道，空间顺序和门的位置必须清楚，保持维多利亚时代旧宅结构。"
+    },
+    {
+      "targetId": "clue-place-stoke-moran-west-wing",
+      "introducedRevision": 2,
+      "memberIds": ["clue-place-stoke-moran-west-wing", "clue-evidence-ruined-side-wing", "clue-evidence-inhabited-wing-curtains-and-smoke", "clue-evidence-scaffolding-and-breached-gable-wall", "clue-place-dilapidated-gable-wall"],
+      "type": "地点",
+      "label": "庄园西翼的修缮痕迹",
+      "reason": "西耳房、坍塌边房、有人居住的翼楼、脚手架与山墙属于同一建筑修缮现场。",
+      "hiddenIdentityPrompt": "斯托克莫兰庄园西翼的修缮现场，破败灰石翼楼、脚手架、被凿通的山墙和新旧不一的窗户同时可见；不得画成完整翻新的现代建筑。"
+    },
+    {
+      "targetId": "clue-evidence-chimney-four-lock-bolts",
+      "introducedRevision": 2,
+      "memberIds": ["clue-evidence-chimney-four-lock-bolts"],
+      "label": "烟囱上的四个大锁环闩",
+      "reason": "用于排除烟囱出入可能的密室结构证据。",
+      "hiddenIdentityPrompt": "维多利亚时代卧室壁炉烟囱内部固定着四个粗大的金属锁环闩，结构牢固、无法供人穿过；核心是封闭性而非装饰。"
+    },
+    {
+      "targetId": "clue-evidence-wrist-bruise-marks",
+      "introducedRevision": 2,
+      "memberIds": ["clue-evidence-wrist-bruise-marks"],
+      "label": "海伦手腕上的乌青伤痕",
+      "reason": "直接表现罗伊洛特暴力控制的重要身体证据。",
+      "hiddenIdentityPrompt": "海伦·斯托纳纤细手腕上的数道明显乌青指痕，显示曾被粗暴抓握；画面克制写实，不得表现开放伤口或血腥。"
+    },
+    {
+      "targetId": "clue-evidence-twisted-steel-fire-tongs",
+      "introducedRevision": 2,
+      "memberIds": ["clue-evidence-twisted-steel-fire-tongs"],
+      "label": "被罗伊洛特扭弯的钢火钳",
+      "reason": "展示罗伊洛特异常力量和威胁性的标志性实物。",
+      "hiddenIdentityPrompt": "一把维多利亚时代壁炉用厚重钢火钳，被人的蛮力明显扭弯变形；必须是金属火钳，不得画成细铁丝或普通夹子。"
+    },
+    {
+      "targetId": "clue-evidence-blue-paper-notes",
+      "introducedRevision": 2,
+      "memberIds": ["clue-evidence-blue-paper-notes"],
+      "label": "写满笔记和数字的蓝纸",
+      "reason": "与财产和作案动机相关，视觉上也具有明确辨识度。",
+      "hiddenIdentityPrompt": "一张维多利亚时代的蓝色纸张，上面密集写着手写笔记、金额和计算数字；必须呈现旧纸与墨迹，但不得生成可读的现代印刷文字。"
+    },
+    {
+      "targetId": "clue-evidence-holmes-thin-rattan-cane",
+      "introducedRevision": 2,
+      "memberIds": ["clue-evidence-holmes-thin-rattan-cane"],
+      "label": "福尔摩斯使用的细长藤鞭",
+      "reason": "福尔摩斯在最终行动中驱赶毒蛇的关键工具。",
+      "hiddenIdentityPrompt": "夏洛克·福尔摩斯手中一根细长而有弹性的藤制手杖或藤鞭，用于快速抽打驱赶毒蛇；不得画成罗伊洛特的短柄活结鞭。"
+    }
+  ]
+}

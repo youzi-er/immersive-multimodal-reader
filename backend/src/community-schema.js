@@ -20,7 +20,10 @@ export function ensureCommunitySchema() {
       '002_community_dubbing.sql',
       '003_shared_voice_designs.sql',
       '004_cover_community.sql',
-      '005_illustration_community.sql'
+      '005_illustration_community.sql',
+      '006_official_illustration_slots.sql',
+      '007_official_clue_catalogs.sql',
+      '008_clue_community.sql'
     ]) {
       const sql = await fs.readFile(path.resolve(__dirname, `../sql/${filename}`), 'utf8');
       for (const statement of splitStatements(sql)) {
@@ -32,6 +35,20 @@ export function ensureCommunitySchema() {
     );
     if (parameterColumns.length === 0) {
       await getPool().query('ALTER TABLE cover_versions ADD COLUMN parameters_json JSON NULL AFTER composition');
+    }
+    const [officialExcerptColumns] = await getPool().query(
+      "SHOW COLUMNS FROM official_illustration_slots LIKE 'prompt_excerpt'"
+    );
+    if (officialExcerptColumns.length === 0) {
+      await getPool().query(
+        'ALTER TABLE official_illustration_slots ADD COLUMN prompt_excerpt MEDIUMTEXT NULL AFTER media_asset_id'
+      );
+      await getPool().query(
+        'UPDATE official_illustration_slots SET prompt_excerpt = source_text WHERE prompt_excerpt IS NULL'
+      );
+      await getPool().query(
+        'ALTER TABLE official_illustration_slots MODIFY prompt_excerpt MEDIUMTEXT NOT NULL'
+      );
     }
   })();
   return communitySchemaPromise;
