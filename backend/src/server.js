@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
-import { chapters, clues, getParagraphContext } from './data.js';
+import { applyClueManifest, chapters, clues, getClueOccurrence, getParagraphContext } from './data.js';
 import {
   createMediaAsset,
   createParagraphComment,
@@ -71,9 +71,25 @@ import {
 import { communityStore } from './community-store.js';
 import { coverStore } from './cover-store.js';
 import { illustrationStore } from './illustration-store.js';
+import {
+  ensureBundledOfficialIllustrationSlots,
+  officialIllustrationSelections
+} from './official-illustration-slots.js';
+import { clueImageStore } from './clue-image-store.js';
+import { officialClueCatalogStore } from './official-clue-catalog-store.js';
+import {
+  buildPublishedClueManifest,
+  CLUE_CURATION_ARTICLE_ID,
+  clueDraftSummary,
+  createSuggestedClueDraft,
+  getOfficialClueSourceManifest,
+  upgradeClueDraftToCurrentRecommendations,
+  validateClueDraft
+} from './official-clue-curation.js';
 import { getPreparedDubbingPlan } from './prepared-dubbing-plans.js';
 import { buildCoverPrompt } from './services/coverImage.js';
 import { ensureBookStyle } from './services/bookImageStyle.js';
+import { generateClueImageCandidates } from './services/clueCreativeImage.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -224,6 +240,21 @@ async function optionalAuth(req, _res, next) {
     req.user = user;
   }
 
+  next();
+}
+
+function requireOfficialStudioAccess(req, res, next) {
+  const configuredUserIds = String(process.env.OFFICIAL_STUDIO_USER_IDS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const allowedUserIds = configuredUserIds.length > 0
+    ? configuredUserIds
+    : process.env.NODE_ENV === 'production' ? [] : ['demo-user'];
+  if (!req.user || !allowedUserIds.includes(req.user.id)) {
+    res.status(403).json({ error: 'Official illustration studio access is required' });
+    return;
+  }
   next();
 }
 
@@ -433,20 +464,6 @@ async function findSceneImageAsset({ articleId = 'speckled-band', chapterId, pro
   );
 }
 
-async function findParagraphImageAsset({ articleId = 'speckled-band', chapterId, paragraphIndex, range, sourceText }) {
-  const assets = await listMediaAssets({ articleId, chapterId, mediaType: 'image' });
-
-  return (
-    assets.find(
-      (asset) =>
-        asset.paragraphIndex === paragraphIndex &&
-        rangesEqual(asset.range, range) &&
-        asset.sourceText === sourceText &&
-        metadataValue(asset, 'generationType') === 'paragraph-image'
-    ) || null
-  );
-}
-
 async function persistGeneratedImage({
   req,
   sourceUrl,
@@ -631,6 +648,131 @@ app.get('/api/chapters/:id', (req, res) => {
 app.get('/api/clues', (_req, res) => {
   res.json(clues);
 });
+
+function clueStudioSourceClues() {
+  return getOfficialClueSourceManifest().clues.map((clue) => ({
+    ...clue,
+    occurrences: clue.occurrences.map((occurrence) => ({
+      ...occurrence,
+      fullParagraph: getParagraphContext({
+        chapterId: occurrence.chapterId,
+        paragraphIndex: occurrence.paragraphIndex,
+        contextChars: 0
+      })?.originalTarget || ''
+    }))
+  }));
+}
+
+app.get(
+  '/api/clue-studio/catalog',
+  requireAuth,
+  requireOfficialStudioAccess,
+  async (req, res) => {
+    try {
+      const suggestedDraft = createSuggestedClueDraft();
+      let catalog = await officialClueCatalogStore.getCatalog(CLUE_CURATION_ARTICLE_ID);
+      if (!catalog) {
+        catalog = await officialClueCatalogStore.ensureDraft({
+          articleId: CLUE_CURATION_ARTICLE_ID,
+          sourceSha256: suggestedDraft.sourceSha256,
+          draft: suggestedDraft,
+          userId: req.user.id
+        });
+      }
+      if (catalog.sourceSha256 !== suggestedDraft.sourceSha256) {
+        res.status(409).json({ error: 'The source book changed after this curation draft was created' });
+        return;
+      }
+      let draft = upgradeClueDraftToCurrentRecommendations(catalog.draft);
+      if (draft.recommendationRevision !== Number(catalog.draft.recommendationRevision || 1)) {
+        catalog = await officialClueCatalogStore.saveDraft({
+          articleId: CLUE_CURATION_ARTICLE_ID,
+          sourceSha256: draft.sourceSha256,
+          draft,
+          userId: req.user.id
+        });
+      }
+      res.json({
+        sourceClues: clueStudioSourceClues(),
+        draft,
+        summary: clueDraftSummary(draft),
+        catalog: {
+          draftRevision: catalog.draftRevision,
+          publishedRevision: catalog.publishedRevision,
+          draftUpdatedAt: catalog.draftUpdatedAt,
+          publishedAt: catalog.publishedAt,
+          hasPublishedCatalog: Boolean(catalog.published)
+        }
+      });
+    } catch (error) {
+      sendRouteError(res, error, 'Failed to load the official clue studio');
+    }
+  }
+);
+
+app.put(
+  '/api/clue-studio/draft',
+  requireAuth,
+  requireOfficialStudioAccess,
+  async (req, res) => {
+    try {
+      const draft = validateClueDraft(req.body.draft);
+      const catalog = await officialClueCatalogStore.saveDraft({
+        articleId: CLUE_CURATION_ARTICLE_ID,
+        sourceSha256: draft.sourceSha256,
+        draft,
+        userId: req.user.id
+      });
+      res.json({
+        draft,
+        summary: clueDraftSummary(draft),
+        catalog: {
+          draftRevision: catalog.draftRevision,
+          publishedRevision: catalog.publishedRevision,
+          draftUpdatedAt: catalog.draftUpdatedAt,
+          publishedAt: catalog.publishedAt,
+          hasPublishedCatalog: Boolean(catalog.published)
+        }
+      });
+    } catch (error) {
+      res.status(400).json({ error: error.message || 'Failed to save the official clue draft' });
+    }
+  }
+);
+
+app.post(
+  '/api/clue-studio/publish',
+  requireAuth,
+  requireOfficialStudioAccess,
+  async (req, res) => {
+    try {
+      const draft = validateClueDraft(req.body.draft, { requirePublishableCount: true });
+      const published = buildPublishedClueManifest(draft);
+      const catalog = await officialClueCatalogStore.publish({
+        articleId: CLUE_CURATION_ARTICLE_ID,
+        sourceSha256: draft.sourceSha256,
+        draft,
+        published,
+        userId: req.user.id
+      });
+      applyClueManifest(published);
+      res.json({
+        draft,
+        summary: clueDraftSummary(draft),
+        publishedCount: published.clues.length,
+        catalog: {
+          draftRevision: catalog.draftRevision,
+          publishedRevision: catalog.publishedRevision,
+          draftUpdatedAt: catalog.draftUpdatedAt,
+          publishedAt: catalog.publishedAt,
+          hasPublishedCatalog: true
+        }
+      });
+    } catch (error) {
+      res.status(400).json({ error: error.message || 'Failed to publish the official clue catalog' });
+    }
+  }
+);
 
 app.get('/api/paragraph-comments', async (req, res, next) => {
   try {
@@ -1312,6 +1454,96 @@ app.get('/api/illustrations/styles/official', optionalAuth, async (req, res) => 
   }
 });
 
+app.get('/api/illustrations/official-slots', optionalAuth, async (req, res) => {
+  try {
+    const articleId = String(req.query.articleId || 'speckled-band');
+    const chapterId = req.query.chapterId ? String(req.query.chapterId) : '';
+    if (articleId === officialIllustrationSelections.articleId) {
+      await ensureBundledOfficialIllustrationSlots();
+    }
+    const slots = await illustrationStore.listOfficialSlots({ articleId, chapterId });
+    res.json({ slots });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to load official illustration slots');
+  }
+});
+
+app.get(
+  '/api/illustrations/official-selections',
+  requireAuth,
+  requireOfficialStudioAccess,
+  async (_req, res) => {
+    try {
+      const selections = officialIllustrationSelections.selections.map((selection) => {
+        const unit = getContentUnitByPosition({
+          articleId: officialIllustrationSelections.articleId,
+          chapterId: selection.chapterId,
+          paragraphIndex: selection.paragraphIndex
+        });
+        if (!unit || !unit.sourceText.includes(selection.locatorText)) {
+          throw new Error(`Official selection ${selection.id} no longer matches the source paragraph`);
+        }
+        return {
+          ...selection,
+          articleId: officialIllustrationSelections.articleId,
+          placementRule: officialIllustrationSelections.placementRule,
+          unit: toPublicContentUnit(unit)
+        };
+      });
+      res.json({ selections });
+    } catch (error) {
+      sendRouteError(res, error, 'Failed to load official illustration selections');
+    }
+  }
+);
+
+app.post(
+  '/api/illustrations/official-slots',
+  requireAuth,
+  requireOfficialStudioAccess,
+  async (req, res) => {
+    try {
+      const selection = officialIllustrationSelections.selections.find(
+        (item) => item.id === String(req.body.selectionId || '')
+      );
+      if (!selection) {
+        res.status(400).json({ error: 'A valid official illustration selection is required' });
+        return;
+      }
+      const version = await illustrationStore.getVersion(String(req.body.versionId || ''), req.user.id);
+      if (
+        !version || version.ownerUserId !== req.user.id ||
+        ['deleted', 'moderated'].includes(version.status) ||
+        version.chapterId !== selection.chapterId || version.paragraphIndex !== selection.paragraphIndex
+      ) {
+        res.status(400).json({ error: 'Choose one of your illustration candidates for this paragraph' });
+        return;
+      }
+      const unit = requireContentUnit(version.unitId);
+      const promptExcerpt = String(req.body.promptExcerpt || selection.promptExcerpt).trim();
+      if (!promptExcerpt || promptExcerpt.length > 4000) {
+        res.status(400).json({ error: 'The illustration focus must be between 1 and 4000 characters' });
+        return;
+      }
+      const slot = await illustrationStore.upsertOfficialSlot({
+        id: selection.id,
+        unitId: unit.id,
+        articleId: unit.articleId,
+        chapterId: unit.chapterId,
+        paragraphIndex: unit.paragraphIndex,
+        imageUrl: version.imageUrl,
+        mediaAssetId: version.mediaAssetId,
+        promptExcerpt,
+        sourceText: unit.sourceText,
+        sourceHash: unit.sourceHash
+      });
+      res.json({ slot });
+    } catch (error) {
+      sendRouteError(res, error, 'Failed to select the official illustration');
+    }
+  }
+);
+
 app.get('/api/illustrations/community', optionalAuth, async (req, res) => {
   try {
     const scope = String(req.query.scope || 'all');
@@ -1433,7 +1665,7 @@ app.post('/api/illustrations/units/:unitId/versions', requireAuth, async (req, r
       },
       userId: req.user.id
     });
-    const version = await illustrationStore.createVersion({
+    const createdVersion = await illustrationStore.createVersion({
       ownerUserId: req.user.id,
       unitId: unit.id,
       articleId: unit.articleId,
@@ -1447,6 +1679,11 @@ app.post('/api/illustrations/units/:unitId/versions', requireAuth, async (req, r
       model: generated.model,
       sourceText: unit.sourceText,
       sourceHash: unit.sourceHash
+    });
+    const version = await illustrationStore.adoptVersion({
+      versionId: createdVersion.id,
+      userId: req.user.id,
+      unitId: unit.id
     });
     res.status(201).json({ unit: toPublicContentUnit(unit), version, traceId: generated.traceId });
   } catch (error) {
@@ -2142,7 +2379,8 @@ app.post('/api/ai/cover', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/ai/paragraph-image', optionalAuth, async (req, res) => {
+app.post('/api/ai/paragraph-image', requireAuth, async (req, res) => {
+  let persisted = null;
   try {
     const { chapterId, paragraphIndex, targetSegment } = req.body;
     const safeArticleId = String(req.body.articleId || 'speckled-band');
@@ -2196,21 +2434,6 @@ app.post('/api/ai/paragraph-image', optionalAuth, async (req, res) => {
       return;
     }
 
-    const cached = await findParagraphImageAsset({
-      articleId: safeArticleId,
-      chapterId: safeChapterId,
-      paragraphIndex: safeParagraphIndex,
-      range: fixedRange,
-      sourceText: safeTargetSegment
-    });
-    if (cached) {
-      if (req.user) {
-        await illustrationStore.clearAdoption({ userId: req.user.id, unitId: unit.id });
-      }
-      res.json(imageAssetResponse(cached));
-      return;
-    }
-
     const officialStyle = await ensureOfficialIllustrationStyle(safeArticleId);
     const result = await generateParagraphIllustration({
       chapterId: safeChapterId,
@@ -2218,7 +2441,7 @@ app.post('/api/ai/paragraph-image', optionalAuth, async (req, res) => {
       targetSegment: safeTargetSegment
     });
 
-    const persisted = await persistGeneratedImage({
+    persisted = await persistGeneratedImage({
       req,
       sourceUrl: result.imageUrl,
       prompt: result.prompt || null,
@@ -2230,7 +2453,7 @@ app.post('/api/ai/paragraph-image', optionalAuth, async (req, res) => {
         componentType: result.componentType || null,
         promptCharCount: result.promptCharCount || null,
         styleInitializedNow: Boolean(result.styleInitializedNow),
-        generationType: 'paragraph-image',
+        generationType: 'diy-paragraph-image',
         styleVersionId: officialStyle.id,
         aspectRatio: '16:9'
       },
@@ -2242,12 +2465,274 @@ app.post('/api/ai/paragraph-image', optionalAuth, async (req, res) => {
       }
     });
 
-    if (req.user) {
-      await illustrationStore.clearAdoption({ userId: req.user.id, unitId: unit.id });
-    }
-    res.json({ ...result, ...persisted });
+    const createdVersion = await illustrationStore.createVersion({
+      ownerUserId: req.user.id,
+      unitId: unit.id,
+      articleId: unit.articleId,
+      chapterId: unit.chapterId,
+      paragraphIndex: unit.paragraphIndex,
+      imageUrl: persisted.imageUrl,
+      mediaAssetId: persisted.mediaAssetId,
+      promptMode: 'official',
+      finalPrompt: result.prompt || safeTargetSegment,
+      styleVersionId: officialStyle.id,
+      model: process.env.MINIMAX_IMAGE_MODEL || 'image-01',
+      sourceText: unit.sourceText,
+      sourceHash: unit.sourceHash
+    });
+    const version = await illustrationStore.adoptVersion({
+      versionId: createdVersion.id,
+      userId: req.user.id,
+      unitId: unit.id
+    });
+    res.json({ ...result, ...persisted, illustrationVersionId: version.id, version });
   } catch (error) {
+    await cleanUpPersistedImage(persisted);
     sendRouteError(res, error, 'MiniMax paragraph image generation failed');
+  }
+});
+
+app.get('/api/clue-versions/community', optionalAuth, async (req, res) => {
+  try {
+    const scope = String(req.query.scope || 'all');
+    if (!['all', 'mine'].includes(scope)) {
+      res.status(400).json({ error: 'Unsupported clue community scope' });
+      return;
+    }
+    const versions = await clueImageStore.listCommunityVersions({
+      articleId: String(req.query.articleId || ''),
+      clueId: String(req.query.clueId || ''),
+      currentUserId: req.user?.id || '',
+      sort: String(req.query.sort || 'popular'),
+      scope,
+      limit: normalizeInteger(req.query.limit) || 60,
+      offset: normalizeInteger(req.query.offset) || 0
+    });
+    res.json({ versions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to load the clue image community');
+  }
+});
+
+app.get('/api/clue-versions/adoptions', optionalAuth, async (req, res) => {
+  try {
+    const versions = req.user
+      ? await clueImageStore.listAdoptedVersions({
+          userId: req.user.id,
+          articleId: String(req.query.articleId || 'speckled-band')
+        })
+      : [];
+    res.json({ versions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to load adopted clue images');
+  }
+});
+
+app.get('/api/clues/:clueId/image-versions', optionalAuth, async (req, res) => {
+  try {
+    const clue = clues.find((item) => item.id === req.params.clueId);
+    if (!clue) {
+      res.status(404).json({ error: 'Clue not found' });
+      return;
+    }
+    const versions = await clueImageStore.listVersionsForClue(clue.id, req.user?.id || '');
+    const myVersions = req.user
+      ? await clueImageStore.listMyVersions({ ownerUserId: req.user.id, clueId: clue.id })
+      : [];
+    res.json({ clue, versions, myVersions });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to load clue image versions');
+  }
+});
+
+app.post('/api/clues/:clueId/image-versions', requireAuth, async (req, res) => {
+  const persistedAssets = [];
+  const createdVersionIds = [];
+  try {
+    const clueId = String(req.params.clueId || '');
+    const occurrenceId = String(req.body.occurrenceId || '');
+    const finalPrompt = String(req.body.finalPrompt || '').trim();
+    const entry = getClueOccurrence(clueId, occurrenceId);
+    if (!entry) {
+      res.status(400).json({ error: 'Choose a valid occurrence for this clue' });
+      return;
+    }
+    if (finalPrompt.length < 5 || finalPrompt.length > 800) {
+      res.status(400).json({ error: 'finalPrompt must contain 5-800 characters' });
+      return;
+    }
+
+    const generatedCandidates = await generateClueImageCandidates({
+      userPrompt: finalPrompt,
+      clue: entry.clue,
+      occurrence: entry.occurrence
+    });
+    const versions = [];
+    for (const generated of generatedCandidates) {
+      const occurrence = entry.occurrence;
+      const persisted = await persistGeneratedImage({
+        req,
+        sourceUrl: generated.imageUrl,
+        prompt: generated.prompt,
+        sourceText: occurrence.selectedText,
+        model: generated.model,
+        userId: req.user.id,
+        position: {
+          articleId: 'speckled-band',
+          chapterId: occurrence.chapterId,
+          paragraphIndex: occurrence.paragraphIndex,
+          range: {
+            startParagraphIndex: occurrence.paragraphIndex,
+            startOffset: occurrence.startOffset,
+            endParagraphIndex: occurrence.paragraphIndex,
+            endOffset: occurrence.endOffset
+          }
+        },
+        metadata: {
+          generationType: 'clue-community-image',
+          clueId,
+          occurrenceId,
+          aspectRatio: generated.aspectRatio,
+          variationIndex: generated.variationIndex,
+          traceId: generated.traceId
+        }
+      });
+      persistedAssets.push(persisted);
+      const version = await clueImageStore.createVersion({
+        ownerUserId: req.user.id,
+        articleId: 'speckled-band',
+        clueId,
+        occurrenceId,
+        chapterId: occurrence.chapterId,
+        paragraphIndex: occurrence.paragraphIndex,
+        clueLabel: entry.clue.label,
+        clueType: entry.clue.type,
+        imageUrl: persisted.imageUrl,
+        mediaAssetId: persisted.mediaAssetId,
+        finalPrompt,
+        aspectRatio: generated.aspectRatio,
+        model: generated.model,
+        sourceText: occurrence.selectedText
+      });
+      createdVersionIds.push(version.id);
+      versions.push(version);
+    }
+    res.status(201).json({ versions });
+  } catch (error) {
+    if (createdVersionIds.length > 0 && req.user?.id) {
+      await Promise.all(createdVersionIds.map((versionId) =>
+        clueImageStore.setVersionStatus(versionId, req.user.id, 'deleted').catch(() => null)
+      ));
+    }
+    if (persistedAssets.length > 0) {
+      await Promise.all(persistedAssets.map((asset) => cleanUpPersistedImage(asset)));
+    }
+    sendRouteError(res, error, 'Clue image generation failed');
+  }
+});
+
+app.patch('/api/clue-versions/:versionId/status', requireAuth, async (req, res) => {
+  try {
+    const status = String(req.body.status || '');
+    if (!['public', 'withdrawn', 'deleted'].includes(status)) {
+      res.status(400).json({ error: 'Unsupported clue image status' });
+      return;
+    }
+    const version = await clueImageStore.setVersionStatus(
+      req.params.versionId,
+      req.user.id,
+      status,
+      String(req.body.replaceVersionId || '')
+    );
+    if (!version) {
+      res.status(404).json({ error: 'Clue image version not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    if (error?.code === 'PUBLIC_CLUE_VERSION_LIMIT') {
+      res.status(409).json({
+        error: error.message,
+        code: error.code,
+        publicVersionIds: error.publicVersionIds || []
+      });
+      return;
+    }
+    sendRouteError(res, error, 'Failed to update clue image status');
+  }
+});
+
+app.put('/api/clues/:clueId/image-adoption', requireAuth, async (req, res) => {
+  try {
+    const clue = clues.find((item) => item.id === req.params.clueId);
+    if (!clue) {
+      res.status(404).json({ error: 'Clue not found' });
+      return;
+    }
+    const version = await clueImageStore.adoptVersion({
+      versionId: String(req.body.versionId || ''),
+      userId: req.user.id,
+      clueId: clue.id
+    });
+    if (!version) {
+      res.status(400).json({ error: 'Choose an available image for this clue' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to adopt clue image');
+  }
+});
+
+app.delete('/api/clues/:clueId/image-adoption', requireAuth, async (req, res) => {
+  try {
+    const removed = await clueImageStore.clearAdoption({ userId: req.user.id, clueId: req.params.clueId });
+    res.json({ ok: true, removed });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to restore the official clue image');
+  }
+});
+
+app.post('/api/clue-versions/:versionId/like', requireAuth, async (req, res) => {
+  try {
+    const version = await clueImageStore.setLike(req.params.versionId, req.user.id, true);
+    if (!version) {
+      res.status(404).json({ error: 'Public clue image not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to like clue image');
+  }
+});
+
+app.delete('/api/clue-versions/:versionId/like', requireAuth, async (req, res) => {
+  try {
+    const version = await clueImageStore.setLike(req.params.versionId, req.user.id, false);
+    if (!version) {
+      res.status(404).json({ error: 'Public clue image not found' });
+      return;
+    }
+    res.json({ version });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to unlike clue image');
+  }
+});
+
+app.post('/api/clue-versions/:versionId/reports', requireAuth, async (req, res) => {
+  try {
+    const report = await clueImageStore.createReport({
+      versionId: req.params.versionId,
+      reporterUserId: req.user.id,
+      reason: req.body.reason
+    });
+    if (!report) {
+      res.status(404).json({ error: 'Public clue image not found' });
+      return;
+    }
+    res.status(201).json({ report });
+  } catch (error) {
+    sendRouteError(res, error, 'Failed to report clue image');
   }
 });
 
@@ -2426,6 +2911,14 @@ app.post('/api/ai/voice-design', async (req, res) => {
     res.status(500).json({ error: error.message || 'MiniMax voice design failed' });
   }
 });
+
+officialClueCatalogStore.getCatalog(CLUE_CURATION_ARTICLE_ID)
+  .then((catalog) => {
+    if (catalog?.published) applyClueManifest(catalog.published);
+  })
+  .catch((error) => {
+    console.warn(`[official-clue-catalog] ${error.message || 'Failed to load published catalog'}`);
+  });
 
 const server = app.listen(port, () => {
   console.log(`Immersive reader API running at http://localhost:${port}`);

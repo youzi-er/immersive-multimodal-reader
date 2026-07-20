@@ -55,6 +55,21 @@ test('illustration store preserves versions, public limits and adopted withdrawa
     assert.equal(style.versionNumber, 1);
     assert.equal((await store.ensureOfficialStyle({ articleId, name: 'Ignored', globalStylePrompt: 'Ignored' })).id, style.id);
 
+    const officialSlot = await store.upsertOfficialSlot({
+      id: `official-slot-${suffix}`,
+      unitId,
+      articleId,
+      chapterId: 'chapter-1',
+      paragraphIndex: 2,
+      imageUrl: '/media/images/official-illustration.jpg',
+      mediaAssetId: null,
+      promptExcerpt: 'The detective examined the clue.',
+      sourceText: 'The detective examined the clue.',
+      sourceHash: crypto.createHash('sha256').update('The detective examined the clue.').digest('hex')
+    });
+    assert.equal(officialSlot.unitId, unitId);
+    assert.equal((await store.listOfficialSlots({ articleId, chapterId: 'chapter-1' }))[0].imageUrl, officialSlot.imageUrl);
+
     const base = {
       ownerUserId: authorId,
       unitId,
@@ -98,6 +113,10 @@ test('illustration store preserves versions, public limits and adopted withdrawa
     assert.equal((await store.getVersion(versions[0].id, readerId)).status, 'withdrawn');
     assert.equal((await store.listCommunityVersions({ articleId, unitId })).length, 3);
     assert.equal((await store.listAdoptedVersions({ userId: readerId, articleId }))[0].id, versions[0].id);
+    await assert.rejects(
+      store.setVersionStatus(versions[0].id, authorId, 'deleted'),
+      (error) => error.code === 'ILLUSTRATION_HAS_ADOPTERS'
+    );
 
     const liked = await store.setLike(versions[1].id, readerId, true);
     assert.equal(liked.likeCount, 1);
@@ -122,6 +141,10 @@ test('illustration store preserves versions, public limits and adopted withdrawa
     });
     assert.equal(report.status, 'open');
   } finally {
+    await getPool().execute(
+      'DELETE FROM official_illustration_slots WHERE article_id = :articleId',
+      { articleId }
+    );
     await getPool().execute(
       'DELETE FROM illustration_adoptions WHERE user_id IN (:authorId, :readerId)',
       { authorId, readerId }

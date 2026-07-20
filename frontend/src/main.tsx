@@ -10,12 +10,14 @@ import {
   CoverArtwork,
   CoverLikeButton,
   CoverStudio,
+  CommunityLikeButton,
   type CoverDraft,
   type CoverVersion
 } from './cover';
 import './styles.css';
 
 type Page = 'home' | 'bookshelf' | 'reader' | 'community' | 'login' | 'register' | 'profile' | 'speech-debug';
+type CommunitySection = 'dubbing' | 'illustration' | 'clue' | 'cover';
 
 type User = {
   id: string;
@@ -89,6 +91,38 @@ type ClueImage = {
   createdAt?: string;
   loading?: boolean;
   error?: string;
+};
+
+type ClueImageStatus = 'private' | 'public' | 'withdrawn' | 'moderated' | 'deleted';
+
+type ClueImageVersion = {
+  id: string;
+  projectId: string;
+  versionNumber: number;
+  ownerUserId: string;
+  username: string;
+  displayName: string;
+  articleId: string;
+  clueId: string;
+  occurrenceId: string;
+  chapterId: string;
+  paragraphIndex: number;
+  clueLabel: string;
+  clueType: string;
+  status: ClueImageStatus;
+  imageUrl: string;
+  mediaAssetId: string | null;
+  finalPrompt: string;
+  aspectRatio: string;
+  model: string;
+  sourceText: string;
+  likeCount: number;
+  adoptionCount: number;
+  likedByMe: boolean;
+  adoptedByMe: boolean;
+  ownedByMe: boolean;
+  createdAt: string;
+  withdrawnAt: string | null;
 };
 
 type ChatMessage = {
@@ -350,6 +384,21 @@ type OfficialIllustrationStyle = {
   createdAt: string;
 };
 
+type OfficialIllustrationSlot = {
+  id: string;
+  unitId: string;
+  articleId: string;
+  chapterId: string;
+  paragraphIndex: number;
+  imageUrl: string;
+  mediaAssetId: string | null;
+  promptExcerpt: string;
+  sourceText: string;
+  sourceHash: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type IllustrationVersion = {
   id: string;
   projectId: string;
@@ -473,6 +522,40 @@ type RangeMedia<T> = T & {
   fromLibrary?: boolean;
   createdAt?: string;
 };
+
+type ParagraphBoundMedia = {
+  chapterId: string;
+  range: TextRange;
+};
+
+function targetsSameParagraph(left: ParagraphBoundMedia, right: ParagraphBoundMedia) {
+  return (
+    left.chapterId === right.chapterId &&
+    left.range.startParagraphIndex === right.range.startParagraphIndex &&
+    left.range.endParagraphIndex === right.range.endParagraphIndex
+  );
+}
+
+function replaceParagraphMedia<T extends ParagraphBoundMedia>(
+  current: Record<string, T>,
+  replacement: T
+) {
+  const next = Object.fromEntries(
+    Object.entries(current).filter(([, item]) => !targetsSameParagraph(item, replacement))
+  ) as Record<string, T>;
+  next[rangeKey(replacement.chapterId, replacement.range)] = replacement;
+  return next;
+}
+
+function removeParagraphMedia<T extends ParagraphBoundMedia>(current: Record<string, T>, target: ParagraphBoundMedia) {
+  return Object.fromEntries(
+    Object.entries(current).filter(([, item]) => !targetsSameParagraph(item, target))
+  ) as Record<string, T>;
+}
+
+function findParagraphMedia<T extends ParagraphBoundMedia>(current: Record<string, T>, target: ParagraphBoundMedia) {
+  return Object.values(current).find((item) => targetsSameParagraph(item, target));
+}
 
 type MediaLibraryAsset = {
   id: string;
@@ -686,6 +769,10 @@ const api = {
     requestJson<{ style: OfficialIllustrationStyle }>(
       `/api/illustrations/styles/official?articleId=${encodeURIComponent(articleId)}`
     ),
+  officialIllustrationSlots: (articleId: string, chapterId: string) =>
+    requestJson<{ slots: OfficialIllustrationSlot[] }>(
+      `/api/illustrations/official-slots?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(chapterId)}`
+    ),
   illustrationUnitAtPosition: (articleId: string, chapterId: string, paragraphIndex: number) =>
     requestJson<IllustrationUnitBundle>(
       `/api/illustrations/unit-at-position?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(
@@ -756,6 +843,54 @@ const api = {
   reportIllustration: (versionId: string, reason: string) =>
     requestJson<{ report: { status: 'open' } }>(
       `/api/illustrations/versions/${encodeURIComponent(versionId)}/reports`,
+      { method: 'POST', body: JSON.stringify({ reason }) }
+    ),
+  clueImageVersions: (clueId: string) =>
+    requestJson<{ clue: Clue; versions: ClueImageVersion[]; myVersions: ClueImageVersion[] }>(
+      `/api/clues/${encodeURIComponent(clueId)}/image-versions`
+    ),
+  createClueImageVersions: (clueId: string, occurrenceId: string, finalPrompt: string) =>
+    requestJson<{ versions: ClueImageVersion[] }>(
+      `/api/clues/${encodeURIComponent(clueId)}/image-versions`,
+      { method: 'POST', body: JSON.stringify({ occurrenceId, finalPrompt }) }
+    ),
+  clueImageCommunity: (
+    articleId: string,
+    clueId: string,
+    sort: 'popular' | 'newest',
+    scope: 'all' | 'mine' = 'all'
+  ) => requestJson<{ versions: ClueImageVersion[] }>(
+    `/api/clue-versions/community?articleId=${encodeURIComponent(articleId)}&clueId=${encodeURIComponent(
+      clueId
+    )}&sort=${encodeURIComponent(sort)}&scope=${encodeURIComponent(scope)}`
+  ),
+  adoptedClueImages: (articleId = 'speckled-band') =>
+    requestJson<{ versions: ClueImageVersion[] }>(
+      `/api/clue-versions/adoptions?articleId=${encodeURIComponent(articleId)}`
+    ),
+  setClueImageStatus: (versionId: string, status: 'public' | 'withdrawn' | 'deleted') =>
+    requestJson<{ version: ClueImageVersion }>(
+      `/api/clue-versions/${encodeURIComponent(versionId)}/status`,
+      { method: 'PATCH', body: JSON.stringify({ status }) }
+    ),
+  adoptClueImage: (clueId: string, versionId: string) =>
+    requestJson<{ version: ClueImageVersion }>(
+      `/api/clues/${encodeURIComponent(clueId)}/image-adoption`,
+      { method: 'PUT', body: JSON.stringify({ versionId }) }
+    ),
+  restoreOfficialClueImage: (clueId: string) =>
+    requestJson<{ ok: true; removed: boolean }>(
+      `/api/clues/${encodeURIComponent(clueId)}/image-adoption`,
+      { method: 'DELETE' }
+    ),
+  likeClueImage: (versionId: string, liked: boolean) =>
+    requestJson<{ version: ClueImageVersion }>(
+      `/api/clue-versions/${encodeURIComponent(versionId)}/like`,
+      { method: liked ? 'POST' : 'DELETE' }
+    ),
+  reportClueImage: (versionId: string, reason: string) =>
+    requestJson<{ report: { status: 'open' } }>(
+      `/api/clue-versions/${encodeURIComponent(versionId)}/reports`,
       { method: 'POST', body: JSON.stringify({ reason }) }
     ),
   clueImage: (payload: { clueId: string; occurrenceId: string; force?: boolean }) =>
@@ -858,9 +993,11 @@ const api = {
       `/api/dubbing/versions/${encodeURIComponent(versionId)}/reports`,
       { method: 'POST', body: JSON.stringify({ reason }) }
     ),
-  mediaAssets: (articleId: string, chapterId: string) =>
+  mediaAssets: (articleId: string, chapterId: string, mediaType?: 'image' | 'audio') =>
     requestJson<{ assets: MediaLibraryAsset[] }>(
-      `/api/media/assets?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(chapterId)}`
+      `/api/media/assets?articleId=${encodeURIComponent(articleId)}&chapterId=${encodeURIComponent(chapterId)}${
+        mediaType ? `&mediaType=${encodeURIComponent(mediaType)}` : ''
+      }`
     ),
   voiceRecordings: (articleId: string, chapterId: string, range: TextRange) =>
     requestJson<{ myRecording: VoiceRecording | null; publicRecordings: VoiceRecording[] }>(
@@ -948,7 +1085,7 @@ function App() {
   const [chapterId, setChapterId] = useState('speckled-band-1');
   const [activeCover, setActiveCover] = useState<CoverVersion | null>(null);
   const [coverInspiration, setCoverInspiration] = useState<CoverVersion | null>(null);
-  const [communitySection, setCommunitySection] = useState<'dubbing' | 'illustration' | 'cover'>('dubbing');
+  const [communitySection, setCommunitySection] = useState<CommunitySection>('dubbing');
   const [notice, setNotice] = useState('');
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -998,13 +1135,26 @@ function App() {
 
   useEffect(() => {
     let cancelled = false;
-    api
-      .clueImages(collectedClues.map((record) => record.occurrenceId).filter(Boolean))
-      .then(({ images }) => {
+    Promise.all([
+      api.clueImages(collectedClues.map((record) => record.occurrenceId).filter(Boolean)),
+      user ? api.adoptedClueImages() : Promise.resolve({ versions: [] as ClueImageVersion[] })
+    ])
+      .then(([{ images }, { versions }]) => {
         if (cancelled) return;
         setClueImages((previous) => ({
           ...previous,
-          ...Object.fromEntries(images.map((image) => [clueImageKey(image.clueId), image]))
+          ...Object.fromEntries(images.map((image) => [clueImageKey(image.clueId), image])),
+          ...Object.fromEntries(versions.map((version) => [clueImageKey(version.clueId), {
+            clueId: version.clueId,
+            occurrenceId: version.occurrenceId,
+            skipped: false,
+            imageUrl: version.imageUrl,
+            prompt: version.finalPrompt,
+            mediaAssetId: version.mediaAssetId,
+            cacheHit: true,
+            userOverride: true,
+            createdAt: version.createdAt
+          } satisfies ClueImage]))
         }));
       })
       .catch(() => {
@@ -1119,6 +1269,10 @@ function App() {
             clearCoverInspiration={() => setCoverInspiration(null)}
             openCoverCommunity={() => {
               setCommunitySection('cover');
+              setPage('community');
+            }}
+            openClueCommunity={() => {
+              setCommunitySection('clue');
               setPage('community');
             }}
           />
@@ -1270,10 +1424,10 @@ function CommunityPage({
   user: User | null;
   setPage: (page: Page) => void;
   setChapterId: (chapterId: string) => void;
-  initialSection: 'dubbing' | 'illustration' | 'cover';
+  initialSection: CommunitySection;
   onCoverRemix: (version: CoverVersion) => void;
 }) {
-  const [section, setSection] = useState<'dubbing' | 'illustration' | 'cover'>(initialSection);
+  const [section, setSection] = useState<CommunitySection>(initialSection);
 
   useEffect(() => {
     setSection(initialSection);
@@ -1288,6 +1442,9 @@ function CommunityPage({
         <button type="button" className={section === 'illustration' ? 'active' : ''} onClick={() => setSection('illustration')}>
           <span>ILLUSTRATION GALLERY</span><strong>插图创作</strong>
         </button>
+        <button type="button" className={section === 'clue' ? 'active' : ''} onClick={() => setSection('clue')}>
+          <span>EVIDENCE GALLERY</span><strong>证物创作</strong>
+        </button>
         <button type="button" className={section === 'cover' ? 'active' : ''} onClick={() => setSection('cover')}>
           <span>POSTER GALLERY</span><strong>封面创作</strong>
         </button>
@@ -1296,6 +1453,8 @@ function CommunityPage({
         <DubbingCommunityPage user={user} setPage={setPage} setChapterId={setChapterId} />
       ) : section === 'illustration' ? (
         <IllustrationCommunityPage user={user} setPage={setPage} setChapterId={setChapterId} />
+      ) : section === 'clue' ? (
+        <ClueCommunityPage user={user} setPage={setPage} setChapterId={setChapterId} />
       ) : (
         <CoverCommunityPage user={user} setPage={setPage} onRemix={onCoverRemix} />
       )}
@@ -1446,11 +1605,14 @@ function DubbingCommunityPage({
                   </div>
                 )}
                 <footer>
-                  <span>赞 {version.likeCount} · 采用 {version.adoptionCount}</span>
+                  <span>采用 {version.adoptionCount}</span>
                   <div>
-                    {version.ownerUserId !== user?.id && (
-                      <button type="button" onClick={() => void toggleLike(version)}>{version.likedByMe ? '已赞' : '点赞'}</button>
-                    )}
+                    <CommunityLikeButton
+                      liked={version.likedByMe}
+                      likeCount={version.likeCount}
+                      ownedByMe={version.ownerUserId === user?.id}
+                      onToggle={() => void toggleLike(version)}
+                    />
                     <button type="button" className={version.adoptedByMe ? 'active' : ''} onClick={() => void adopt(version)}>
                       {version.adoptedByMe ? '当前使用' : '采用为我的配音'}
                     </button>
@@ -1593,12 +1755,15 @@ function IllustrationWorkCard({
           <p>{version.finalPrompt}</p>
         </details>
         <div className="illustration-work-actions">
-          <span>赞 {version.likeCount} · 评论 {version.commentCount}</span>
+          <span>评论 {version.commentCount}</span>
           <div>
-            {version.status === 'public' && version.ownerUserId !== user?.id && (
-              <button type="button" className={version.likedByMe ? 'active' : ''} onClick={() => void onLike(version)}>
-                {version.likedByMe ? '已赞' : '点赞'}
-              </button>
+            {version.status === 'public' && (
+              <CommunityLikeButton
+                liked={version.likedByMe}
+                likeCount={version.likeCount}
+                ownedByMe={version.ownerUserId === user?.id}
+                onToggle={() => void onLike(version)}
+              />
             )}
             <button type="button" className={version.adoptedByMe ? 'active' : ''} onClick={() => void onAdopt(version)}>
               {version.adoptedByMe ? '当前使用' : '采用为我的插图'}
@@ -1754,6 +1919,196 @@ function IllustrationCommunityPage({
               onReport={report}
               onViewSource={(item) => { setChapterId(item.chapterId); setPage('reader'); }}
               onCommentCount={(id, count) => setVersions((current) => current.map((item) => item.id === id ? { ...item, commentCount: count } : item))}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ClueVersionCard({
+  version,
+  user,
+  compact = false,
+  onLike,
+  onAdopt,
+  onPublish,
+  onWithdraw,
+  onReport,
+  onViewSource
+}: {
+  version: ClueImageVersion;
+  user: User | null;
+  compact?: boolean;
+  onLike: (version: ClueImageVersion) => Promise<void>;
+  onAdopt: (version: ClueImageVersion) => Promise<void>;
+  onPublish?: (version: ClueImageVersion) => Promise<void>;
+  onWithdraw?: (version: ClueImageVersion) => Promise<void>;
+  onReport?: (version: ClueImageVersion) => Promise<void>;
+  onViewSource?: (version: ClueImageVersion) => void;
+}) {
+  const creatorName = version.displayName || version.username || '匿名创作者';
+  return (
+    <article className={`clue-version-card${compact ? ' compact' : ''}${version.adoptedByMe ? ' adopted' : ''}`}>
+      <div className="clue-version-image">
+        <img src={version.imageUrl} alt={`${version.clueLabel}证物图`} />
+        <span>{version.clueType}</span>
+      </div>
+      <div className="clue-version-copy">
+        <header>
+          <div className="community-creator">
+            <span className="community-avatar">{creatorName.slice(0, 1)}</span>
+            <div><strong>{creatorName}</strong><small>{version.clueLabel} · V{version.versionNumber}</small></div>
+          </div>
+          {version.status !== 'public' && (
+            <span className={`illustration-status ${version.status}`}>
+              {version.status === 'private' ? '未发布' : '已撤回'}
+            </span>
+          )}
+        </header>
+        {!compact && <blockquote>{version.sourceText}</blockquote>}
+        <details className="illustration-full-prompt"><summary>查看创作提示词</summary><p>{version.finalPrompt}</p></details>
+        <div className="clue-version-meta">采用 {version.adoptionCount}</div>
+        <div className="clue-version-actions">
+          {version.status === 'public' && (
+            <CommunityLikeButton
+              liked={version.likedByMe}
+              likeCount={version.likeCount}
+              ownedByMe={version.ownerUserId === user?.id}
+              onToggle={() => void onLike(version)}
+            />
+          )}
+          <button type="button" className={version.adoptedByMe ? 'active' : ''} onClick={() => void onAdopt(version)}>
+            {version.adoptedByMe ? '当前使用' : '用于我的证物'}
+          </button>
+          {version.ownerUserId === user?.id && version.status === 'private' && onPublish && (
+            <button type="button" onClick={() => void onPublish(version)}>发布到社区</button>
+          )}
+          {version.ownerUserId === user?.id && version.status === 'public' && onWithdraw && (
+            <button type="button" onClick={() => void onWithdraw(version)}>撤回作品</button>
+          )}
+          {user && version.ownerUserId !== user.id && version.status === 'public' && onReport && (
+            <button type="button" onClick={() => void onReport(version)}>举报</button>
+          )}
+          {onViewSource && <button type="button" onClick={() => onViewSource(version)}>查看原文</button>}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ClueCommunityPage({
+  user,
+  setPage,
+  setChapterId
+}: {
+  user: User | null;
+  setPage: (page: Page) => void;
+  setChapterId: (chapterId: string) => void;
+}) {
+  const [tab, setTab] = useState<'all' | 'mine'>('all');
+  const [sort, setSort] = useState<'popular' | 'newest'>('popular');
+  const [versions, setVersions] = useState<ClueImageVersion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadVersions = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await api.clueImageCommunity('speckled-band', '', sort, tab);
+      setVersions(result.versions);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '证物社区加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [sort, tab]);
+
+  useEffect(() => { void loadVersions(); }, [loadVersions]);
+
+  function requireLogin() {
+    if (user) return true;
+    setPage('login');
+    return false;
+  }
+
+  function replaceVersion(updated: ClueImageVersion) {
+    setVersions((current) => current.map((item) => item.id === updated.id ? updated : item));
+  }
+
+  async function like(version: ClueImageVersion) {
+    if (!requireLogin()) return;
+    try {
+      replaceVersion((await api.likeClueImage(version.id, !version.likedByMe)).version);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '点赞失败');
+    }
+  }
+
+  async function adopt(version: ClueImageVersion) {
+    if (!requireLogin()) return;
+    try {
+      const updated = (await api.adoptClueImage(version.clueId, version.id)).version;
+      setVersions((current) => current.map((item) => item.clueId === updated.clueId
+        ? { ...item, adoptedByMe: item.id === updated.id }
+        : item));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '采用证物图失败');
+    }
+  }
+
+  async function withdraw(version: ClueImageVersion) {
+    if (!window.confirm('撤回后作品将从证物社区消失，已有采用者不受影响。确定撤回吗？')) return;
+    try {
+      await api.setClueImageStatus(version.id, 'withdrawn');
+      setVersions((current) => current.filter((item) => item.id !== version.id));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '撤回失败');
+    }
+  }
+
+  async function report(version: ClueImageVersion) {
+    if (!requireLogin()) return;
+    const reason = window.prompt('请简要说明举报原因（最多 500 字）')?.trim();
+    if (!reason) return;
+    try {
+      await api.reportClueImage(version.id, reason);
+      window.alert('举报已提交');
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '举报失败');
+    }
+  }
+
+  return (
+    <section className="community-page clue-community-page">
+      <header className="community-hero clue-square-hero">
+        <div><p className="eyebrow">EVIDENCE GALLERY</p><h1>证物创作社区</h1><p>围绕同一件证物探索不同视觉解释，采用只会改变你自己的阅读版本。</p></div>
+        <div className="community-hero-stat"><strong>{versions.length}</strong><span>公开证物图</span></div>
+      </header>
+      <div className="community-toolbar">
+        <div className="community-tabs">
+          <button type="button" className={tab === 'all' ? 'active' : ''} onClick={() => setTab('all')}>全部作品</button>
+          {user && <button type="button" className={tab === 'mine' ? 'active' : ''} onClick={() => setTab('mine')}>我的作品</button>}
+        </div>
+        <label>排序<select value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}><option value="popular">热门优先</option><option value="newest">最新发布</option></select></label>
+      </div>
+      {error && <p className="community-error">{error}</p>}
+      {loading ? <p className="community-empty">正在载入证物作品...</p> : versions.length === 0 ? (
+        <p className="community-empty">暂无公开证物作品。</p>
+      ) : (
+        <div className="clue-community-grid">
+          {versions.map((version) => (
+            <ClueVersionCard
+              key={version.id}
+              version={version}
+              user={user}
+              onLike={like}
+              onAdopt={adopt}
+              onWithdraw={withdraw}
+              onReport={report}
+              onViewSource={(item) => { setChapterId(item.chapterId); setPage('reader'); }}
             />
           ))}
         </div>
@@ -2688,6 +3043,207 @@ function SpeechDebugPage() {
   );
 }
 
+function ClueCreatorPanel({
+  clue,
+  occurrenceId,
+  user,
+  onImageChange,
+  onNotice,
+  onOpenCommunity
+}: {
+  clue: Clue;
+  occurrenceId: string;
+  user: User;
+  onImageChange: (image: ClueImage) => void;
+  onNotice: (message: string) => void;
+  onOpenCommunity: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<'mine' | 'community'>('mine');
+  const [prompt, setPrompt] = useState(clue.surfaceDescription || `维多利亚时代侦探案中的${clue.label}，作为关键证物的写实特写`);
+  const [versions, setVersions] = useState<ClueImageVersion[]>([]);
+  const [myVersions, setMyVersions] = useState<ClueImageVersion[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadVersions = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await api.clueImageVersions(clue.id);
+      setVersions(result.versions);
+      setMyVersions(result.myVersions);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '证物版本加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [clue.id]);
+
+  useEffect(() => {
+    if (open) void loadVersions();
+  }, [open, loadVersions]);
+
+  function updateVersion(updated: ClueImageVersion) {
+    setVersions((current) => current.map((item) => item.id === updated.id ? updated : item));
+    setMyVersions((current) => current.map((item) => item.id === updated.id ? updated : item));
+  }
+
+  async function generate() {
+    const finalPrompt = prompt.trim();
+    if (finalPrompt.length < 5) {
+      setError('请至少写 5 个字，描述你希望看到的证物画面');
+      return;
+    }
+    setGenerating(true);
+    setError('');
+    try {
+      const result = await api.createClueImageVersions(clue.id, occurrenceId, finalPrompt);
+      setMyVersions((current) => [...result.versions, ...current]);
+      setVersions((current) => [...result.versions, ...current]);
+      setTab('mine');
+      onNotice('已生成 2 张证物候选，请选择一张用于自己的版本');
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '证物图生成失败');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function adopt(version: ClueImageVersion) {
+    try {
+      const updated = (await api.adoptClueImage(clue.id, version.id)).version;
+      setVersions((current) => current.map((item) => item.clueId === clue.id ? { ...item, adoptedByMe: item.id === updated.id } : item));
+      setMyVersions((current) => current.map((item) => ({ ...item, adoptedByMe: item.id === updated.id })));
+      onImageChange({
+        clueId: clue.id,
+        occurrenceId: updated.occurrenceId,
+        skipped: false,
+        imageUrl: updated.imageUrl,
+        prompt: updated.finalPrompt,
+        mediaAssetId: updated.mediaAssetId,
+        cacheHit: true,
+        userOverride: true,
+        createdAt: updated.createdAt
+      });
+      onNotice(`已将 V${updated.versionNumber} 用于你的证物袋`);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '采用证物图失败');
+    }
+  }
+
+  async function restoreOfficial() {
+    try {
+      await api.restoreOfficialClueImage(clue.id);
+      const { images } = await api.clueImages([occurrenceId]);
+      const official = images.find((item) => item.clueId === clue.id);
+      if (official) onImageChange(official);
+      setVersions((current) => current.map((item) => ({ ...item, adoptedByMe: false })));
+      setMyVersions((current) => current.map((item) => ({ ...item, adoptedByMe: false })));
+      onNotice('已恢复官方默认证物图，你的历史版本仍然保留');
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '恢复官方证物图失败');
+    }
+  }
+
+  async function like(version: ClueImageVersion) {
+    try {
+      updateVersion((await api.likeClueImage(version.id, !version.likedByMe)).version);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '点赞失败');
+    }
+  }
+
+  async function publish(version: ClueImageVersion) {
+    try {
+      updateVersion((await api.setClueImageStatus(version.id, 'public')).version);
+      onNotice('证物作品已发布到社区');
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '发布失败');
+    }
+  }
+
+  async function withdraw(version: ClueImageVersion) {
+    if (!window.confirm('撤回后作品将从证物社区消失，已有采用者不受影响。确定撤回吗？')) return;
+    try {
+      updateVersion((await api.setClueImageStatus(version.id, 'withdrawn')).version);
+      onNotice('证物作品已撤回；已有采用者仍可继续使用');
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '撤回失败');
+    }
+  }
+
+  async function report(version: ClueImageVersion) {
+    const reason = window.prompt('请简要说明举报原因（最多 500 字）')?.trim();
+    if (!reason) return;
+    try {
+      await api.reportClueImage(version.id, reason);
+      onNotice('举报已提交');
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '举报失败');
+    }
+  }
+
+  const visibleVersions = tab === 'mine'
+    ? myVersions
+    : versions.filter((version) => version.status === 'public');
+  const hasAdoption = versions.some((version) => version.adoptedByMe) || myVersions.some((version) => version.adoptedByMe);
+
+  return (
+    <div className="clue-creator">
+      <button type="button" className="clue-creator-toggle" onClick={() => setOpen((value) => !value)}>
+        {open ? '收起证物创作' : '创作我的证物图'}
+      </button>
+      {open && (
+        <div className="clue-creator-body">
+          <label>
+            <span>画面提示词 <small>{prompt.length}/800</small></span>
+            <textarea
+              value={prompt}
+              maxLength={800}
+              rows={4}
+              placeholder="描述主体、环境、光线、视角和氛围"
+              onChange={(event) => setPrompt(event.target.value)}
+            />
+          </label>
+          <div className="clue-creator-primary-actions">
+            <button type="button" disabled={generating || !occurrenceId} onClick={() => void generate()}>
+              {generating ? '正在生成 2 张候选…' : '生成 2 张候选'}
+            </button>
+            {hasAdoption && <button type="button" onClick={() => void restoreOfficial()}>恢复官方版本</button>}
+          </div>
+          <div className="clue-creator-tabs">
+            <button type="button" className={tab === 'mine' ? 'active' : ''} onClick={() => setTab('mine')}>我的版本</button>
+            <button type="button" className={tab === 'community' ? 'active' : ''} onClick={() => setTab('community')}>社区作品</button>
+          </div>
+          {error && <p className="form-error">{error}</p>}
+          {loading ? <p className="clue-creator-empty">正在载入版本…</p> : visibleVersions.length === 0 ? (
+            <p className="clue-creator-empty">{tab === 'mine' ? '还没有个人版本，先生成两张候选。' : '这件证物还没有公开作品。'}</p>
+          ) : (
+            <div className="clue-version-grid">
+              {visibleVersions.map((version) => (
+                <ClueVersionCard
+                  key={version.id}
+                  version={version}
+                  user={user}
+                  compact
+                  onLike={like}
+                  onAdopt={adopt}
+                  onPublish={publish}
+                  onWithdraw={withdraw}
+                  onReport={report}
+                />
+              ))}
+            </div>
+          )}
+          <button type="button" className="clue-open-community" onClick={onOpenCommunity}>进入完整证物社区</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReaderPage({
   user,
   chapters,
@@ -2709,7 +3265,8 @@ function ReaderPage({
   setActiveCover,
   coverInspiration,
   clearCoverInspiration,
-  openCoverCommunity
+  openCoverCommunity,
+  openClueCommunity
 }: {
   user: User | null;
   chapters: Chapter[];
@@ -2732,6 +3289,7 @@ function ReaderPage({
   coverInspiration: CoverVersion | null;
   clearCoverInspiration: () => void;
   openCoverCommunity: () => void;
+  openClueCommunity: () => void;
 }) {
   const chapter = useMemo(
     () => chapters.find((item) => item.id === chapterId) ?? chapters[0],
@@ -2952,42 +3510,13 @@ function ReaderPage({
     return rangeKey(asset.chapterId, asset.range);
   }
 
-  function imageFromAsset(asset: MediaLibraryAsset): RangeMedia<ParagraphImage> | null {
-    const key = mediaAssetPositionKey(asset);
-    if (
-      !key ||
-      asset.mediaType !== 'image' ||
-      !asset.chapterId ||
-      !asset.range ||
-      asset.metadata?.generationType !== 'paragraph-image'
-    ) {
-      return null;
-    }
-
-    return {
-      chapterId: asset.chapterId,
-      range: asset.range,
-      imageUrl: asset.url,
-      prompt: asset.prompt || '',
-      sceneSummaryCn: metadataString(asset.metadata, 'sceneSummaryCn'),
-      componentType: metadataString(asset.metadata, 'componentType'),
-      promptCharCount: metadataNumber(asset.metadata, 'promptCharCount') ?? 0,
-      traceId: metadataString(asset.metadata, 'traceId') || null,
-      styleInitializedNow: Boolean(asset.metadata?.styleInitializedNow),
-      mediaAssetId: asset.id,
-      userId: asset.userId,
-      fromLibrary: true,
-      createdAt: asset.createdAt
-    };
-  }
-
   function audioFromAsset(asset: MediaLibraryAsset): RangeMedia<ParagraphSpeech> | null {
     const key = mediaAssetPositionKey(asset);
     if (!key || asset.mediaType !== 'audio' || !asset.chapterId || !asset.range) {
       return null;
     }
 
-    if (asset.provider === 'user_recording' || asset.metadata?.generationType === 'user-recording') {
+    if (asset.metadata?.generationType !== 'paragraph-speech') {
       return null;
     }
 
@@ -3077,6 +3606,29 @@ function ReaderPage({
     };
   }
 
+  function imageFromOfficialSlot(slot: OfficialIllustrationSlot): RangeMedia<ParagraphImage> {
+    return {
+      chapterId: slot.chapterId,
+      range: {
+        startParagraphIndex: slot.paragraphIndex,
+        startOffset: 0,
+        endParagraphIndex: slot.paragraphIndex,
+        endOffset: slot.sourceText.length
+      },
+      imageUrl: slot.imageUrl,
+      prompt: '',
+      sceneSummaryCn: '',
+      componentType: 'official-illustration',
+      promptCharCount: 0,
+      traceId: null,
+      styleInitializedNow: false,
+      mediaAssetId: slot.mediaAssetId,
+      userId: 'official',
+      fromLibrary: true,
+      createdAt: slot.updatedAt || slot.createdAt
+    };
+  }
+
   useEffect(() => {
     setSelectedParagraph(null);
     stopParagraphAudio();
@@ -3091,59 +3643,46 @@ function ReaderPage({
     let cancelled = false;
 
     Promise.all([
-      api.mediaAssets('speckled-band', chapter.id),
+      api.mediaAssets('speckled-band', chapter.id, 'audio'),
+      api.officialIllustrationSlots('speckled-band', chapter.id).catch(() => ({ slots: [] })),
       api.adoptedDubbingVersions('speckled-band', chapter.id).catch(() => ({ versions: [] })),
       api.adoptedIllustrations('speckled-band', chapter.id).catch(() => ({ versions: [] }))
     ])
-      .then(([{ assets }, { versions: adoptedVersions }, { versions: adoptedIllustrations }]) => {
+      .then(([{ assets }, { slots }, { versions: adoptedVersions }, { versions: adoptedIllustrations }]) => {
         if (cancelled) {
           return;
         }
 
-        const nextImages: Record<string, RangeMedia<ParagraphImage>> = {};
-        const nextAudios: Record<string, RangeMedia<ParagraphSpeech>> = {};
+        let nextImages: Record<string, RangeMedia<ParagraphImage>> = {};
+        let nextAudios: Record<string, RangeMedia<ParagraphSpeech>> = {};
+        slots.forEach((slot) => {
+          const image = imageFromOfficialSlot(slot);
+          nextImages = replaceParagraphMedia(nextImages, image);
+        });
         assets.forEach((asset) => {
-          const key = mediaAssetPositionKey(asset);
-          if (!key) {
-            return;
-          }
-
-          const image = imageFromAsset(asset);
-          if (image && !nextImages[key]) {
-            nextImages[key] = image;
+          if (!mediaAssetPositionKey(asset)) {
             return;
           }
 
           const audio = audioFromAsset(asset);
-          if (audio) {
-            const audioKey = rangeKey(audio.chapterId, audio.range);
-            if (!nextAudios[audioKey]) {
-              nextAudios[audioKey] = audio;
-            }
+          if (audio && !findParagraphMedia(nextAudios, audio)) {
+            nextAudios = replaceParagraphMedia(nextAudios, audio);
           }
         });
 
-        const resolvedAudios = { ...nextAudios };
+        let resolvedAudios = { ...nextAudios };
         adoptedVersions.forEach((version) => {
           const audio = audioFromDubbingVersion(version);
           if (!audio) {
             return;
           }
-          Object.keys(resolvedAudios).forEach((key) => {
-            if (
-              resolvedAudios[key].chapterId === audio.chapterId &&
-              resolvedAudios[key].range.startParagraphIndex === audio.range.startParagraphIndex
-            ) {
-              delete resolvedAudios[key];
-            }
-          });
-          resolvedAudios[rangeKey(audio.chapterId, audio.range)] = audio;
+          resolvedAudios = replaceParagraphMedia(resolvedAudios, audio);
         });
 
-        const resolvedImages = { ...nextImages };
+        let resolvedImages = { ...nextImages };
         adoptedIllustrations.forEach((version) => {
           const image = imageFromIllustrationVersion(version);
-          resolvedImages[rangeKey(image.chapterId, image.range)] = image;
+          resolvedImages = replaceParagraphMedia(resolvedImages, image);
         });
 
         setPlatformParagraphImages(nextImages);
@@ -3366,14 +3905,17 @@ function ReaderPage({
     setIllustrationGenerating(true);
     setIllustrationError('');
     try {
-      await api.createIllustrationVersion(bundle.unit.id, {
+      const { version } = await api.createIllustrationVersion(bundle.unit.id, {
         promptMode: illustrationPromptMode,
         finalPrompt,
         styleVersionId: illustrationPromptMode === 'official' ? officialIllustrationStyle?.id : null
       });
+      const image = imageFromIllustrationVersion(version);
+      setParagraphImages((current) => replaceParagraphMedia(current, image));
+      setCollapsedParagraphImages((current) => removeParagraphMedia(current, image));
       await loadIllustrationBundle(selectedParagraph);
       setIllustrationCreatorTab('mine');
-      setNotice('插图已生成，已收录至“我的作品”。');
+      setNotice('插图已生成，已用于我的版本并收录至“我的作品”。');
       window.setTimeout(() => setNotice(''), 2600);
     } catch (error) {
       setIllustrationError(error instanceof Error ? error.message : '插图生成失败');
@@ -3390,13 +3932,8 @@ function ReaderPage({
     try {
       const { version: adopted } = await api.adoptIllustration(version.unitId, version.id);
       const image = imageFromIllustrationVersion(adopted);
-      const key = rangeKey(image.chapterId, image.range);
-      setParagraphImages((current) => ({ ...current, [key]: image }));
-      setCollapsedParagraphImages((current) => {
-        const next = { ...current };
-        delete next[key];
-        return next;
-      });
+      setParagraphImages((current) => replaceParagraphMedia(current, image));
+      setCollapsedParagraphImages((current) => removeParagraphMedia(current, image));
       if (selectedParagraph) await loadIllustrationBundle(selectedParagraph);
       setNotice('已设为我的当前段落插图');
       window.setTimeout(() => setNotice(''), 1800);
@@ -3409,18 +3946,13 @@ function ReaderPage({
     if (!user) return;
     try {
       await api.cancelIllustrationAdoption(unit.id);
-      const key = rangeKey(unit.chapterId, unit.range);
       setParagraphImages((current) => {
-        const next = { ...current };
-        if (platformParagraphImages[key]) next[key] = platformParagraphImages[key];
-        else delete next[key];
-        return next;
+        const platformImage = findParagraphMedia(platformParagraphImages, unit);
+        return platformImage
+          ? replaceParagraphMedia(current, platformImage)
+          : removeParagraphMedia(current, unit);
       });
-      setCollapsedParagraphImages((current) => {
-        const next = { ...current };
-        delete next[key];
-        return next;
-      });
+      setCollapsedParagraphImages((current) => removeParagraphMedia(current, unit));
       if (selectedParagraph) await loadIllustrationBundle(selectedParagraph);
       setNotice('已恢复一键生成插图');
       window.setTimeout(() => setNotice(''), 1600);
@@ -3872,10 +4404,7 @@ function ReaderPage({
         window.setTimeout(() => setNotice(''), 2200);
         return;
       }
-      setParagraphAudios((current) => ({
-        ...current,
-        [rangeKey(audio.chapterId, audio.range)]: audio
-      }));
+      setParagraphAudios((current) => replaceParagraphMedia(current, audio));
       setNotice('已用于我的阅读');
       window.setTimeout(() => setNotice(''), 1600);
     } catch (error) {
@@ -3889,13 +4418,11 @@ function ReaderPage({
     try {
       await api.cancelDubbingAdoption(unit.id);
       await loadDubbingBundle(selectedParagraph);
-      const key = rangeKey(unit.chapterId, unit.range);
       setParagraphAudios((current) => {
-        const next = { ...current };
-        const platformAudio = platformParagraphAudios[key];
-        if (platformAudio) next[key] = platformAudio;
-        else delete next[key];
-        return next;
+        const platformAudio = findParagraphMedia(platformParagraphAudios, unit);
+        return platformAudio
+          ? replaceParagraphMedia(current, platformAudio)
+          : removeParagraphMedia(current, unit);
       });
       setNotice('已使用官方配音。');
       window.setTimeout(() => setNotice(''), 1600);
@@ -4118,8 +4645,8 @@ function ReaderPage({
         range: savedRange
       });
       const audio = { ...result, chapterId: savedChapterId, range: savedRange, fromLibrary: false };
-      setParagraphAudios((prev) => ({ ...prev, [key]: audio }));
-      setPlatformParagraphAudios((prev) => ({ ...prev, [key]: audio }));
+      setParagraphAudios((prev) => replaceParagraphMedia(prev, audio));
+      setPlatformParagraphAudios((prev) => replaceParagraphMedia(prev, audio));
       setSelectedParagraph(null);
       setNotice('AI 配音已生成');
       window.setTimeout(() => setNotice(''), 1800);
@@ -4139,6 +4666,10 @@ function ReaderPage({
 
   async function generateParagraphImage() {
     if (!selectedParagraph || paragraphImageLoadingKey) return;
+    if (!user) {
+      setPage('login');
+      return;
+    }
 
     const targetSegment = selectedParagraph.draft.trim();
     if (!targetSegment) {
@@ -4151,44 +4682,6 @@ function ReaderPage({
     const savedRange = selectedParagraph.range;
     const savedChapterId = selectedParagraph.chapterId;
     const savedParagraphIndex = selectedParagraph.paragraphIndex;
-    const existingImage = paragraphImages[key];
-    const collapsedImage = collapsedParagraphImages[key];
-
-    if (existingImage?.illustrationVersionId || collapsedImage?.illustrationVersionId) {
-      const bundle = illustrationBundles[dubbingBundleKey(selectedParagraph)] || await loadIllustrationBundle(selectedParagraph);
-      if (bundle && user) {
-        await api.cancelIllustrationAdoption(bundle.unit.id);
-      }
-      const platformImage = platformParagraphImages[key];
-      setCollapsedParagraphImages((current) => {
-        const next = { ...current };
-        delete next[key];
-        return next;
-      });
-      setParagraphImages((current) => {
-        const next = { ...current };
-        if (platformImage) next[key] = platformImage;
-        else delete next[key];
-        return next;
-      });
-      if (platformImage) {
-        setSelectedParagraph(null);
-        setNotice('已恢复一键生成插图');
-        window.setTimeout(() => setNotice(''), 1800);
-        return;
-      }
-    }
-
-    if ((existingImage && !existingImage.illustrationVersionId) || (collapsedImage && !collapsedImage.illustrationVersionId)) {
-      if (collapsedImage) {
-        expandParagraphImage(key);
-      }
-      setSelectedParagraph(null);
-      setNotice('已调用媒体库插图');
-      window.setTimeout(() => setNotice(''), 1800);
-      return;
-    }
-
     setParagraphImageLoadingKey(key);
     setNotice('正在生成段落插图，首次使用会先初始化全书风格，可能较慢');
     try {
@@ -4198,16 +4691,11 @@ function ReaderPage({
         targetSegment,
         range: savedRange
       });
-      setParagraphImages((prev) => ({
-        ...prev,
-        [key]: { ...result, chapterId: savedChapterId, range: savedRange, fromLibrary: false }
-      }));
-      setPlatformParagraphImages((prev) => ({
-        ...prev,
-        [key]: { ...result, chapterId: savedChapterId, range: savedRange, fromLibrary: false }
-      }));
+      const image = { ...result, chapterId: savedChapterId, range: savedRange, fromLibrary: false };
+      setParagraphImages((prev) => replaceParagraphMedia(prev, image));
+      setCollapsedParagraphImages((prev) => removeParagraphMedia(prev, image));
       setSelectedParagraph(null);
-      setNotice('段落插图已生成');
+      setNotice('段落插图已生成，仅用于我的版本');
       window.setTimeout(() => setNotice(''), 1800);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '段落插图生成失败');
@@ -4249,49 +4737,29 @@ function ReaderPage({
   }
 
   async function deleteParagraphImage(key: string, image: RangeMedia<ParagraphImage>) {
-    const confirmed = window.confirm('删除这张插图后，同一片段可以重新生成。确认删除？');
+    if (!image.illustrationVersionId || !user) {
+      return;
+    }
+    const officialImage = findParagraphMedia(platformParagraphImages, image);
+    const confirmed = window.confirm(
+      officialImage ? '恢复该位置的官方默认插图？' : '从我的版本中移除这张插图？'
+    );
     if (!confirmed) {
       return;
     }
 
     try {
-      if (image.illustrationVersionId && user) {
-        const bundle = await api.illustrationUnitAtPosition(
-          'speckled-band',
-          image.chapterId,
-          image.range.startParagraphIndex
-        );
-        await api.cancelIllustrationAdoption(bundle.unit.id);
-        setCollapsedParagraphImages((prev) => {
-          const next = { ...prev };
-          delete next[key];
-          return next;
-        });
-        setParagraphImages((prev) => {
-          const next = { ...prev };
-          if (platformParagraphImages[key]) next[key] = platformParagraphImages[key];
-          else delete next[key];
-          return next;
-        });
-        setNotice('已移除采用的插图');
-        window.setTimeout(() => setNotice(''), 1600);
-        return;
-      }
-      if (image.mediaAssetId) {
-        await api.deleteMediaAsset(image.mediaAssetId);
-      }
-
-      setCollapsedParagraphImages((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-      setParagraphImages((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-      setNotice('插图已删除');
+      const bundle = await api.illustrationUnitAtPosition(
+        'speckled-band',
+        image.chapterId,
+        image.range.startParagraphIndex
+      );
+      await api.cancelIllustrationAdoption(bundle.unit.id);
+      setCollapsedParagraphImages((prev) => removeParagraphMedia(prev, image));
+      setParagraphImages((prev) => officialImage
+        ? replaceParagraphMedia(prev, officialImage)
+        : removeParagraphMedia(prev, image));
+      setNotice(officialImage ? '已恢复官方默认插图' : '已从我的版本中移除插图');
       window.setTimeout(() => setNotice(''), 1600);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '插图删除失败');
@@ -4515,7 +4983,7 @@ function ReaderPage({
           <small>
             {kindLabel} · V{version.versionNumber} · {statusLabels[version.status]}
           </small>
-          <span>点赞 {version.likeCount} · 采用 {version.adoptionCount}</span>
+          <span>采用 {version.adoptionCount}</span>
         </div>
         <div className="voice-recording-actions">
           <button type="button" onClick={() => toggleParagraphAudio(audioKey, version.audioUrl)}>
@@ -4530,12 +4998,15 @@ function ReaderPage({
               用于我的阅读
             </button>
           ) : null}
-          {!isMine && version.status === 'public' && (
+          {version.status === 'public' && (
             <>
-              <button type="button" onClick={() => void toggleDubbingLike(version)}>
-                {version.likedByMe ? '已赞' : '点赞'}
-              </button>
-              <button type="button" onClick={() => void reportDubbingVersion(version)}>举报</button>
+              <CommunityLikeButton
+                liked={version.likedByMe}
+                likeCount={version.likeCount}
+                ownedByMe={isMine}
+                onToggle={() => void toggleDubbingLike(version)}
+              />
+              {!isMine && <button type="button" onClick={() => void reportDubbingVersion(version)}>举报</button>}
             </>
           )}
           {isMine ? (
@@ -5327,112 +5798,92 @@ function ReaderPage({
     );
   }
 
-  function renderParagraphWithMedia(paragraph: TextSegment[], paragraphIndex: number) {
-    type ParagraphInjection =
-      | { kind: 'audio'; offset: number; key: string; audio: RangeMedia<ParagraphSpeech> }
-      | { kind: 'image'; offset: number; key: string; image: RangeMedia<ParagraphImage> }
-      | { kind: 'collapsed-image'; offset: number; key: string; image: RangeMedia<ParagraphImage> };
+  function renderParagraphAudioControls(paragraphIndex: number) {
+    const audios = Object.entries(paragraphAudios).filter(
+      ([, entry]) => entry.chapterId === chapter.id && entry.range.startParagraphIndex === paragraphIndex
+    );
 
-    const injections: ParagraphInjection[] = [];
+    if (audios.length === 0) {
+      return null;
+    }
 
-    Object.entries(paragraphAudios).forEach(([key, entry]) => {
-      if (entry.chapterId === chapter.id && entry.range.startParagraphIndex === paragraphIndex) {
-        injections.push({ kind: 'audio', offset: entry.range.startOffset, key, audio: entry });
-      }
-    });
+    return (
+      <div className="paragraph-audio-controls" aria-label="段落配音">
+        {audios.map(([key, audio]) => renderInlinePlayButton(key, audio))}
+      </div>
+    );
+  }
 
-    Object.entries(paragraphImages).forEach(([key, entry]) => {
-      if (entry.chapterId === chapter.id && entry.range.endParagraphIndex === paragraphIndex) {
-        injections.push({ kind: 'image', offset: entry.range.endOffset, key, image: entry });
-      }
-    });
+  function renderParagraphImageMedia(paragraphIndex: number) {
+    const images = Object.entries(paragraphImages).filter(
+      ([, entry]) => entry.chapterId === chapter.id && entry.range.endParagraphIndex === paragraphIndex
+    );
+    const collapsedImages = Object.entries(collapsedParagraphImages).filter(
+      ([, entry]) => entry.chapterId === chapter.id && entry.range.endParagraphIndex === paragraphIndex
+    );
 
-    Object.entries(collapsedParagraphImages).forEach(([key, entry]) => {
-      if (entry.chapterId === chapter.id && entry.range.endParagraphIndex === paragraphIndex) {
-        injections.push({ kind: 'collapsed-image', offset: entry.range.endOffset, key, image: entry });
-      }
-    });
+    if (images.length === 0 && collapsedImages.length === 0) {
+      return null;
+    }
 
-    injections.sort((left, right) => {
-      if (left.offset !== right.offset) {
-        return left.offset - right.offset;
-      }
-      const order = { audio: 0, image: 1, 'collapsed-image': 1 };
-      return order[left.kind] - order[right.kind];
-    });
-
-    const nodes: React.ReactNode[] = [];
-    let position = 0;
-    const paragraphLength = paragraphToText(paragraph).length;
-
-    injections.forEach((injection) => {
-      nodes.push(...renderTextRange(paragraph, position, injection.offset));
-
-      if (injection.kind === 'audio') {
-        nodes.push(renderInlinePlayButton(injection.key, injection.audio));
-        position = injection.offset;
-        return;
-      }
-
-      if (injection.kind === 'collapsed-image') {
-        nodes.push(
-          <span
-            key={`collapsed-image-${injection.key}`}
-            className={`inline-image-placeholder${injection.image.fromLibrary ? ' library-media' : ''}`}
+    return (
+      <div className="paragraph-image-media">
+        {collapsedImages.map(([key, image]) => (
+          <div
+            key={`collapsed-image-${key}`}
+            className={`inline-image-placeholder${image.fromLibrary ? ' library-media' : ''}`}
           >
             <button
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
-                expandParagraphImage(injection.key);
+                expandParagraphImage(key);
               }}
             >
               展开插图
             </button>
-          </span>
-        );
-        position = injection.offset;
-        return;
-      }
-
-      nodes.push(
-        <span
-          key={`image-${injection.key}`}
-          className={`inline-image-frame${injection.image.fromLibrary ? ' library-media' : ''}`}
-        >
-          <span className="inline-image-actions">
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                hideParagraphImage(injection.key, injection.image);
-              }}
+          </div>
+        ))}
+        {images.map(([key, image]) => {
+          const officialImage = findParagraphMedia(platformParagraphImages, image);
+          return (
+            <div
+            key={`image-${key}`}
+            className={`inline-image-frame${image.fromLibrary ? ' library-media' : ''}`}
             >
-              收起
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                void deleteParagraphImage(injection.key, injection.image);
-              }}
-            >
-              删除
-            </button>
-          </span>
-          <img
-            className="inline-selection-image"
-            src={injection.image.imageUrl}
-            alt=""
-            title={injection.image.fromLibrary ? `Media library: ${injection.image.userId || 'unknown'}` : undefined}
-          />
-        </span>
-      );
-      position = injection.offset;
-    });
-
-    nodes.push(...renderTextRange(paragraph, position, paragraphLength));
-    return nodes;
+              <span className="inline-image-actions">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    hideParagraphImage(key, image);
+                  }}
+                >
+                  收起
+                </button>
+                {image.illustrationVersionId && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void deleteParagraphImage(key, image);
+                    }}
+                  >
+                    {officialImage ? '恢复官方' : '移出我的版本'}
+                  </button>
+                )}
+              </span>
+              <img
+                className="inline-selection-image"
+                src={image.imageUrl}
+                alt=""
+                title={image.fromLibrary ? `Media library: ${image.userId || 'unknown'}` : undefined}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
   }
 
   if (!chapter) {
@@ -5582,30 +6033,32 @@ function ReaderPage({
 
             return (
               <div className="reader-paragraph-block" key={key}>
-              <p
-                className="reader-paragraph"
-                data-paragraph-index={paragraphIndex}
-                onContextMenu={(event) => handleParagraphContextMenu(event, paragraph, paragraphIndex)}
-                onPointerDown={(event) => handleParagraphPointerDown(event, paragraph, paragraphIndex)}
-                onPointerUp={clearLongPressTimer}
-                onPointerCancel={clearLongPressTimer}
-                onPointerLeave={clearLongPressTimer}
-                title="长按或右键选取完整段落"
-              >
-                {renderParagraphWithMedia(paragraph, paragraphIndex)}
-              </p>
-              <button
-                type="button"
-                className={commentsOpen ? 'paragraph-comment-trigger active' : 'paragraph-comment-trigger'}
-                onClick={() => {
-                  setActiveCommentParagraph(commentsOpen ? null : paragraphIndex);
-                  setCommentDraft('');
-                  setCommentError('');
-                }}
-                aria-expanded={commentsOpen}
-              >
-                评论{comments.length ? ` ${comments.length}` : ''}
-              </button>
+                {renderParagraphAudioControls(paragraphIndex)}
+                <p
+                  className="reader-paragraph"
+                  data-paragraph-index={paragraphIndex}
+                  onContextMenu={(event) => handleParagraphContextMenu(event, paragraph, paragraphIndex)}
+                  onPointerDown={(event) => handleParagraphPointerDown(event, paragraph, paragraphIndex)}
+                  onPointerUp={clearLongPressTimer}
+                  onPointerCancel={clearLongPressTimer}
+                  onPointerLeave={clearLongPressTimer}
+                  title="长按或右键选取完整段落"
+                >
+                  {renderTextRange(paragraph, 0, paragraphToText(paragraph).length)}
+                </p>
+                {renderParagraphImageMedia(paragraphIndex)}
+                <button
+                  type="button"
+                  className={commentsOpen ? 'paragraph-comment-trigger active' : 'paragraph-comment-trigger'}
+                  onClick={() => {
+                    setActiveCommentParagraph(commentsOpen ? null : paragraphIndex);
+                    setCommentDraft('');
+                    setCommentError('');
+                  }}
+                  aria-expanded={commentsOpen}
+                >
+                  评论{comments.length ? ` ${comments.length}` : ''}
+                </button>
               {commentsOpen && (
                 <section className="paragraph-comments" aria-label={`第 ${paragraphIndex + 1} 段评论`}>
                   {commentsLoading && <p className="comment-status">正在加载评论…</p>}
@@ -5915,7 +6368,7 @@ function ReaderPage({
               <section className="bag-card context-card">
                 <div className="context-heading">
                   <h2>证物袋</h2>
-                  <span>{collectedClues.length} 件</span>
+                  <div className="bag-heading-actions"><span>{collectedClues.length} 件</span><button type="button" onClick={openClueCommunity}>证物社区</button></div>
                 </div>
 
                 {collectedClues.length === 0 ? (
@@ -5932,13 +6385,6 @@ function ReaderPage({
                           <div className="clue-card-header">
                             <span>{clue.type}</span>
                             <div className="clue-card-actions">
-                              <button
-                                type="button"
-                                onClick={() => regenerateClue(clue.id, record.occurrenceId)}
-                                disabled={image?.loading || !record.occurrenceId}
-                              >
-                                {image?.loading ? '生成中' : '重新生成'}
-                              </button>
                               <button type="button" onClick={() => removeClue(clue.id)}>
                                 取出
                               </button>
@@ -5964,6 +6410,23 @@ function ReaderPage({
                           </div>
                           <h3>{clue.label}</h3>
                           <p>{clue.surfaceDescription}</p>
+                          {image?.userOverride && <span className="clue-personal-version">当前显示：我的版本</span>}
+                          {user && (
+                            <ClueCreatorPanel
+                              clue={clue}
+                              occurrenceId={record.occurrenceId}
+                              user={user}
+                              onImageChange={(nextImage) => setClueImages((current) => ({
+                                ...current,
+                                [clueImageKey(clue.id)]: nextImage
+                              }))}
+                              onNotice={(message) => {
+                                setNotice(message);
+                                window.setTimeout(() => setNotice(''), 2400);
+                              }}
+                              onOpenCommunity={openClueCommunity}
+                            />
+                          )}
                         </article>
                       );
                     })}

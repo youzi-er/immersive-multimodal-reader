@@ -1,0 +1,87 @@
+{
+  "articleId": "speckled-band",
+  "placementRule": "after-paragraph",
+  "selections": [
+    {
+      "id": "official-illustration-01-veiled-visitor",
+      "title": "蒙面访客",
+      "imageUrl": "/assets/official-illustrations/official-illustration-01-veiled-visitor.jpg",
+      "chapterId": "speckled-band-1",
+      "paragraphIndex": 8,
+      "locatorText": "一位女士端坐窗前",
+      "promptExcerpt": "一位女士端坐窗前，她身穿黑色衣服，蒙着厚厚的面纱。她在我们走进房间时站起身来。光照打在人脸上"
+    },
+    {
+      "id": "official-illustration-02-sisters-final-moments",
+      "title": "姐姐临终前的呼救",
+      "imageUrl": "/assets/official-illustrations/official-illustration-02-sisters-final-moments.jpg",
+      "chapterId": "speckled-band-3",
+      "paragraphIndex": 15,
+      "locatorText": "借着过道的灯光，我看见我姐姐出现在房门口",
+      "promptExcerpt": "借着过道的灯光，我看见我姐姐出现在房门口，她的脸由于恐惧而雪白如纸，双手摸索着寻求援救，整个身体就象醉汉一样摇摇晃晃。她叫喊的是：‘唉，海伦！天啊！是那条带子！那条带斑点的带子！’"
+    },
+    {
+      "id": "official-illustration-03-royllott-at-the-door",
+      "title": "堵在门口的罗伊洛特",
+      "imageUrl": "/assets/official-illustrations/official-illustration-03-royllott-at-the-door.jpg",
+      "chapterId": "speckled-band-6",
+      "paragraphIndex": 6,
+      "locatorText": "一个彪形大汉堵在房门口",
+      "promptExcerpt": "一个彪形大汉堵在房门口。他头戴黑色大礼帽，身穿一件长礼服，脚上穿着一双有绑腿的高统靴，手里向上挥动着一根猎鞭。写实诺兰电影质感"
+    },
+    {
+      "id": "official-illustration-04-stoke-moran-in-the-woods",
+      "title": "树林中的古老邸宅",
+      "imageUrl": "/assets/official-illustrations/official-illustration-04-stoke-moran-in-the-woods.jpg",
+      "chapterId": "speckled-band-7",
+      "paragraphIndex": 13,
+      "locatorText": "十分古老的邸宅的灰色山墙和高高的屋顶",
+      "promptExcerpt": "一片树木茂密的园地沿斜坡向上延伸，树丛之中矗立着一座十分古老的邸宅的灰色山墙和高高的屋顶。写实诺兰式电影风格"
+    },
+    {
+      "id": "official-illustration-05-shutter-investigation",
+      "title": "检查打不开的百叶窗",
+      "imageUrl": "/assets/official-illustrations/official-illustration-05-shutter-investigation.jpg",
+      "chapterId": "speckled-band-8",
+      "paragraphIndex": 17,
+      "locatorText": "福尔摩斯十分仔细地检查开着的窗子",
+      "promptExcerpt": "福尔摩斯十分仔细地检查开着的窗子，然后用尽各种方法想打开百叶窗，但就是打不开。随后，他用凸透镜检查了牢牢嵌在石墙上的铁制合叶。写实诺兰式电影风格"
+    },
+    {
+      "id": "official-illustration-06-manor-exterior",
+      "title": "残破的灰石庄园",
+      "imageUrl": "/assets/official-illustrations/official-illustration-06-manor-exterior.jpg",
+      "chapterId": "speckled-band-8",
+      "paragraphIndex": 9,
+      "locatorText": "这座邸宅是用灰色的石头砌的",
+      "promptExcerpt": "这座邸宅是用灰色的石头砌的，石壁上布满了青苔，中央部分高高矗立，两侧是弧形的边房，象一对蟹钳似地向两边延伸。"
+    },
+    {
+      "id": "official-illustration-07-doctors-room",
+      "title": "罗伊洛特医生的房间",
+      "imageUrl": "/assets/official-illustrations/official-illustration-07-doctors-room.jpg",
+      "chapterId": "speckled-band-9",
+      "paragraphIndex": 17,
+      "locatorText": "格里姆斯比·罗伊洛特医生的房间",
+      "promptExcerpt": "格里姆斯比·罗伊洛特医生的房间较为宽敞但陈设简朴：行军床、书架、扶手椅、木椅、圆桌和一只大铁保险柜。福尔摩斯逐一检查这些家具和杂物。人物绝对不要看向镜头。写实电影感"
+    },
+    {
+      "id": "official-illustration-08-julias-bedroom",
+      "title": "斯托纳小姐的寝室",
+      "imageUrl": "/assets/official-illustrations/official-illustration-08-julias-bedroom.jpg",
+      "chapterId": "speckled-band-9",
+      "paragraphIndex": 0,
+      "locatorText": "第二间，也就是斯托纳小姐现在用作寝室",
+      "promptExcerpt": "第二间是斯托纳小姐现在用作寝室、她的姐姐不幸去世的房间。低矮天花板、壁炉、褐色橱柜、白色床罩的窄床、梳妆台和陈旧的棕色栎木嵌板构成了简朴而压抑的空间。"
+    },
+    {
+      "id": "official-illustration-09-final-revelation",
+      "title": "斑点带子的真相",
+      "imageUrl": "/assets/official-illustrations/official-illustration-09-final-revelation.jpg",
+      "chapterId": "speckled-band-14",
+      "paragraphIndex": 10,
+      "locatorText": "出现在我们眼前的是一幅奇特的景象",
+      "promptExcerpt": "遮光灯照着半开的铁保险柜。罗伊洛特医生穿着灰色睡衣坐在木椅上，膝盖横搭短柄长鞭，额头上紧紧缠着一条带褐色斑点的黄带子。"
+    }
+  ]
+}

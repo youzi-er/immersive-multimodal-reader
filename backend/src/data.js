@@ -3,8 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   findClueOccurrence,
+  createRuntimeClueIndex,
   loadClueIndex,
-  segmentParagraphWithClues
+  segmentParagraphWithClues,
+  validateClueManifest
 } from './clue-index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -33,7 +35,7 @@ function splitParagraphs(text) {
 
 const BOOK_PARAGRAPHS = splitParagraphs(RAW_BOOK_TEXT);
 const PARAGRAPHS_PER_CHAPTER = 18;
-const clueIndex = loadClueIndex({
+let clueIndex = loadClueIndex({
   bookText: RAW_BOOK_TEXT,
   paragraphs: BOOK_PARAGRAPHS,
   paragraphsPerChapter: PARAGRAPHS_PER_CHAPTER
@@ -43,15 +45,15 @@ if (clueIndex.warning) {
   console.warn(`[clue-index] ${clueIndex.warning}. 正文将不显示线索下划线。`);
 }
 
-export const clues = clueIndex.clues;
-export const clueIndexStatus = {
+export let clues = clueIndex.clues;
+export let clueIndexStatus = {
   status: clueIndex.status,
   warning: clueIndex.warning,
   clueCount: clueIndex.clues.length
 };
 
-function segmentParagraph(paragraph, globalParagraphIndex) {
-  return segmentParagraphWithClues(paragraph, globalParagraphIndex, clueIndex);
+function segmentParagraph(paragraph, globalParagraphIndex, runtimeIndex = clueIndex) {
+  return segmentParagraphWithClues(paragraph, globalParagraphIndex, runtimeIndex);
 }
 
 function buildSceneForChapter(index, title) {
@@ -102,7 +104,7 @@ function buildSceneForChapter(index, title) {
   };
 }
 
-function buildChaptersFromBook(text) {
+function buildChaptersFromBook(text, runtimeIndex = clueIndex) {
   const paragraphs = BOOK_PARAGRAPHS;
   const paragraphsPerChapter = PARAGRAPHS_PER_CHAPTER;
   const totalChapters = Math.max(1, Math.ceil(paragraphs.length / paragraphsPerChapter));
@@ -118,13 +120,15 @@ function buildChaptersFromBook(text) {
       title,
       subtitle: index === 0 ? '贝克街的清晨委托' : `原文第 ${start + 1}-${start + chunk.length} 段`,
       progress,
-      paragraphs: chunk.map((paragraph, paragraphIndex) => segmentParagraph(paragraph, start + paragraphIndex)),
+      paragraphs: chunk.map((paragraph, paragraphIndex) =>
+        segmentParagraph(paragraph, start + paragraphIndex, runtimeIndex)
+      ),
       scene: buildSceneForChapter(index, title)
     };
   });
 }
 
-export const chapters = RAW_BOOK_TEXT
+export let chapters = RAW_BOOK_TEXT
   ? buildChaptersFromBook(RAW_BOOK_TEXT)
   : [
       {
@@ -136,6 +140,21 @@ export const chapters = RAW_BOOK_TEXT
         scene: buildSceneForChapter(0, '斑点带子案')
       }
     ];
+
+export function applyClueManifest(manifest) {
+  const validated = validateClueManifest(manifest, {
+    bookText: RAW_BOOK_TEXT,
+    paragraphs: BOOK_PARAGRAPHS,
+    paragraphsPerChapter: PARAGRAPHS_PER_CHAPTER
+  });
+  const nextIndex = createRuntimeClueIndex(validated);
+  const nextChapters = RAW_BOOK_TEXT ? buildChaptersFromBook(RAW_BOOK_TEXT, nextIndex) : chapters;
+  clueIndex = nextIndex;
+  clues = nextIndex.clues;
+  clueIndexStatus = { status: 'ready', warning: '', clueCount: clues.length };
+  chapters = nextChapters;
+  return { clues, chapters };
+}
 
 function paragraphToPlainText(paragraph) {
   return paragraph.map((segment) => segment.text).join('');

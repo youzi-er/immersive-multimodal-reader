@@ -35,6 +35,24 @@ function mapStyle(row) {
   };
 }
 
+function mapOfficialSlot(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    unitId: row.unit_id,
+    articleId: row.article_id,
+    chapterId: row.chapter_id,
+    paragraphIndex: Number(row.paragraph_index),
+    imageUrl: row.image_url,
+    mediaAssetId: row.media_asset_id || null,
+    promptExcerpt: row.prompt_excerpt,
+    sourceText: row.source_text,
+    sourceHash: row.source_hash,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
 function mapVersion(row) {
   if (!row) return null;
   return {
@@ -174,6 +192,59 @@ export function createIllustrationStore({ pool, ensureReady = ensureCommunitySch
       { articleId }
     );
     return mapStyle(rows[0]);
+  }
+
+  async function listOfficialSlots({ articleId, chapterId = '' } = {}) {
+    await ready();
+    const where = ['article_id = :articleId'];
+    if (chapterId) where.push('chapter_id = :chapterId');
+    const [rows] = await database().execute(
+      `SELECT * FROM official_illustration_slots
+       WHERE ${where.join(' AND ')}
+       ORDER BY chapter_id ASC, paragraph_index ASC`,
+      { articleId, chapterId }
+    );
+    return rows.map(mapOfficialSlot);
+  }
+
+  async function upsertOfficialSlot(input) {
+    if (
+      !input?.id || !input.unitId || !input.articleId || !input.chapterId ||
+      !Number.isInteger(Number(input.paragraphIndex)) || !input.imageUrl ||
+      !input.promptExcerpt || !input.sourceText || !input.sourceHash
+    ) {
+      throw new Error('Official illustration slot is missing required fields');
+    }
+    await ready();
+    await database().execute(
+      `INSERT INTO official_illustration_slots (
+         id, unit_id, article_id, chapter_id, paragraph_index, image_url,
+         media_asset_id, prompt_excerpt, source_text, source_hash
+       ) VALUES (
+         :id, :unitId, :articleId, :chapterId, :paragraphIndex, :imageUrl,
+         :mediaAssetId, :promptExcerpt, :sourceText, :sourceHash
+       ) ON DUPLICATE KEY UPDATE
+         id = VALUES(id), image_url = VALUES(image_url),
+         media_asset_id = VALUES(media_asset_id), prompt_excerpt = VALUES(prompt_excerpt),
+         source_text = VALUES(source_text),
+         source_hash = VALUES(source_hash), updated_at = CURRENT_TIMESTAMP`,
+      { ...input, mediaAssetId: input.mediaAssetId || null }
+    );
+    const [rows] = await database().execute(
+      'SELECT * FROM official_illustration_slots WHERE unit_id = :unitId LIMIT 1',
+      { unitId: input.unitId }
+    );
+    return mapOfficialSlot(rows[0]);
+  }
+
+  async function isOfficialMediaAsset(mediaAssetId) {
+    if (!mediaAssetId) return false;
+    await ready();
+    const [rows] = await database().execute(
+      'SELECT COUNT(*) AS slot_count FROM official_illustration_slots WHERE media_asset_id = :mediaAssetId',
+      { mediaAssetId }
+    );
+    return Number(rows[0]?.slot_count || 0) > 0;
   }
 
   async function getStyleVersion(styleVersionId) {
@@ -408,6 +479,21 @@ export function createIllustrationStore({ pool, ensureReady = ensureCommunitySch
         throw new Error(`Cannot change illustration status from ${version.status} to ${nextStatus}`);
       }
 
+      if (nextStatus === 'deleted') {
+        const [adoptionRows] = await connection.execute(
+          `SELECT COUNT(*) AS adoption_count
+           FROM illustration_adoptions
+           WHERE version_id = :versionId AND user_id <> :ownerUserId`,
+          { versionId, ownerUserId }
+        );
+        if (Number(adoptionRows[0]?.adoption_count || 0) > 0) {
+          const error = new Error('Withdrawn illustrations with existing adopters cannot be deleted');
+          error.code = 'ILLUSTRATION_HAS_ADOPTERS';
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
       if (nextStatus === 'public') {
         const [publicRows] = await connection.execute(
           `SELECT id FROM illustration_versions
@@ -582,6 +668,9 @@ export function createIllustrationStore({ pool, ensureReady = ensureCommunitySch
 
   return {
     getOfficialStyle,
+    listOfficialSlots,
+    upsertOfficialSlot,
+    isOfficialMediaAsset,
     getStyleVersion,
     createOfficialStyleVersion,
     ensureOfficialStyle,
