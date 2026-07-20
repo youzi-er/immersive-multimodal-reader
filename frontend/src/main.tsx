@@ -1295,7 +1295,7 @@ function TopNav({
   logout: () => void;
 }) {
   return (
-    <header className="top-nav">
+    <header className={page === 'reader' ? 'top-nav reader-global-nav' : 'top-nav'}>
       <button className="nav-brand" onClick={() => setPage('home')}>
         <span>CR</span>
         <strong>CaseReader</strong>
@@ -1317,9 +1317,6 @@ function TopNav({
             </button>
             <button className={page === 'profile' ? 'active' : ''} onClick={() => setPage('profile')}>
               阅读档案
-            </button>
-            <button className={page === 'speech-debug' ? 'active' : ''} onClick={() => setPage('speech-debug')}>
-              生成调试
             </button>
             <button onClick={logout}>退出</button>
           </>
@@ -1437,16 +1434,16 @@ function CommunityPage({
     <>
       <nav className="community-content-switch" aria-label="创作类型">
         <button type="button" className={section === 'dubbing' ? 'active' : ''} onClick={() => setSection('dubbing')}>
-          <span>VOICE WORKS</span><strong>配音创作</strong>
+          <span>VOICE WORKS</span><strong>配音社区</strong>
         </button>
         <button type="button" className={section === 'illustration' ? 'active' : ''} onClick={() => setSection('illustration')}>
-          <span>ILLUSTRATION GALLERY</span><strong>插图创作</strong>
+          <span>ILLUSTRATION GALLERY</span><strong>插图社区</strong>
         </button>
         <button type="button" className={section === 'clue' ? 'active' : ''} onClick={() => setSection('clue')}>
-          <span>EVIDENCE GALLERY</span><strong>证物创作</strong>
+          <span>EVIDENCE GALLERY</span><strong>证物社区</strong>
         </button>
         <button type="button" className={section === 'cover' ? 'active' : ''} onClick={() => setSection('cover')}>
-          <span>POSTER GALLERY</span><strong>封面创作</strong>
+          <span>POSTER GALLERY</span><strong>封面社区</strong>
         </button>
       </nav>
       {section === 'dubbing' ? (
@@ -3330,6 +3327,12 @@ function ReaderPage({
   }, [chapter, clues]);
   const [contextTab, setContextTab] = useState<ContextTab>('cover');
   const [contextOpen, setContextOpen] = useState(false);
+  const [mobileChromeOpen, setMobileChromeOpen] = useState(false);
+  const [mobileTocOpen, setMobileTocOpen] = useState(false);
+  const [mobileRailExpanded, setMobileRailExpanded] = useState(false);
+  const [isMobileReader, setIsMobileReader] = useState(() =>
+    window.matchMedia('(max-width: 760px)').matches
+  );
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>('light');
   const [readingWidth, setReadingWidth] = useState<ReadingWidth>('standard');
   const [fontSize, setFontSize] = useState(19);
@@ -3345,6 +3348,7 @@ function ReaderPage({
   const [selectedParagraph, setSelectedParagraph] = useState<SelectedParagraph | null>(null);
   const [selectionLayout, setSelectionLayout] = useState<SelectionLayout | null>(null);
   const bookPageRef = useRef<HTMLElement | null>(null);
+  const selectionToolbarActionsRef = useRef<HTMLDivElement | null>(null);
   const [paragraphImageLoadingKey, setParagraphImageLoadingKey] = useState<string | null>(null);
   const [paragraphImages, setParagraphImages] = useState<Record<string, RangeMedia<ParagraphImage>>>({});
   const [platformParagraphImages, setPlatformParagraphImages] = useState<Record<string, RangeMedia<ParagraphImage>>>({});
@@ -3353,20 +3357,52 @@ function ReaderPage({
     (tab: ContextTab) => {
       setContextOpen((open) => (open && contextTab === tab ? false : true));
       setContextTab(tab);
+      setMobileRailExpanded(false);
+      setMobileChromeOpen(false);
+      setMobileTocOpen(false);
     },
     [contextTab]
   );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 760px)');
+    const handleChange = (event: MediaQueryListEvent) => setIsMobileReader(event.matches);
+
+    setIsMobileReader(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileReader) return;
+
+    const hideTransientControls = () => {
+      setMobileChromeOpen(false);
+      setMobileRailExpanded(false);
+    };
+
+    window.addEventListener('scroll', hideTransientControls, { passive: true });
+    return () => window.removeEventListener('scroll', hideTransientControls);
+  }, [isMobileReader]);
 
   useEffect(() => {
     if (!coverInspiration) return;
     setContextTab('cover');
     setContextOpen(true);
   }, [coverInspiration]);
+
+  useEffect(() => {
+    setMobileTocOpen(false);
+    setMobileChromeOpen(false);
+    setSettingsOpen(false);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [chapter.id]);
   const [paragraphAudios, setParagraphAudios] = useState<Record<string, RangeMedia<ParagraphSpeech>>>({});
   const [platformParagraphAudios, setPlatformParagraphAudios] = useState<
     Record<string, RangeMedia<ParagraphSpeech>>
   >({});
   const [playingAudioKey, setPlayingAudioKey] = useState<string | null>(null);
+  const [audioPaused, setAudioPaused] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [paragraphSpeechLoadingKey, setParagraphSpeechLoadingKey] = useState<string | null>(null);
   const [voicePanelOpen, setVoicePanelOpen] = useState(false);
@@ -3713,6 +3749,7 @@ function ReaderPage({
       audio.load();
     }
     setPlayingAudioKey(null);
+    setAudioPaused(false);
     if ('speechSynthesis' in window && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
@@ -3724,15 +3761,18 @@ function ReaderPage({
     const audio = new Audio(audioUrl);
     audioRef.current = audio;
     setPlayingAudioKey(key);
+    setAudioPaused(false);
 
     audio.addEventListener('ended', () => {
       setPlayingAudioKey((current) => (current === key ? null : current));
+      setAudioPaused(false);
     });
 
     void audio.play().catch(() => {
       setNotice('音频播放失败');
       window.setTimeout(() => setNotice(''), 1800);
       setPlayingAudioKey(null);
+      setAudioPaused(false);
     });
   }
 
@@ -3740,16 +3780,19 @@ function ReaderPage({
     const audio = audioRef.current;
     if (playingAudioKey === key && audio && !audio.paused) {
       audio.pause();
-      setPlayingAudioKey(null);
+      setAudioPaused(true);
       return;
     }
 
     if (playingAudioKey === key && audio?.paused) {
-      void audio.play().catch(() => {
-        setNotice('音频播放失败');
-        window.setTimeout(() => setNotice(''), 1800);
-      });
       setPlayingAudioKey(key);
+      void audio.play()
+        .then(() => setAudioPaused(false))
+        .catch(() => {
+          setAudioPaused(true);
+          setNotice('音频播放失败');
+          window.setTimeout(() => setNotice(''), 1800);
+        });
       return;
     }
 
@@ -4501,6 +4544,12 @@ function ReaderPage({
   }, [selectedParagraph, refreshSelectionLayout, fontSize, readingWidth, chapter.id]);
 
   useEffect(() => {
+    if (!selectedParagraph) return;
+    setMobileChromeOpen(false);
+    setMobileRailExpanded(false);
+  }, [selectedParagraph]);
+
+  useEffect(() => {
     if (!selectedParagraph) {
       return;
     }
@@ -4530,6 +4579,7 @@ function ReaderPage({
       const target = event.target as HTMLElement;
       if (
         target.closest('.text-selection-layer') ||
+        target.closest('.mobile-selection-sheet-layer') ||
         target.closest('.reader-paragraph') ||
         target.closest('.inline-audio-play')
       ) {
@@ -4946,7 +4996,7 @@ function ReaderPage({
   }
 
   function renderInlinePlayButton(mediaKey: string, audio: RangeMedia<ParagraphSpeech>) {
-    const isPlaying = playingAudioKey === mediaKey;
+    const isPlaying = playingAudioKey === mediaKey && !audioPaused;
 
     return (
       <button
@@ -4965,7 +5015,7 @@ function ReaderPage({
 
   function renderDubbingVersionCard(version: DubbingVersion, unit: ContentUnit) {
     const audioKey = `dubbing-${version.id}`;
-    const isPlaying = playingAudioKey === audioKey;
+    const isPlaying = playingAudioKey === audioKey && !audioPaused;
     const isMine = version.ownerUserId === user?.id;
     const kindLabel = version.kind === 'ai' ? 'AI 配音' : '真人演绎';
     const statusLabels: Record<DubbingStatus, string> = {
@@ -5899,8 +5949,85 @@ function ReaderPage({
   );
   const speechGenerating = oneClickSpeechGenerating || aiPlanning || voiceSaving;
 
+  const selectionPanelOpen =
+    illustrationCreatorOpen || paragraphCommunityOpen || voiceDesignerOpen || voicePanelOpen;
+  const chapterAudioEntries = Object.entries(paragraphAudios)
+    .filter(([, audio]) => audio.chapterId === chapter.id)
+    .sort(([, a], [, b]) => a.range.startParagraphIndex - b.range.startParagraphIndex);
+
+  function toggleReaderAudio() {
+    const currentAudio = audioRef.current;
+    if (playingAudioKey && currentAudio?.src) {
+      if (currentAudio.paused) {
+        void currentAudio.play()
+          .then(() => setAudioPaused(false))
+          .catch(() => {
+            setAudioPaused(true);
+            setNotice('音频播放失败');
+            window.setTimeout(() => setNotice(''), 1800);
+          });
+      } else {
+        currentAudio.pause();
+        setAudioPaused(true);
+      }
+      return;
+    }
+
+    const visibleAudio = chapterAudioEntries.find(([, audio]) => {
+      const paragraph = bookPageRef.current?.querySelector<HTMLElement>(
+        `[data-paragraph-index="${audio.range.startParagraphIndex}"]`
+      );
+      if (!paragraph) return false;
+      const rect = paragraph.getBoundingClientRect();
+      return rect.bottom > 64 && rect.top < window.innerHeight - 72;
+    });
+    const nextAudio = visibleAudio ?? chapterAudioEntries[0];
+
+    if (!nextAudio) {
+      setNotice('当前章节还没有可播放的配音');
+      window.setTimeout(() => setNotice(''), 1800);
+      return;
+    }
+
+    playParagraphAudio(nextAudio[0], nextAudio[1].audioUrl);
+  }
+
+  function revealMoreSelectionActions(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    const scroller = selectionToolbarActionsRef.current;
+    if (!scroller) return;
+
+    const atEnd = scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 8;
+    scroller.scrollTo({
+      left: atEnd ? 0 : scroller.scrollLeft + Math.max(180, scroller.clientWidth * 0.72),
+      behavior: 'smooth'
+    });
+  }
+
+  function closeSelectionPanels() {
+    setIllustrationCreatorOpen(false);
+    setParagraphCommunityOpen(false);
+    closeVoiceDesigner();
+    closeAiDesignMenu();
+  }
+
+  function handleReaderSurfaceClick(event: React.MouseEvent<HTMLElement>) {
+    if (!isMobileReader || selectedParagraph || mobileTocOpen || contextOpen || settingsOpen) return;
+
+    const target = event.target as HTMLElement;
+    if (
+      target.closest('button, a, input, textarea, select, label, details, summary') ||
+      target.closest('.paragraph-comments, .paragraph-image-media, .text-selection-layer')
+    ) {
+      return;
+    }
+
+    setMobileChromeOpen((open) => !open);
+    setMobileRailExpanded(false);
+  }
+
   return (
-    <section className="app-shell">
+    <section className={selectedParagraph ? 'app-shell has-selection' : 'app-shell'}>
       <aside className="sidebar">
         <button className="shelf-back" onClick={() => setPage('bookshelf')} type="button">
           <span>←</span>
@@ -5940,6 +6067,52 @@ function ReaderPage({
       </aside>
 
       <section className={`reader theme-${readingTheme} width-${readingWidth}`}>
+        {mobileChromeOpen && (
+          <>
+            <div className="mobile-reader-topbar" aria-label="阅读导航">
+              <button type="button" onClick={() => setPage('bookshelf')} aria-label="返回书架">
+                <span aria-hidden="true">‹</span>
+              </button>
+              <strong>{chapter.title}</strong>
+              <button type="button" onClick={() => setMobileChromeOpen(false)} aria-label="收起阅读工具">
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
+            <div className="mobile-reader-bottombar" aria-label="阅读工具">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileTocOpen(true);
+                  setMobileChromeOpen(false);
+                }}
+              >
+                <span aria-hidden="true">☷</span>
+                目录
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsOpen(true);
+                  setMobileChromeOpen(false);
+                }}
+              >
+                <span aria-hidden="true">Aa</span>
+                阅读设置
+              </button>
+              <button
+                type="button"
+                className="mobile-reader-community"
+                onClick={() => setPage('community')}
+                aria-label="进入创作广场"
+              >
+                <span className="mobile-reader-community-icon" aria-hidden="true">创</span>
+                创作广场
+              </button>
+              <span className="mobile-reader-progress">{chapter.progress}%</span>
+            </div>
+          </>
+        )}
+
         <div className="reader-toolbar">
           <div>
             <p className="eyebrow">福尔摩斯探案集</p>
@@ -5957,12 +6130,27 @@ function ReaderPage({
             >
               阅读设置
             </button>
-            <button onClick={stopParagraphAudio}>停止语音</button>
+            <button onClick={toggleReaderAudio}>
+              {playingAudioKey && !audioPaused ? '暂停配音' : audioPaused ? '继续播放' : '播放配音'}
+            </button>
           </div>
         </div>
 
         {settingsOpen && (
+          <button
+            type="button"
+            className="mobile-sheet-scrim"
+            onClick={() => setSettingsOpen(false)}
+            aria-label="关闭阅读设置"
+          />
+        )}
+
+        {settingsOpen && (
           <div className="reading-settings" aria-label="阅读设置">
+            <div className="mobile-sheet-heading">
+              <strong>阅读设置</strong>
+              <button type="button" onClick={() => setSettingsOpen(false)}>完成</button>
+            </div>
             <div className="setting-group">
               <span>版心</span>
               <div className="segmented-control">
@@ -6025,6 +6213,7 @@ function ReaderPage({
           ref={bookPageRef}
           className={selectedParagraph ? 'book-page selecting' : 'book-page'}
           style={{ '--reader-font-size': `${fontSize}px` } as React.CSSProperties}
+          onClick={handleReaderSurfaceClick}
         >
           {chapter.paragraphs.map((paragraph, paragraphIndex) => {
             const key = paragraphKey(paragraphIndex);
@@ -6161,6 +6350,7 @@ function ReaderPage({
                   width: `${selectionLayout.toolbar.width}px`
                 }}
               >
+                <div className="selection-toolbar-actions" ref={selectionToolbarActionsRef}>
                   <button
                     type="button"
                     onClick={generateParagraphImage}
@@ -6253,17 +6443,47 @@ function ReaderPage({
                     <span>我来设计 AI 配音</span>
                     <span className="selection-menu-chevron" aria-hidden="true">›</span>
                   </button>
-                  {illustrationCreatorOpen
-                    ? renderIllustrationCreatorPanel()
-                    : paragraphCommunityOpen
-                      ? renderParagraphCommunityPanel()
-                      : voiceDesignerOpen
-                        ? renderVoiceDesignerPanel()
-                        : voicePanelOpen && renderVoicePanel()}
+                </div>
+                <button
+                  type="button"
+                  className="selection-toolbar-more"
+                  onClick={revealMoreSelectionActions}
+                  aria-label="查看更多操作"
+                  title="查看更多操作"
+                >
+                  <span aria-hidden="true">›</span>
+                </button>
+                  {!isMobileReader && (
+                    illustrationCreatorOpen
+                      ? renderIllustrationCreatorPanel()
+                      : paragraphCommunityOpen
+                        ? renderParagraphCommunityPanel()
+                        : voiceDesignerOpen
+                          ? renderVoiceDesignerPanel()
+                          : voicePanelOpen && renderVoicePanel()
+                  )}
               </div>
             </div>
           )}
         </article>
+
+        {isMobileReader && selectedParagraph && selectionPanelOpen && (
+          <div className="mobile-selection-sheet-layer">
+            <button
+              type="button"
+              className="mobile-selection-sheet-scrim"
+              onClick={closeSelectionPanels}
+              aria-label="关闭当前创作面板"
+            />
+            {illustrationCreatorOpen
+              ? renderIllustrationCreatorPanel()
+              : paragraphCommunityOpen
+                ? renderParagraphCommunityPanel()
+                : voiceDesignerOpen
+                  ? renderVoiceDesignerPanel()
+                  : voicePanelOpen && renderVoicePanel()}
+          </div>
+        )}
 
         <footer className="page-turner">
           <button
@@ -6285,36 +6505,63 @@ function ReaderPage({
         </footer>
       </section>
 
-      <aside className={contextOpen ? 'right-rail open' : 'right-rail'} aria-label="阅读辅助浮窗">
-        <div className="context-tabs" role="tablist" aria-label="阅读辅助">
+      <aside
+        className={`${contextOpen ? 'right-rail open' : 'right-rail'}${mobileRailExpanded ? ' rail-expanded' : ''}`}
+        aria-label="阅读辅助浮窗"
+      >
+        <div className="context-rail-control">
           <button
             type="button"
-            role="tab"
-            className={contextOpen && contextTab === 'cover' ? 'active' : ''}
-            aria-expanded={contextOpen && contextTab === 'cover'}
-            onClick={() => toggleContextPanel('cover')}
+            className="context-rail-toggle"
+            onClick={() => {
+              setMobileRailExpanded((expanded) => !expanded);
+              setMobileChromeOpen(false);
+            }}
+            aria-expanded={mobileRailExpanded}
+            aria-label={mobileRailExpanded ? '收起阅读辅助' : '展开阅读辅助'}
           >
-            封面设计
+            <span aria-hidden="true">{mobileRailExpanded ? '›' : '‹'}</span>
           </button>
-          <button
-            type="button"
-            role="tab"
-            className={contextOpen && contextTab === 'ai' ? 'active' : ''}
-            aria-expanded={contextOpen && contextTab === 'ai'}
-            onClick={() => toggleContextPanel('ai')}
-          >
-            助手
-          </button>          <button
-            type="button"
-            role="tab"
-            className={`${contextOpen && contextTab === 'bag' ? 'active' : ''}${bagPulse ? ' pulse' : ''}`}
-            aria-expanded={contextOpen && contextTab === 'bag'}
-            onClick={() => toggleContextPanel('bag')}
-          >
-            证物袋
-            <span>{collectedClues.length}</span>
-          </button>
+          <div className="context-tabs" role="tablist" aria-label="阅读辅助">
+            <button
+              type="button"
+              role="tab"
+              className={contextOpen && contextTab === 'cover' ? 'active' : ''}
+              aria-expanded={contextOpen && contextTab === 'cover'}
+              onClick={() => toggleContextPanel('cover')}
+            >
+              封面设计
+            </button>
+            <button
+              type="button"
+              role="tab"
+              className={contextOpen && contextTab === 'ai' ? 'active' : ''}
+              aria-expanded={contextOpen && contextTab === 'ai'}
+              onClick={() => toggleContextPanel('ai')}
+            >
+              助手
+            </button>
+            <button
+              type="button"
+              role="tab"
+              className={`${contextOpen && contextTab === 'bag' ? 'active' : ''}${bagPulse ? ' pulse' : ''}`}
+              aria-expanded={contextOpen && contextTab === 'bag'}
+              onClick={() => toggleContextPanel('bag')}
+            >
+              证物袋
+              <span>{collectedClues.length}</span>
+            </button>
+          </div>
         </div>
+
+        {contextOpen && (
+          <button
+            type="button"
+            className="context-modal-scrim"
+            onClick={() => setContextOpen(false)}
+            aria-label="关闭阅读辅助浮窗"
+          />
+        )}
 
         {contextOpen && (
           <div className="context-popover">
@@ -6436,6 +6683,55 @@ function ReaderPage({
             )}          </div>
         )}
       </aside>
+
+      {mobileTocOpen && (
+        <div className="mobile-toc-layer">
+          <button
+            type="button"
+            className="mobile-toc-scrim"
+            onClick={() => setMobileTocOpen(false)}
+            aria-label="关闭目录"
+          />
+          <section className="mobile-toc-sheet" role="dialog" aria-modal="true" aria-label="章节目录">
+            <header>
+              <div>
+                <span>当前作品</span>
+                <strong>《斑点带子案》</strong>
+              </div>
+              <button type="button" onClick={() => setMobileTocOpen(false)} aria-label="关闭目录">×</button>
+            </header>
+            <div className="mobile-toc-progress">
+              <div>
+                <span>阅读进度</span>
+                <strong>{chapter.progress}%</strong>
+              </div>
+              <span><i style={{ width: `${chapter.progress}%` }} /></span>
+            </div>
+            <div className="mobile-toc-list">
+              {chapters.map((item, index) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  className={item.id === chapter.id ? 'mobile-toc-chapter current' : 'mobile-toc-chapter'}
+                  aria-current={item.id === chapter.id ? 'page' : undefined}
+                  onClick={() => {
+                    setChapterId(item.id);
+                    setMobileTocOpen(false);
+                  }}
+                >
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <span>
+                    <strong>{item.title}</strong>
+                    <small>{item.subtitle}</small>
+                  </span>
+                  <span aria-hidden="true">›</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+
       {notice && <div className="toast">{notice}</div>}
     </section>
   );
