@@ -614,6 +614,29 @@ const TOKEN_KEY = 'immersive-reader-token';
 const USER_KEY = 'immersive-reader-user';
 const COLLECTED_CLUES_KEY = 'immersive-reader-collected-clues';
 
+function loadStoredUser(): User | null {
+  const saved = window.localStorage.getItem(USER_KEY);
+  if (!saved) return null;
+  try {
+    const storedUser = JSON.parse(saved) as Partial<User>;
+    if (storedUser.id === 'demo-user' || storedUser.username === 'demo') {
+      window.localStorage.removeItem(TOKEN_KEY);
+      window.localStorage.removeItem(USER_KEY);
+      return null;
+    }
+    if (!storedUser.id || !storedUser.username || !storedUser.displayName) {
+      window.localStorage.removeItem(TOKEN_KEY);
+      window.localStorage.removeItem(USER_KEY);
+      return null;
+    }
+    return storedUser as User;
+  } catch {
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(USER_KEY);
+    return null;
+  }
+}
+
 function clueCollectionKey(userId?: string | null) {
   return `${COLLECTED_CLUES_KEY}:${userId || 'anonymous'}`;
 }
@@ -1085,16 +1108,11 @@ function App() {
     isAppPage(initialHistoryState?.caseReaderPage) ? initialHistoryState.caseReaderPage : 'home'
   );
   const pageRef = useRef(page);
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = window.localStorage.getItem(USER_KEY);
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState<User | null>(loadStoredUser);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [clues, setClues] = useState<Clue[]>([]);
   const [collectedClues, setCollectedClues] = useState<CollectedClueRecord[]>(() => {
-    const savedUser = window.localStorage.getItem(USER_KEY);
-    const savedUserId = savedUser ? JSON.parse(savedUser)?.id : null;
-    return loadCollectedClues(savedUserId);
+    return loadCollectedClues(loadStoredUser()?.id);
   });
   const [clueImages, setClueImages] = useState<Record<string, ClueImage>>({});
   const [chapterId, setChapterId] = useState('speckled-band-1');
@@ -2590,8 +2608,8 @@ function AuthPage({
   saveSession: (token: string, user: User) => void;
   setPage: (page: Page) => void;
 }) {
-  const [username, setUsername] = useState(mode === 'login' ? 'demo' : '');
-  const [password, setPassword] = useState(mode === 'login' ? '123456' : '');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
