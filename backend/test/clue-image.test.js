@@ -63,3 +63,25 @@ test('automatically compacts an overlong assembled prompt without changing locke
   assert.ok(request.prompt.includes(style.global_style_prompt));
   assert.ok(request.prompt.includes(style.global_negative_prompt));
 });
+
+test('official clues cannot be skipped or reclassified by the planner', () => {
+  const skippedPlan = {
+    decision: 'skip',
+    _meta: {
+      clue_type: 'nonvisual',
+      image_mode: 'skip',
+      subject: '口哨声',
+      reason_cn: '声音无法直接呈现'
+    }
+  };
+  assert.throws(
+    () => validateAutomaticPlan(skippedPlan, style, { requireGeneration: true, expectedClueType: 'evidence' }),
+    /必须生成图像/
+  );
+
+  const reclassifiedPlan = validPlan();
+  assert.throws(
+    () => validateAutomaticPlan(reclassifiedPlan, style, { requireGeneration: true, expectedClueType: 'location' }),
+    /目录类型应为 location/
+  );
+});

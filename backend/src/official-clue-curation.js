@@ -18,7 +18,9 @@ export const CLUE_CURATION_TYPES = Object.freeze(['人物', '地点', '物证'])
 
 const sourceById = new Map(sourceManifest.clues.map((clue) => [clue.id, clue]));
 const suggestionByMemberId = new Map();
+const suggestionByTargetId = new Map();
 for (const group of suggestions.groups) {
+  suggestionByTargetId.set(group.targetId, group);
   for (const memberId of group.memberIds) {
     if (!sourceById.has(memberId)) {
       throw new Error(`Unknown clue suggestion member: ${memberId}`);
@@ -28,6 +30,16 @@ for (const group of suggestions.groups) {
     }
     suggestionByMemberId.set(memberId, group);
   }
+}
+
+export function getOfficialClueRecommendation(clueId) {
+  const group = suggestionByTargetId.get(String(clueId || ''));
+  if (!group) return null;
+  return {
+    label: group.label,
+    type: group.type || sourceById.get(group.targetId)?.type || '',
+    hiddenIdentityPrompt: group.hiddenIdentityPrompt || ''
+  };
 }
 
 function normalizedText(value, maximumLength, field) {

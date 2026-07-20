@@ -133,7 +133,7 @@
     {
       "targetId": "clue-evidence-brown-spotted-yellow-band-snake",
       "memberIds": ["clue-evidence-spotted-headscarves", "clue-evidence-brown-spotted-yellow-band-snake", "clue-evidence-swamp-viper"],
-      "label": "带褐色斑点的毒蛇",
+      "label": "带褐色斑点的黄带子",
       "reason": "带点子的头巾、黄带子和沼地蝰蛇最终指向同一凶器。",
       "hiddenIdentityPrompt": "一条细长、黄色并带褐色斑点的危险毒蛇，是故事中的斑点带子；必须是蛇，不得画成布带、头巾或普通饰物。"
     },

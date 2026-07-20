@@ -8,6 +8,7 @@ import {
   segmentParagraphWithClues,
   validateClueManifest
 } from './clue-index.js';
+import { getOfficialClueRecommendation } from './official-clue-curation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -142,7 +143,19 @@ export let chapters = RAW_BOOK_TEXT
     ];
 
 export function applyClueManifest(manifest) {
-  const validated = validateClueManifest(manifest, {
+  const normalizedManifest = {
+    ...manifest,
+    clues: manifest.clues.map((clue) => {
+      const recommendation = getOfficialClueRecommendation(clue.id);
+      return recommendation
+        ? {
+            ...clue,
+            label: recommendation.label
+          }
+        : clue;
+    })
+  };
+  const validated = validateClueManifest(normalizedManifest, {
     bookText: RAW_BOOK_TEXT,
     paragraphs: BOOK_PARAGRAPHS,
     paragraphsPerChapter: PARAGRAPHS_PER_CHAPTER

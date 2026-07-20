@@ -22,8 +22,10 @@ test('suggested official clue draft merges duplicates into a publishable catalog
   assert.equal(published.clues.length, 30);
   const bellRope = published.clues.find((clue) => clue.id === 'clue-evidence-bell-rope');
   const whip = published.clues.find((clue) => clue.id === 'clue-evidence-dog-whip-on-bedhead');
+  const yellowBand = published.clues.find((clue) => clue.id === 'clue-evidence-brown-spotted-yellow-band-snake');
   assert.equal(bellRope.occurrences.length, 5);
   assert.equal(whip.occurrences.length, 5);
+  assert.equal(yellowBand.label, '带褐色斑点的黄带子');
 
   const occurrenceIds = published.clues.flatMap((clue) => clue.occurrences.map((occurrence) => occurrence.id));
   assert.equal(new Set(occurrenceIds).size, occurrenceIds.length);
@@ -76,8 +78,15 @@ test('a published curation manifest immediately updates reader clue markers', ()
   const source = getOfficialClueSourceManifest();
   try {
     const published = buildPublishedClueManifest(createSuggestedClueDraft());
+    published.clues.find(
+      (clue) => clue.id === 'clue-evidence-brown-spotted-yellow-band-snake'
+    ).label = '带褐色斑点的毒蛇';
     applyClueManifest(published);
     assert.equal(clues.length, 30);
+    assert.equal(
+      clues.find((clue) => clue.id === 'clue-evidence-brown-spotted-yellow-band-snake').label,
+      '带褐色斑点的黄带子'
+    );
     const knownIds = new Set(clues.map((clue) => clue.id));
     const markedSegments = chapters.flatMap((chapter) => chapter.paragraphs.flat()).filter(
       (segment) => segment.type === 'clue'

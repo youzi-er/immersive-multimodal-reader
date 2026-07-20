@@ -3,6 +3,7 @@ import { appendFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bookMeta, getClueReaderContext } from '../data.js';
+import { getOfficialClueRecommendation } from '../official-clue-curation.js';
 import { callMessagesApiForJson, generateImageFromRequest } from './minimax.js';
 import { ensureBookStyle } from './bookImageStyle.js';
 
@@ -13,9 +14,14 @@ const MAX_PROMPT_CHARS = 1400;
 const MAX_SCENE_PROMPT_CHARS = 600;
 const MAX_AVOID_CHARS = 100;
 const MAX_PLANNING_ATTEMPTS = 3;
-export const CLUE_IMAGE_PLANNER_VERSION = 'clue-image-planner-v1';
+export const CLUE_IMAGE_PLANNER_VERSION = 'clue-image-planner-v2';
 
 const VALID_CLUE_TYPES = new Set(['character', 'location', 'evidence']);
+const CATALOG_CLUE_TYPES = new Map([
+  ['人物', 'character'],
+  ['地点', 'location'],
+  ['物证', 'evidence']
+]);
 const VALID_IMAGE_MODES = new Set([
   'character_portrait',
   'location_still',
@@ -76,12 +82,19 @@ export function promptLimitsForStyle(style) {
   };
 }
 
-export function validateAutomaticPlan(rawPlan, style) {
+export function validateAutomaticPlan(
+  rawPlan,
+  style,
+  { requireGeneration = false, expectedClueType = '' } = {}
+) {
   if (!rawPlan || typeof rawPlan !== 'object' || !rawPlan._meta || typeof rawPlan._meta !== 'object') {
     throw new Error('自动规划结果必须是包含 _meta 的 JSON 对象');
   }
   const meta = rawPlan._meta;
   if (rawPlan.decision === 'skip') {
+    if (requireGeneration) {
+      throw new Error('官方证物必须生成图像，不允许跳过');
+    }
     if (meta.clue_type !== 'nonvisual' || meta.image_mode !== 'skip') {
       throw new Error('skip 结果必须标记为 nonvisual / skip');
     }
@@ -92,6 +105,9 @@ export function validateAutomaticPlan(rawPlan, style) {
 
   if (rawPlan.decision !== 'generate') throw new Error('decision 只能是 generate 或 skip');
   if (!VALID_CLUE_TYPES.has(meta.clue_type)) throw new Error('自动规划返回了未知线索类型');
+  if (expectedClueType && meta.clue_type !== expectedClueType) {
+    throw new Error(`证物目录类型应为 ${expectedClueType}，规划结果却为 ${meta.clue_type}`);
+  }
   if (!VALID_IMAGE_MODES.has(meta.image_mode)) throw new Error('自动规划返回了未知图像模式');
 
   const modeMatchesType =
@@ -211,7 +227,14 @@ export async function prepareClueImage({ clueId, occurrenceId }) {
 
 async function planClueImage(prepared) {
   const limits = promptLimitsForStyle(prepared.style);
+  const expectedClueType = CATALOG_CLUE_TYPES.get(prepared.clue.type) || 'evidence';
+  const recommendation = getOfficialClueRecommendation(prepared.clue.id);
   const input = {
+    clue_label: prepared.clue.label,
+    catalog_clue_type: expectedClueType,
+    surface_description: prepared.clue.surfaceDescription,
+    factual_identity_constraints: recommendation?.hiddenIdentityPrompt || '',
+    spoiler_policy: 'Evidence images may reveal later facts. Accuracy takes priority over preserving mystery.',
     selected_text: prepared.occurrence.selectedText,
     source_context: prepared.sourceContext,
     reader_context: prepared.readerContext,
@@ -239,7 +262,10 @@ async function planClueImage(prepared) {
     });
 
     try {
-      const plan = validateAutomaticPlan(rawPlan, prepared.style);
+      const plan = validateAutomaticPlan(rawPlan, prepared.style, {
+        requireGeneration: true,
+        expectedClueType
+      });
       if (plan.decision === 'generate' && plan.scene_prompt_en.length > limits.scene_prompt_en_max) {
         throw new Error(
           `scene_prompt_en 长度 ${plan.scene_prompt_en.length}，目标 <= ${limits.scene_prompt_en_max}`
@@ -259,7 +285,10 @@ async function planClueImage(prepared) {
       if (attempt === MAX_PLANNING_ATTEMPTS) {
         if (rawPlan?.decision === 'generate') {
           const compactedPlan = compactPlanToBudget(rawPlan, prepared.style);
-          validateAutomaticPlan(compactedPlan, prepared.style);
+          validateAutomaticPlan(compactedPlan, prepared.style, {
+            requireGeneration: true,
+            expectedClueType
+          });
           const imageRequest = buildLockedImageRequest(compactedPlan, prepared.style);
           attempts.push({
             attempt: 'automatic-compaction',
