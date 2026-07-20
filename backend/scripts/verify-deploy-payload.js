@@ -7,7 +7,16 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 const ignoredDirectoryNames = new Set(['.git', 'node_modules', 'dist', 'build', 'coverage']);
 const deployableMediaPattern = /\.(?:png|jpe?g|webp|gif|mp3|wav|ogg|m4a|mp4)$/i;
 const allowedPublicMedia = new Set([
-  'frontend/public/assets/speckled-band-poster-v2.png'
+  'frontend/public/assets/speckled-band-poster-v2.png',
+  'frontend/public/assets/official-illustrations/official-illustration-01-veiled-visitor.jpg',
+  'frontend/public/assets/official-illustrations/official-illustration-02-sisters-final-moments.jpg',
+  'frontend/public/assets/official-illustrations/official-illustration-03-royllott-at-the-door.jpg',
+  'frontend/public/assets/official-illustrations/official-illustration-04-stoke-moran-in-the-woods.jpg',
+  'frontend/public/assets/official-illustrations/official-illustration-05-shutter-investigation.jpg',
+  'frontend/public/assets/official-illustrations/official-illustration-06-manor-exterior.jpg',
+  'frontend/public/assets/official-illustrations/official-illustration-07-doctors-room.jpg',
+  'frontend/public/assets/official-illustrations/official-illustration-08-julias-bedroom.jpg',
+  'frontend/public/assets/official-illustrations/official-illustration-09-final-revelation.jpg'
 ]);
 
 function normalizeRelative(filePath) {
