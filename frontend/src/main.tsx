@@ -3119,7 +3119,9 @@ function ReaderPage({
       audio.load();
     }
     setPlayingAudioKey(null);
-    window.speechSynthesis.cancel();
+    if ('speechSynthesis' in window && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
   }
 
   function playParagraphAudio(key: string, audioUrl: string) {
