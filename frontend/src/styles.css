@@ -6378,3 +6378,43 @@ button:disabled {
   }
 }
 
+
+
+/* Qidian-style mobile reading progress bar */
+.mobile-reader-progress-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 92px;
+  font-size: 12px;
+  opacity: .9;
+}
+
+.mobile-reader-progress-control input[type="range"] {
+  width: 70px;
+  accent-color: currentColor;
+}
+
+@media (max-width: 760px) {
+  .reader {
+    padding-bottom: 72px;
+  }
+
+  .mobile-reader-bottombar {
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .mobile-reader-progress-control {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: -18px;
+    width: 130px;
+    justify-content: center;
+  }
+
+  .mobile-reader-progress-control input[type="range"] {
+    width: 100px;
+  }
+}

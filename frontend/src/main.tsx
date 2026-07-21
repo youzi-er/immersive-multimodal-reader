@@ -3431,6 +3431,7 @@ function ReaderPage({
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>('light');
   const [readingWidth, setReadingWidth] = useState<ReadingWidth>('standard');
   const [fontSize, setFontSize] = useState(19);
+  const [readingProgress, setReadingProgress] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [bagPulse, setBagPulse] = useState(false);
   const [activeClueId, setActiveClueId] = useState<string | null>(null);
@@ -3479,6 +3480,29 @@ function ReaderPage({
     window.addEventListener('scroll', hideTransientControls, { passive: true });
     return () => window.removeEventListener('scroll', hideTransientControls);
   }, [isMobileReader]);
+
+  useEffect(() => {
+    if (!isMobileReader) return;
+
+    const updateReadingProgress = () => {
+      const scrollTop = window.scrollY;
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const value = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+      setReadingProgress(Math.min(100, Math.max(0, Math.round(value))));
+    };
+
+    updateReadingProgress();
+    window.addEventListener('scroll', updateReadingProgress, { passive: true });
+    return () => window.removeEventListener('scroll', updateReadingProgress);
+  }, [isMobileReader, chapter.id]);
+
+  const jumpToReadingProgress = useCallback((value: number) => {
+    const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+    window.scrollTo({
+      top: scrollHeight * value / 100,
+      behavior: 'smooth'
+    });
+  }, []);
 
   useEffect(() => {
     if (!coverInspiration) return;
@@ -6203,7 +6227,17 @@ function ReaderPage({
                 <span className="mobile-reader-community-icon" aria-hidden="true">创</span>
                 创作广场
               </button>
-              <span className="mobile-reader-progress">{chapter.progress}%</span>
+              <div className="mobile-reader-progress-control">
+                <input
+                  aria-label="阅读进度"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={readingProgress}
+                  onChange={(event) => jumpToReadingProgress(Number(event.target.value))}
+                />
+                <span>{readingProgress}%</span>
+              </div>
             </div>
           </>
         )}
